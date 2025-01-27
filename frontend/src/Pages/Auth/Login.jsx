@@ -1,5 +1,6 @@
-import React, {useState} from 'react'
-import "../../css/Style.css"
+import React, { useState } from 'react';
+import { AiOutlineUser, AiOutlineLock } from 'react-icons/ai';
+import { FaFacebookF, FaGoogle, FaTwitter } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../../context/auth';
 import { useNavigate, NavLink } from 'react-router-dom'; 
@@ -26,8 +27,7 @@ const Login = () => {
       try {
         setLoading(true);  
   
-        const response = await axios.post(
-          `${process.env.REACT_APP_API}/api/auth/login`, 
+        const response = await axios.post(`${process.env.REACT_APP_API}/api/auth/login`, 
           { email, password }
         );
   
@@ -52,52 +52,88 @@ const Login = () => {
       }
     };
 
-    return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-100">
-          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-3xl font-semibold text-center mb-6">Login</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="input-group">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+  return (
+    <div className="flex min-h-screen">
+      {/* Left Image Section */}
+      <div className="hidden lg:flex w-1/2 bg-cover bg-center relative" style={{ backgroundImage: "url('https://img.freepik.com/free-vector/isometric-time-management-concept-illustrated_52683-55534.jpg?t=st=1737908001~exp=1737911601~hmac=a60dc0979a1520dd191e661da908a531a5c2f3a8700ab69de33cd04cfa15cdc9&w=740')" }}>
+        <div className="absolute inset-0 bg-blue-900 bg-opacity-50"></div>
+        <div className="relative z-10 flex flex-col items-center justify-center w-full h-full text-white text-center px-6">
+          <h1 className="text-5xl font-bold mb-4">TaskiFY</h1>
+          <p className="text-lg">Organize your tasks and boost your productivity with ease.</p>
+        </div>
+      </div>
+
+      {/* Right Form Section */}
+      <div className="flex flex-col justify-center items-center w-full lg:w-1/2 bg-white px-8 py-12">
+        <div className="w-full max-w-md">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Welcome Back</h2>
+          <p className="text-center text-gray-600 mb-4">Please login to your account</p>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="relative">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">Email</label>
+              <div className="flex items-center mt-2 p-3 border border-gray-300 rounded-md shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                <AiOutlineUser className="text-gray-400 mr-2" />
                 <input
-                  type="email"
+                  type="text"
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-2 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-grow focus:outline-none"
+                  placeholder="Enter your email"
                   required
                 />
               </div>
-              <div className="input-group">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            </div>
+            <div className="relative">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <div className="flex items-center mt-2 p-3 border border-gray-300 rounded-md shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                <AiOutlineLock className="text-gray-400 mr-2" />
                 <input
                   type="password"
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-2 p-3 w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-grow focus:outline-none"
+                  placeholder="Enter your password"
                   required
                 />
               </div>
-              {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
-              <button
-                type="submit"
-                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Login
-              </button>
-            </form>
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
-                <NavLink
-                to="/register" className="text-blue-600 hover:underline">Sign up</NavLink>
-              </p>
             </div>
+            {/* <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
+                Remember Me
+              </label>
+            </div> */}
+            <button
+              type="submit"
+              className="w-full py-3 font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Login
+            </button>
+          </form>
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600">Forgot Password?</p>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <NavLink to="/register"><span className="text-blue-600 hover:underline cursor-pointer">
+                Signup
+              </span></NavLink>
+            </p>
           </div>
         </div>
-      );
-      
-}
+      </div>
+    </div>
+  );
+};
 
-export default Login
+export default Login;

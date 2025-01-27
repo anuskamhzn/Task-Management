@@ -6,11 +6,11 @@ const authenticate = require('../middleware/authMiddleware');
 // registration
 exports.register = async (req, res) => {
   try {
-    const { name, username, email, password, confirmPassword, phone } = req.body;
+    const { username, email, password, confirmPassword, phone } = req.body;
     const role = req.body.role; // Extract role from the request body
 
     // Validations
-    if (!name || !username || !email || !password || !phone || !confirmPassword) {
+    if ( !username || !email || !password || !phone || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -35,7 +35,6 @@ exports.register = async (req, res) => {
 
     // Register the user
     const user = new userModel({
-      name,
       username,
       email,
       phone,

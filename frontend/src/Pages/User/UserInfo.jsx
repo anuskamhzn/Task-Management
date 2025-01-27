@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/auth'; 
-import Navbar from '../../Components/Navbar';
+import Navbar from '../../Components/Navigation/Navbar';
+import Sidebar from '../../Components/Navigation/Sidebar';
 
 const UserInfo = () => {
   const [auth] = useAuth();
@@ -38,8 +39,10 @@ const UserInfo = () => {
   if (error) return <p className="text-red-500">Error: {error}</p>;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
+    <div className="flex">
+      <Sidebar/>  
+      <div className="flex-1">
+        <Navbar/>
       <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
         <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Info</h1>
         <div className="space-y-3">
@@ -49,6 +52,7 @@ const UserInfo = () => {
           <p><strong className="font-medium text-gray-700">Phone no.:</strong> <span className="text-gray-900">{user.phone}</span></p>
         </div>
       </div>
+    </div>
     </div>
   );
 };

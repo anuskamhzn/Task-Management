@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth';
+import TestimonialsAndFooter from '../Components/Footer/Footer';
+import FeaturesSection from '../Components/Homepage/Features';
+import { motion } from "framer-motion"
+import { FaArrowRight } from "react-icons/fa"
 
 const Homepage = () => {
     const navigate = useNavigate();
@@ -33,46 +37,46 @@ const Homepage = () => {
     return (
         <div className="font-sans">
             {/* Navbar */}
-            <nav className="flex justify-between items-center p-6 bg-blue-700 text-white">
-                <div className="text-2xl font-bold">TaskiFY</div>
+            <nav className="flex justify-between items-center p-6 bg-white border-b">
+                <NavLink to="/" className="text-2xl font-bold text-purple-600">
+                    TaskiFY
+                </NavLink>
                 <ul className="flex space-x-6">
                     <li>
-                        <NavLink to="/" className="hover:text-blue-200">
+                        <NavLink to="/" className="text-gray-600 hover:text-purple-600 transition-colors">
                             Home
                         </NavLink>
                     </li>
                     <li>
-                        <a href="#about" className="hover:text-blue-200">
+                        <a href="#about" className="text-gray-600 hover:text-purple-600 transition-colors">
                             About
                         </a>
                     </li>
                     <li>
-                        <a href="#features" className="hover:text-blue-200">
+                        <a href="#features" className="text-gray-600 hover:text-purple-600 transition-colors">
                             Features
                         </a>
                     </li>
-                    {/* Conditionally render the Dashboard link based on login status */}
                     {isLoggedIn && (
                         <li>
-                            <a href="/dashboard" className="hover:text-blue-200">
+                            <a href="/dashboard" className="text-gray-600 hover:text-purple-600 transition-colors">
                                 Dashboard
                             </a>
                         </li>
                     )}
                 </ul>
                 <div>
-                    {/* Conditionally render the button based on login status */}
                     {isLoggedIn ? (
                         <button
                             onClick={handleSignOutClick}
-                            className="px-4 py-2 bg-white text-blue-600 font-bold rounded-md hover:bg-gray-100"
+                            className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
                         >
                             Sign Out
                         </button>
                     ) : (
                         <NavLink
                             to="/login"
-                            className="px-4 py-2 bg-white text-blue-600 font-bold rounded-md hover:bg-gray-100"
+                            className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
                         >
                             Login
                         </NavLink>
@@ -80,222 +84,138 @@ const Homepage = () => {
                 </div>
             </nav>
 
-            {/* Main Content */}
-            <div className="text-center">
-                {/* Hero Section */}
-                <div className="relative w-full h-screen bg-cover bg-center" style={{ backgroundImage: "url('https://miro.com/blog/wp-content/uploads/2017/06/kanban-illustration.png')" }}>
-                    <div className="absolute inset-0 bg-black opacity-50"></div> {/* Dark overlay for text contrast */}
 
-                    <div className="relative z-10 flex items-center justify-center h-full text-center text-white px-6">
-                        <div>
-                            <h1 className="text-5xl font-bold mb-4">Organize Your Tasks, Simplify Your Life</h1>
-                            <p className="text-lg mb-6">
-                                TaskiFY helps you stay on top of your work and achieve more, effortlessly.
-                            </p>
-                            {/* Only show "Get Started" button if the user is not logged in */}
-                            {!isLoggedIn && (
-                                <button
-                                    onClick={() => navigate('/register')}
-                                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700"
-                                >
-                                    Get Started
-                                </button>
-                            )}
+            {/* Main Content */}
+            <main className="container mx-auto px-6 py-16">
+                <div className="flex flex-col lg:flex-row items-center gap-8">
+                    {/* Left Content */}
+                    <div className="flex-1 text-left max-w-2xl pl-8">
+                        {/* <div className="inline-block px-4 py-2 bg-purple-100 text-purple-600 rounded-full text-sm font-medium mb-6">
+              TRENDIEST TAILWIND TEMPLATES
+            </div> */}
+                        <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                            Organize Your Tasks, Simplify Your Life
+                        </h1>
+                        <p className="text-lg text-gray-600 mb-8">
+                            TaskiFY helps you stay on top of your work and achieve more, effortlessly.
+                            Whether you're managing personal projects or collaborating with a team, TaskiFY is your go-to tool for organization and productivity.
+                        </p>
+                        <div className="flex flex-wrap gap-4">
+                            <button
+                                onClick={() => navigate("/register")}
+                                className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center gap-2"
+                            >
+                                Get Started Now
+                            </button>
                         </div>
+                    </div>
+
+                    {/* Right Content - Image */}
+                    <div className="flex-1 relative">
+                        <div className="relative z-10">
+                            <img
+                                src="https://miro.com/blog/wp-content/uploads/2017/06/kanban-illustration.png"
+                                alt="Dashboard Preview"
+                                className="w-full h-auto rounded-lg shadow-2xl"
+                            />
+                        </div>
+                        {/* Background Decorative Elements */}
+                        <div className="absolute -top-4 -right-4 w-full h-full bg-purple-100 rounded-lg -z-10"></div>
+                        <div className="absolute -bottom-4 -left-4 w-full h-full bg-blue-100 rounded-lg -z-20"></div>
                     </div>
                 </div>
+            </main>
 
 
-                {/* About Section */}
-                <section id="about" className="mt-16 bg-white py-12">
-                    <div className="max-w-6xl mx-auto px-4">
-                        <h2 className="text-3xl font-semibold text-gray-800 mb-6 text-center">
+            {/* About Section */}
+            <section id="about" className="relative py-24 overflow-hidden">
+                {/* Background with gradient */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-50 to-gray-100" />
+
+                <div className="relative max-w-6xl mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <motion.h2
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="text-4xl font-bold text-gray-900 mb-4"
+                        >
                             About TaskiFY
-                        </h2>
-                        <div className="flex flex-col lg:flex-row justify-between items-center gap-12">
-                            {/* Left Column: Image */}
-                            <div className="lg:w-3/4">
+                        </motion.h2>
+                        <div className="w-20 h-1 bg-primary mx-auto rounded-full" />
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row justify-between items-center gap-16">
+                        {/* Left Column: Image with Animation */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -50 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.7 }}
+                            className="lg:w-3/5 relative"
+                        >
+                            <div className="relative">
+                                {/* Decorative elements */}
+                                <div className="absolute -top-4 -left-4 w-24 h-24 bg-primary/10 rounded-full -z-10" />
+                                <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-primary/5 rounded-full -z-10" />
+
+                                {/* Main image */}
                                 <img
-                                    src="https://media.geeksforgeeks.org/wp-content/uploads/20240427182308/How-to-Manage-Tasks.webp"
+                                    src="https://img.freepik.com/free-vector/time-management-marketers-teamwork-media-planning-media-representation-control-reach-your-client-best-media-plan_335657-23.jpg?t=st=1737975468~exp=1737979068~hmac=5d1f401e6f63b3190fcad2ae8c9401cbfb5fbc5a7ebd76d3edf4318f2303adb5&w=996"
                                     alt="TaskiFY Interface"
-                                    className="w-full rounded-lg shadow-lg"
+                                    className="w-full rounded-2xl shadow-2xl"
                                 />
                             </div>
+                        </motion.div>
 
-                            {/* Right Column: Text */}
-                            <div className="lg:w-1/2 text-center lg:text-left">
-                                <p className="text-lg text-gray-600 mb-4">
-                                    TaskiFY is a powerful task management tool that helps individuals and teams stay organized and productive. Whether you're managing personal tasks or collaborating with your team, TaskiFY is designed to streamline your workflow and keep you on track.
-                                </p>
-                                <p className="text-lg text-gray-600 mb-6">
-                                    With an intuitive and easy-to-use interface, TaskiFY allows you to track tasks, set deadlines, assign responsibilities, and collaborate with your team—all in one place. Its flexibility ensures that it works for all kinds of projects, from small tasks to large-scale team initiatives.
-                                </p>
-
-
-                                <p className="text-lg text-gray-600 mb-6">
-                                    With TaskiFY, managing your daily tasks has never been easier. Take control of your productivity, streamline your processes, and stay organized effortlessly.
-                                </p>
-
-                                {/* Call to Action Button */}
-                                <div className="text-center lg:text-left">
-                                    <button
-                                        onClick={() => window.scrollTo(0, document.body.scrollHeight)}
-                                        className="px-6 py-3 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700"
-                                    >
-                                        Start Organizing Today
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-
-                {/* Features Section */}
-                <section id="features" className="mt-16 bg-gray-100 py-12">
-                    <div className="max-w-6xl mx-auto px-4">
-                        <h2 className="text-3xl font-semibold text-center text-gray-800 mb-8">
-                            Key Features of TaskiFY
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-                            {/* Feature 1: Task Prioritization */}
-                            <div className="bg-white shadow-lg rounded-lg p-6 text-center">
-                                <div className="mb-4">
-                                    <img
-                                        src="https://via.placeholder.com/60?text=Prioritize"
-                                        alt="Task Prioritization Icon"
-                                        className="w-16 h-16 mx-auto mb-4"
-                                    />
-                                </div>
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Task Prioritization</h3>
-                                <p className="text-gray-600">
-                                    Easily organize and prioritize your tasks with customizable tags, due dates, and priority levels. Stay focused on what matters most.
-                                </p>
-                            </div>
-
-                            {/* Feature 2: Collaborative Work */}
-                            <div className="bg-white shadow-lg rounded-lg p-6 text-center">
-                                <div className="mb-4">
-                                    <img
-                                        src="https://via.placeholder.com/60?text=Teamwork"
-                                        alt="Collaborative Work Icon"
-                                        className="w-16 h-16 mx-auto mb-4"
-                                    />
-                                </div>
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Collaborative Work</h3>
-                                <p className="text-gray-600">
-                                    Collaborate with your team in real-time. Share tasks, deadlines, and updates instantly to keep everyone on the same page.
-                                </p>
-                            </div>
-
-                            {/* Feature 3: Progress Tracking */}
-                            <div className="bg-white shadow-lg rounded-lg p-6 text-center">
-                                <div className="mb-4">
-                                    <img
-                                        src="https://via.placeholder.com/60?text=Progress"
-                                        alt="Progress Tracking Icon"
-                                        className="w-16 h-16 mx-auto mb-4"
-                                    />
-                                </div>
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Progress Tracking</h3>
-                                <p className="text-gray-600">
-                                    Track your progress with visual charts, graphs, and reports. Get insights into your productivity and stay motivated.
-                                </p>
-                            </div>
-
-                            {/* Feature 4: Task Reminders */}
-                            <div className="bg-white shadow-lg rounded-lg p-6 text-center">
-                                <div className="mb-4">
-                                    <img
-                                        src="https://via.placeholder.com/60?text=Reminder"
-                                        alt="Task Reminder Icon"
-                                        className="w-16 h-16 mx-auto mb-4"
-                                    />
-                                </div>
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Task Reminders</h3>
-                                <p className="text-gray-600">
-                                    Never miss a deadline again. Set personalized reminders for tasks and receive notifications to stay on top of your schedule.
-                                </p>
-                            </div>
-
-                            {/* Feature 5: Customizable Dashboards */}
-                            <div className="bg-white shadow-lg rounded-lg p-6 text-center">
-                                <div className="mb-4">
-                                    <img
-                                        src="https://via.placeholder.com/60?text=Dashboard"
-                                        alt="Customizable Dashboard Icon"
-                                        className="w-16 h-16 mx-auto mb-4"
-                                    />
-                                </div>
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Customizable Dashboards</h3>
-                                <p className="text-gray-600">
-                                    Tailor your workspace with customizable dashboards. Choose the features and data you want to see at a glance.
-                                </p>
-                            </div>
-
-                            {/* Feature 6: Mobile App */}
-                            <div className="bg-white shadow-lg rounded-lg p-6 text-center">
-                                <div className="mb-4">
-                                    <img
-                                        src="https://via.placeholder.com/60?text=Mobile"
-                                        alt="Mobile App Icon"
-                                        className="w-16 h-16 mx-auto mb-4"
-                                    />
-                                </div>
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Mobile App</h3>
-                                <p className="text-gray-600">
-                                    Stay productive on the go. Access your tasks and collaborate with your team anytime, anywhere using our mobile app.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-
-                {/* Testimonials Section */}
-                <section className="mt-16 py-12 bg-blue-50">
-                    <h2 className="text-3xl font-semibold text-center text-gray-800 mb-8">What Our Users Say</h2>
-                    <div className="flex justify-center gap-12">
-                        <div className="w-96 bg-white shadow-lg rounded-lg p-6">
-                            <p className="text-lg text-gray-600 mb-4">
-                                "TaskiFY has revolutionized the way we work. It keeps our team aligned and focused."
-                            </p>
-                            <div className="text-gray-800 font-semibold">John Doe</div>
-                            <div className="text-sm text-gray-500">Product Manager</div>
-                        </div>
-                        <div className="w-96 bg-white shadow-lg rounded-lg p-6">
-                            <p className="text-lg text-gray-600 mb-4">
-                                "A simple but powerful tool. My productivity has improved drastically!"
-                            </p>
-                            <div className="text-gray-800 font-semibold">Jane Smith</div>
-                            <div className="text-sm text-gray-500">Freelancer</div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Call to Action (CTA) */}
-                <section className="mt-16 py-12 bg-blue-800 text-white text-center border-b border-white">
-                    <h2 className="text-3xl font-semibold mb-4">Get Started with TaskiFY Today</h2>
-                    <p className="text-lg mb-6">Sign up now to begin organizing your tasks and collaborating with your team.</p>
-                    {!isLoggedIn && (
-                        <button
-                            onClick={handleSignUpClick}
-                            className="px-6 py-3 bg-white text-blue-600 font-bold rounded-md hover:bg-gray-100"
+                        {/* Right Column: Content */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 50 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.7 }}
+                            className="lg:w-2/5 space-y-6"
                         >
-                            Sign Up Now
-                        </button>
-                    )}
-                </section>
-            </div>
+                            <h3 className="text-2xl font-semibold text-gray-900 mb-6">Streamline Your Workflow</h3>
 
-            {/* Footer */}
-            <footer className="bg-blue-800 text-white text-center py-4">
-                <p>&copy; 2024 TaskiFY. All Rights Reserved.</p>
-                <p className="text-sm">
-                    <NavLink to="/privacy" className="hover:text-blue-300">Privacy Policy</NavLink> |
-                    <NavLink to="/terms" className="hover:text-blue-300"> Terms of Service</NavLink>
-                </p>
-            </footer>
+                            <div className="space-y-6">
+                                <p className="text-lg text-gray-600 leading-relaxed">
+                                    TaskiFY is a powerful task management tool that helps individuals and teams stay organized and
+                                    productive. Whether you're managing personal tasks or collaborating with your team, TaskiFY is designed
+                                    to streamline your workflow and keep you on track.
+                                </p>
+
+                                <div className="pl-4 border-l-4 border-primary">
+                                    <p className="text-lg text-gray-600 leading-relaxed">
+                                        With an intuitive and easy-to-use interface, TaskiFY allows you to track tasks, set deadlines, assign
+                                        responsibilities, and collaborate with your team—all in one place.
+                                    </p>
+                                </div>
+
+                                <p className="text-lg text-gray-600 leading-relaxed">
+                                    Take control of your productivity, streamline your processes, and stay organized effortlessly with
+                                    TaskiFY.
+                                </p>
+                            </div>
+
+                            {/* CTA Button */}
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="mt-8 px-8 py-4 bg-primary text-white rounded-full font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors"
+                            >
+                                Get Started
+                                <FaArrowRight className="w-4 h-4" />
+                            </motion.button>
+                        </motion.div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Features Section */}
+            <section id="features" className=" bg-gray-100 py-12">
+                <FeaturesSection />
+            </section>
+            <TestimonialsAndFooter />
+
         </div>
     );
 }

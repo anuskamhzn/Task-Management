@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
+const projectRoute = require('./routes/projectRoute');
+const taskRoute = require('./routes/taskRoute');
 
 const app = express();
 
@@ -14,8 +16,10 @@ connectDB();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Use the authentication routes
+// routes
 app.use('/api/auth', authRoutes);
+app.use('/api/project', projectRoute);
+app.use('/api/task', taskRoute);
 
 const PORT = process.env.PORT || 5000;
 
