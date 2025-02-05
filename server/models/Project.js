@@ -4,10 +4,11 @@ const projectSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Owner of the project
-  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of users involved in the project
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Registered users
+  pendingInvites: [{ type: String }], // Store emails of unregistered users
   status: {
     type: String,
-    enum: ['To Do', 'In Progress', 'Completed'], // Status of the project
+    enum: ['To Do', 'In Progress', 'Completed'],
     default: 'To Do',
   },
   createdAt: { type: Date, default: Date.now },

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { AiOutlineUser, AiOutlineLock } from 'react-icons/ai';
-import { FaFacebookF, FaGoogle, FaTwitter } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../../context/auth';
 import { useNavigate, NavLink } from 'react-router-dom'; 
@@ -13,49 +12,50 @@ const Login = () => {
   const [loading, setLoading] = useState(false);  
   const navigate = useNavigate(); 
   
-    // Access the auth context and setAuth function
-    const [auth, setAuth] = useAuth();
+  // Access the auth context and setAuth function
+  const [auth, setAuth] = useAuth();
 
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-  
-      if (!email || !password) {
-        toast.error('Please fill in both fields'); 
-        return;
-      }
-  
-      try {
-        setLoading(true);  
-  
-        const response = await axios.post(`${process.env.REACT_APP_API}/api/auth/login`, 
-          { email, password }
-        );
-  
-        // If login is successful
-        if (response.data.success) {
-          const { token, user } = response.data; // assuming the response returns a token and user data
-          setAuth({
-            user,
-            token,
-          }); // Set user and token in the auth context and localStorage
-          toast.success('Login successful!');
-          setLoading(false);
-          navigate('/dashboard');
-        } else {
-          setLoading(false);
-          toast.error(response.data.message);
-        }
-      } catch (error) {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      toast.error('Please fill in both fields'); 
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await axios.post(`${process.env.REACT_APP_API}/api/auth/login`, 
+        { email, password }
+      );
+
+      // If login is successful
+      if (response.data.success) {
+        const { accessToken, refreshToken, user } = response.data; // accessToken is sent in response
+        setAuth({
+          user,
+          token: accessToken, // Store the access token in the auth context
+          refreshToken: refreshToken, 
+        });
+        toast.success('Login successful!');
         setLoading(false);
-        console.error(error);
-        toast.error('Something went wrong. Please try again.');
+        navigate('/dashboard');
+      } else {
+        setLoading(false);
+        toast.error(response.data.message);
       }
-    };
+    } catch (error) {
+      setLoading(false);
+      console.error(error);
+      toast.error('Something went wrong. Please try again.');
+    }
+  };
 
   return (
     <div className="flex min-h-screen">
       {/* Left Image Section */}
-      <div className="hidden lg:flex w-1/2 bg-cover bg-center relative" style={{ backgroundImage: "url('https://img.freepik.com/free-vector/isometric-time-management-concept-illustrated_52683-55534.jpg?t=st=1737908001~exp=1737911601~hmac=a60dc0979a1520dd191e661da908a531a5c2f3a8700ab69de33cd04cfa15cdc9&w=740')" }}>
+      <div className="hidden lg:flex w-1/2 bg-cover bg-center relative" style={{ backgroundImage: `url(${require('../../img/login.png')})` }}>
         <div className="absolute inset-0 bg-blue-900 bg-opacity-50"></div>
         <div className="relative z-10 flex flex-col items-center justify-center w-full h-full text-white text-center px-6">
           <h1 className="text-5xl font-bold mb-4">TaskiFY</h1>
@@ -79,7 +79,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-grow focus:outline-none"
-                  placeholder="Enter your email"
+                  placeholder="john@gmail.com"
                   required
                 />
               </div>
@@ -94,23 +94,11 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="flex-grow focus:outline-none"
-                  placeholder="Enter your password"
+                  placeholder="*******"
                   required
                 />
               </div>
             </div>
-            {/* <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="rememberMe"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
-                Remember Me
-              </label>
-            </div> */}
             <button
               type="submit"
               className="w-full py-3 font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -119,7 +107,7 @@ const Login = () => {
             </button>
           </form>
           <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">Forgot Password?</p>
+            <NavLink to='/forget-pass'><p className="text-sm text-gray-600">Forgot Password?</p></NavLink>
           </div>
 
           <div className="mt-6 text-center">

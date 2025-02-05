@@ -49,10 +49,10 @@ export default function Navbar() {
 
         {/* Profile Icon with Dropdown */}
         <div
-          className="w-10 h-10 bg-gray-300 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-indigo-500 transition duration-300 ease-in-out"
+          className="w-10 h-10 bg-gray-200 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-indigo-200 transition duration-300 ease-in-out"
           onClick={toggleDropdown}
         >
-          <FaUserCircle className="text-2xl" />
+          <FaUserCircle className="text-2xl text-purple-800" />
         </div>
 
         {/* Profile Dropdown */}

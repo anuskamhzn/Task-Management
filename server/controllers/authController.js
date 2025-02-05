@@ -1,6 +1,9 @@
 const bcrypt = require('bcryptjs');
 const userModel = require('../models/User');
+const Project = require('../models/Project');
 const JWT = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const authenticate = require('../middleware/authMiddleware');
 
 // registration
@@ -10,16 +13,14 @@ exports.register = async (req, res) => {
     const role = req.body.role; // Extract role from the request body
 
     // Validations
-    if ( !username || !email || !password || !phone || !confirmPassword) {
+    if (!username || !email || !password || !phone || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Check if password and confirmPass are the same
     if (password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
-    // Check if password is at least 6 characters long
     if (password.length < 6) {
       return res.status(400).json({ message: "Password should be at least 6 characters long" });
     }
@@ -31,7 +32,7 @@ exports.register = async (req, res) => {
     }
 
     // Hash the password using bcrypt
-    const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Register the user
     const user = new userModel({
@@ -40,9 +41,20 @@ exports.register = async (req, res) => {
       phone,
       password: hashedPassword,
       confirmPassword: hashedPassword,
-      role, // include the role as it's automatically filled by middleware
+      role,
     });
     await user.save();
+
+    // 🔍 Check if the user was invited to any project
+    const invitedProjects = await Project.find({ pendingInvites: email });
+
+    if (invitedProjects.length > 0) {
+      for (const project of invitedProjects) {
+        project.members.push(user._id); // Move the user to the members list
+        project.pendingInvites = project.pendingInvites.filter(e => e !== email); // Remove from pending
+        await project.save();
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -54,6 +66,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ success: false, message: "Error in registration", error });
   }
 };
+
 
 // login
 exports.login = async (req, res) => {
@@ -77,23 +90,77 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // Create a JWT token
-    const token =   JWT.sign(
-      { id: user._id, email: user.email, role: user.role }, // Payload (user info)
+    // Create an Access Token (short-lived)
+    const accessToken = JWT.sign(
+      { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET, // Secret key for JWT
-      { expiresIn: '1h' } // Token expiration time
+      { expiresIn: '1h' } // Access token expires in 15 minutes
     );
 
-    // Return success response with the token
+    // Create a Refresh Token (long-lived)
+    const refreshToken = JWT.sign(
+      { id: user._id },
+      process.env.REFRESH_TOKEN_SECRET, // Secret key for refresh token
+      { expiresIn: '7d' } // Refresh token expires in 7 days
+    );
+
+    // Store the refresh token in an HTTP-only cookie (to prevent XSS attacks)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,  // Can't be accessed by JavaScript
+      secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
+      sameSite: 'Strict',  // Prevent CSRF
+      maxAge: 7 * 24 * 60 * 60 * 1000  // Set cookie expiration time (7 days)
+    });
+
+    // Return success response with the access token
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      token,  // Send the JWT token to the frontend
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      accessToken,  // Send the Access Token in the response body
+      refreshToken: refreshToken,  // Refresh token
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error', error });
+  }
+};
+
+exports.refreshToken = async (req, res) => {
+  const { refreshToken } = req.cookies; // Get refresh token from cookies
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'No refresh token found' });
+  }
+
+  try {
+    // Verify the refresh token
+    const decoded =   JWT.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    // Check if the user exists
+    const user = await userModel.findById(decoded.id);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    // Generate a new access token
+    const accessToken =   JWT.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' } // Access token expires in 15 minutes
+    );
+
+    // Send new access token to the client
+    res.status(200).json({ accessToken });
+  } catch (error) {
+    console.error(error);
+    return res.status(403).json({ message: 'Invalid or expired refresh token' });
   }
 };
 
@@ -123,3 +190,98 @@ exports.userInfo = [
   }
 ];
 
+const transporter = nodemailer.createTransport({
+  service: 'Gmail', // e.g., 'Gmail', 'Yahoo', etc.
+  auth: {
+    user: 'anuskamhzn33@@gmail.com', // your email address from environment variables
+    pass: 'juge duar pqey uwdm', // your email password or app-specific password from environment variables
+  },
+});
+
+const sendPasswordResetEmail = async (email, accessToken) => {
+  const resetLink = `http://localhost:3000/reset-password?token=${accessToken}&email=${email}`;
+
+  const mailOptions = {
+    from: 'anuskamhzn33@gmail.com', // sender address
+    to: email, // receiver address
+    subject: 'Password Reset Request', // Subject line
+    text: `You requested for a password reset. Click the link to reset your password: ${resetLink}`,
+    html: `<p>You requested for a password reset.</p><p>Click the link to reset your password: <a href="${resetLink}">${resetLink}</a></p>`,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).send({ message: "Email is required" });
+    }
+
+    // Check if user exists
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    // Generate a reset token
+    const accessToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiration = Date.now() + 3600000; // 1 hour from now
+
+    // Update user record with the reset token and expiration
+    user.resetPasswordToken = accessToken;
+    user.resetPasswordExpires = tokenExpiration;
+    await user.save();
+
+    // Send reset email
+    await sendPasswordResetEmail(email, accessToken);
+
+    res.status(200).send({ message: "Password reset email sent" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
+
+// Fix for resetPassword
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, email, newPassword } = req.body;
+
+    if (!token || !email || !newPassword) {
+      return res.status(400).send({ message: "All fields are required" });
+    }
+
+    // Find the user by email and reset token
+    const user = await userModel.findOne({
+      email,
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }, // Check if the token is still valid
+    });
+
+    if (!user) {
+      return res.status(400).send({ message: "Invalid or expired token" });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user's password and clear reset token fields
+    user.password = hashedPassword;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+
+    await user.save();
+
+    res.status(200).send({ message: "Password reset successful" });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(500).send({ message: "Something went wrong", error });
+  }
+};

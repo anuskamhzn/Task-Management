@@ -3,12 +3,42 @@ import axios from 'axios';
 import { useAuth } from '../../context/auth'; 
 import Navbar from '../../Components/Navigation/Navbar';
 import Sidebar from '../../Components/Navigation/Sidebar';
+import toast from 'react-hot-toast';
 
 const UserInfo = () => {
-  const [auth] = useAuth();
+  const [auth, setAuth] = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Function to refresh access token using refresh token
+  const refreshAuthToken = async () => {
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_API}/api/auth/refresh-token`,
+        { refreshToken: auth.refreshToken } // Sending the refresh token to backend
+      );
+
+      // Save new access token in localStorage and update state
+      const newToken = response.data.accessToken;
+      localStorage.setItem(
+        "auth",
+        JSON.stringify({ ...auth, token: newToken }) // Update with new token
+      );
+
+      // Update the auth context with new access token
+      setAuth({
+        ...auth,
+        token: newToken,
+      });
+    } catch (err) {
+      console.error("Error refreshing token:", err);
+      toast.error("Session expired. Please log in again.");
+      // Optionally, clear localStorage and redirect to login
+      localStorage.removeItem("auth");
+      window.location.href = "/login"; // Redirect to login
+    }
+  };
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -25,7 +55,13 @@ const UserInfo = () => {
 
         setUser(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Error fetching user data');
+        // If the error is related to token expiration (e.g., 401 Unauthorized), refresh the token
+        if (err.response?.status === 401) {
+          await refreshAuthToken();
+          fetchUserInfo(); // Retry fetching user info after refreshing the token
+        } else {
+          setError(err.response?.data?.message || 'Error fetching user data');
+        }
       } finally {
         setLoading(false);
       }
@@ -43,16 +79,16 @@ const UserInfo = () => {
       <Sidebar/>  
       <div className="flex-1">
         <Navbar/>
-      <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Info</h1>
-        <div className="space-y-3">
-          <p><strong className="font-medium text-gray-700">Name:</strong> <span className="text-gray-900">{user.name}</span></p>
-          <p><strong className="font-medium text-gray-700">Email:</strong> <span className="text-gray-900">{user.email}</span></p>
-          <p><strong className="font-medium text-gray-700">Username:</strong> <span className="text-gray-900">{user.username}</span></p>
-          <p><strong className="font-medium text-gray-700">Phone no.:</strong> <span className="text-gray-900">{user.phone}</span></p>
+        <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
+          <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Info</h1>
+          <div className="space-y-3">
+            <p><strong className="font-medium text-gray-700">Name:</strong> <span className="text-gray-900">{user.name}</span></p>
+            <p><strong className="font-medium text-gray-700">Email:</strong> <span className="text-gray-900">{user.email}</span></p>
+            <p><strong className="font-medium text-gray-700">Username:</strong> <span className="text-gray-900">{user.username}</span></p>
+            <p><strong className="font-medium text-gray-700">Phone no.:</strong> <span className="text-gray-900">{user.phone}</span></p>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 };

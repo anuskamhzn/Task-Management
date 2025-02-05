@@ -1,9 +1,9 @@
 export function Metrics() {
   const metrics = [
-    { title: "Total Task", value: "6" },
-    { title: "To Do", value: "2" },
-    { title: "In Progress", value: "3" },
-    { title: "Completed", value: "1" },
+    { title: "Total Task", value: "2" },
+    { title: "To Do", value: "1" },
+    { title: "In Progress", value: "1" },
+    { title: "Completed", value: "0" },
   ]
 
   return (

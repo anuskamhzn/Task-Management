@@ -4,7 +4,6 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AiOutlineUser, AiOutlineMail, AiOutlinePhone, AiOutlineLock } from 'react-icons/ai';
 
-
 const Register = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -38,17 +37,17 @@ const Register = () => {
     }
 
     try {
-      const res = await axios.post(`/{process.env.REACT_APP_API}/api/auth/register`,        {
-          username,
-          email,
-          password,
-          confirmPassword,
-          phone,
-        }
-      );
+      const res = await axios.post(`${process.env.REACT_APP_API}/api/auth/register`, { 
+        username,
+        email,
+        password,
+        confirmPassword,
+        phone
+      });
+      
       if (res.data.success) {
         toast.success("Registration successful!");
-        navigate("/");
+        navigate("/login");
       } else {
         toast.error(res.data.message);
       }
@@ -65,7 +64,7 @@ const Register = () => {
         className="hidden lg:flex w-1/2 bg-cover bg-center relative"
         style={{
           backgroundImage:
-            "url('https://img.freepik.com/free-vector/isometric-time-management-concept-illustrated_52683-55734.jpg?t=st=1737907937~exp=1737911537~hmac=048c58011bf18f9ec262fb8eed2391d5ad93fef9d2b88fe4371a092fc85b5f41&w=740')",
+            `url(${require('../../img/register.png')})`,
         }}
       >
         <div className="absolute inset-0 bg-blue-900 bg-opacity-50"></div>
@@ -78,7 +77,7 @@ const Register = () => {
       {/* Right Form Section */}
       <div className="flex flex-col justify-center items-center w-full lg:w-1/2 bg-white px-8 py-12">
         <div className="w-full max-w-md">
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Register</h2>
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Signup</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Username Field */}
             <div className="input-group">
@@ -87,7 +86,7 @@ const Register = () => {
                 <input
                   type="text"
                   id="username"
-                  placeholder="Enter your username"
+                  placeholder="John"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -106,7 +105,7 @@ const Register = () => {
                 <input
                   type="email"
                   id="email"
-                  placeholder="Enter your email"
+                  placeholder="john@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -125,7 +124,7 @@ const Register = () => {
                 <input
                   type="text"
                   id="phone"
-                  placeholder="Enter your phone number"
+                  placeholder="9812345678"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -144,7 +143,7 @@ const Register = () => {
                 <input
                   type="password"
                   id="password"
-                  placeholder="Enter your password"
+                  placeholder="*******"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -163,7 +162,7 @@ const Register = () => {
                 <input
                   type="password"
                   id="confirm-password"
-                  placeholder="Confirm your password"
+                  placeholder="*******"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -180,7 +179,7 @@ const Register = () => {
               type="submit"
               className="w-full py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Register
+              Signup
             </button>
           </form>
           <div className="mt-6 text-center">

@@ -84,7 +84,7 @@ export default function TestimonialsAndFooter() {
   return (
     <>
       {/* Testimonials Section */}
-      <section className="py-24 bg-gray-50">
+      {/* <section className="py-24 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Customer Testimonials</h2>
@@ -96,25 +96,6 @@ export default function TestimonialsAndFooter() {
             {testimonials.map((testimonial, index) => (
               <TestimonialCard key={index} {...testimonial} />
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      {/* <section className="bg-white text-black">
-        <div className="container mx-auto px-6 py-24">
-          <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Save time with TaskiFY.</h2>
-            <p className="text-xl text-black mb-8">Turn your visitors into clients.</p>
-            <div className="flex flex-wrap justify-center gap-4">
-
-              <button
-                className="px-6 py-3 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-400 transition-colors border border-purple-400"
-                onClick={() => navigate("/register")}
-              >
-                Get Started Now
-              </button>
-            </div>
           </div>
         </div>
       </section> */}

@@ -7,6 +7,9 @@ import FeaturesSection from '../Components/Homepage/Features';
 import { motion } from "framer-motion"
 import { FaArrowRight } from "react-icons/fa"
 
+import aboutImage from '../img/about.jpg';
+import homeImg from '../img/home.png';
+
 const Homepage = () => {
     const navigate = useNavigate();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -114,7 +117,7 @@ const Homepage = () => {
                     <div className="flex-1 relative">
                         <div className="relative z-10">
                             <img
-                                src="https://miro.com/blog/wp-content/uploads/2017/06/kanban-illustration.png"
+                                src={homeImg}
                                 alt="Dashboard Preview"
                                 className="w-full h-auto rounded-lg shadow-2xl"
                             />
@@ -130,7 +133,7 @@ const Homepage = () => {
             {/* About Section */}
             <section id="about" className="relative py-24 overflow-hidden">
                 {/* Background with gradient */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-50 to-gray-100" />
+                <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-30 to-gray-60" />
 
                 <div className="relative max-w-6xl mx-auto px-4">
                     <div className="text-center mb-12">
@@ -160,8 +163,7 @@ const Homepage = () => {
 
                                 {/* Main image */}
                                 <img
-                                    src="https://img.freepik.com/free-vector/time-management-marketers-teamwork-media-planning-media-representation-control-reach-your-client-best-media-plan_335657-23.jpg?t=st=1737975468~exp=1737979068~hmac=5d1f401e6f63b3190fcad2ae8c9401cbfb5fbc5a7ebd76d3edf4318f2303adb5&w=996"
-                                    alt="TaskiFY Interface"
+                                    src={aboutImage}
                                     className="w-full rounded-2xl shadow-2xl"
                                 />
                             </div>
@@ -211,7 +213,7 @@ const Homepage = () => {
             </section>
 
             {/* Features Section */}
-            <section id="features" className=" bg-gray-100 py-12">
+            <section id="features" className=" bg-gray-100 py-3">
                 <FeaturesSection />
             </section>
             <TestimonialsAndFooter />

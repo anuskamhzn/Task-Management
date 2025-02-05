@@ -40,8 +40,8 @@ export default function FeaturesSection() {
   const bottomRowFeatures = features.slice(3);
 
   return (
-    <section id="features" className="mt-16 bg-gray-100 py-12">
-      <div className="max-w-6xl mx-auto px-4">
+    <section id="features" className=" bg-gray-50 py-5">
+      <div className="max-w-6xl mx-auto px-8">
         {/* Animated Heading */}
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
@@ -49,7 +49,7 @@ export default function FeaturesSection() {
           transition={{ duration: 0.5 }}
           className="text-3xl font-semibold text-center text-gray-800 mb-8"
         >
-          Key Features
+          Features
         </motion.h2>
 
         {/* Top row - 3 cards */}

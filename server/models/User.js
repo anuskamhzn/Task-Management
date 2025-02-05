@@ -10,6 +10,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: 'User',
   },
+  resetPasswordToken: String,
+    resetPasswordExpires: Date,
 });
+
+userSchema.methods.generateAuthToken = function () {
+  return jwt.sign({ _id: this._id, email: this.email }, process.env.JWT_SECRET, {
+    expiresIn: '1h',
+  });
+};
 
 module.exports = mongoose.model('User', userSchema);

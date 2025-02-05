@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
-  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // User assigned to the task
-  project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true }, // Project the task is part of
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // User creating the task (owner)
   dueDate: { type: Date },
   status: {
     type: String,
