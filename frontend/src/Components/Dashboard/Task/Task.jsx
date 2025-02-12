@@ -105,7 +105,8 @@ const Task = () => {
           {/* Render the title and Kanban board only if tasks exist */}
           {tasks && tasks.length > 0 ? (
             <>
-              <h1>Task Name: {mainTask?.title}</h1> 
+              <h1 className="text-2xl font-bold">Task Name: {mainTask?.title}</h1>
+
               <TaskKanban
                 toDoTasks={tasks.filter((task) => task.status === "To Do")}
                 inProgressTasks={tasks.filter((task) => task.status === "In Progress")}

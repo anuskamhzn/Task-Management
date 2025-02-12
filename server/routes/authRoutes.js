@@ -6,7 +6,6 @@ const router = express.Router();
 // POST route for user 
 router.post('/register', register);
 router.post('/login', login);
-router.post('/refresh-token', refreshToken);  // Handle refresh token
 router.get('/user-info', userInfo);
 
 // POST route for forget/reset

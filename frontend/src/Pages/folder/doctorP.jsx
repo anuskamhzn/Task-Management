@@ -185,7 +185,7 @@ const Profile = () => {
                                 <h1 className="text-3xl font-bold text-navy">{doctor.name}</h1>
                                 <p className="mt-2 text-lg text-gray-600">{doctor.specialization}</p>
                                 <p className="mt-1 text-gray-500">{doctor.city}, {doctor.state}</p>
-                                {/* <div className="mt-4 flex items-center gap-2">
+                                <div className="mt-4 flex items-center gap-2">
                                     <div className="flex text-yellow-400">
                                         {[...Array(5)].map((_, i) => (
                                             <span key={i} className={`text-2xl ${i < doctor.rating ? "text-yellow-400" : "text-gray-300"}`}>
@@ -194,7 +194,7 @@ const Profile = () => {
                                         ))}
                                     </div>
                                     <span className="text-sm text-gray-500">({doctor.reviewsCount} reviews)</span>
-                                </div> */}
+                                </div>
                                 <div className="mt-4 flex flex-wrap gap-4">
                                     {doctor.status === "Open Now" && (
                                         <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
@@ -245,7 +245,7 @@ const Profile = () => {
                         </div> */}
 
                         {/* Navigation Tabs */}
-                        {/* <div className="border-b">
+                        <div className="border-b">
                             <div
                                 ref={navRef}
                                 className={`bg-white shadow-md ${isSticky ? "fixed top-0 left-0 w-full z-50" : ""}`}
@@ -265,7 +265,7 @@ const Profile = () => {
                                     ))}
                                 </div>
                             </div>
-                        </div> */}
+                        </div>
                         <div className="space-y-8 p-6">
                             {/* Quick Facts Section */}
                             <div ref={summaryRef}>
@@ -306,7 +306,7 @@ const Profile = () => {
                                 </div>
                             </div>
                             {/* Patients' Perspective Section */}
-                            {/* <div>
+                            <div>
                                 <h2 className="text-2xl font-semibold text-navy">Patients' Perspective</h2>
                                 <div className="mt-4 space-y-3">
                                     {doctor.patientPerspective.onTime && (
@@ -328,9 +328,9 @@ const Profile = () => {
                                         </a>
                                     </p>
                                 </div>
-                            </div> */}
+                            </div>
 
-                            {/* <div className="space-y-6">
+                            <div className="space-y-6">
                                 <div className="border-t pt-6">
                                     <div ref={reviewsRef}>
                                         <div className="flex justify-between items-start mb-4">
@@ -381,7 +381,7 @@ const Profile = () => {
                                         ))}
                                     </div>
                                 </div>
-                            </div> */}
+                            </div>
                             <div className="space-y-6">
                                 <div ref={locationRef}>
                                     <h2 className="text-2xl font-semibold text-navy">Location</h2>

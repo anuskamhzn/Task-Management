@@ -7,6 +7,11 @@ exports.createTask = async (req, res) => {
   try {
     const { title, description, dueDate, status } = req.body;
 
+        // Validate input
+        if (!title || !description || !dueDate) {
+          return res.status(400).json({ message: 'Title description  and due date are required.' });
+        }
+
     // Assuming the logged-in user's ID is available in req.user
     const owner = req.user.id; // The user creating the task (owner)
 
@@ -66,6 +71,61 @@ exports.updateTaskStatus = async (req, res) => {
     res.status(500).json({ message: 'Error updating task status', error: error.message });
   } 
 };
+
+// Delete a main task and its associated subtasks
+exports.deleteTask = async (req, res) => {
+  try {
+    const { mainTaskId } = req.params; // Get mainTaskId from the URL
+    const ownerId = req.user.id;  // Get the authenticated user's ID
+
+    // Find the main task
+    const mainTask = await Task.findOne({ _id: mainTaskId, owner: ownerId });
+
+    if (!mainTask) {
+      return res.status(404).json({ message: 'Main task not found or you do not have permission to delete it' });
+    }
+
+    // Delete the associated subtasks
+    await SubTask.deleteMany({ mainTask: mainTaskId });
+
+    // Delete the main task
+    await Task.deleteOne({ _id: mainTaskId });
+
+    res.status(200).json({ message: 'Main task and its subtasks deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting main task and its subtasks', error: error.message });
+  }
+};
+
+// Update a task
+exports.updateTask = async (req, res) => {
+  try {
+    const taskId = req.params.id; // Get task ID from URL parameters
+    const { title, description, dueDate, status } = req.body; // Get updated task data from request body
+    const ownerId = req.user.id;  // Get ownerId from the authenticated user's data
+
+    // Find the task by ID and ensure the task belongs to the logged-in user
+    const task = await Task.findOne({ id: taskId, owner: ownerId });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found or you do not have permission to update it' });
+    }
+
+    // Update task fields
+    task.title = title || task.title;
+    task.description = description || task.description;
+    task.dueDate = dueDate || task.dueDate;
+    task.status = status || task.status;
+
+    // Save the updated task
+    await task.save();
+
+    res.status(200).json({ message: 'Task updated successfully', task });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating task', error: error.message });
+  }
+};
+
 
 // Create a subtask for a main task
 exports.createSubTask = async (req, res) => {
@@ -166,3 +226,80 @@ exports.updateSubTaskStatus = async (req, res) => {
   }
 };
 
+// Delete a subtask for a main task
+exports.deleteSubTask = async (req, res) => {
+  try {
+    const { mainTaskId, subTaskId } = req.params; // Get both mainTaskId and subTaskId from the URL
+    const ownerId = req.user.id;  // Get the authenticated user's ID
+
+    // Check if the subtask exists and belongs to the logged-in user and the main task
+    const subTask = await SubTask.findOne({ _id: subTaskId, mainTask: mainTaskId, owner: ownerId });
+    if (!subTask) {
+      return res.status(404).json({ message: 'Subtask not found or you do not have permission to delete it' });
+    }
+
+    // Delete the subtask
+    await SubTask.deleteOne({ _id: subTaskId });
+
+    res.status(200).json({ message: 'Subtask deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting subtask', error: error.message });
+  }
+};
+
+// Update a subtask for a main task
+exports.updateSubTask = async (req, res) => {
+  try {
+    const { mainTaskId, subTaskId } = req.params; // Get mainTaskId and subTaskId from URL parameters
+    const { title, description, dueDate, status } = req.body;  // Get updated task data from request body
+    const ownerId = req.user.id;  // Get ownerId from the authenticated user's data
+
+    const query = {
+      _id: subTaskId,  // If using `id` field
+      mainTask: mainTaskId,
+      owner: ownerId,
+    };
+    
+    // Check if the subtask exists and belongs to the logged-in user and the main task
+    const subTask = await SubTask.findOne(query);
+
+    if (!subTask) {
+      return res.status(404).json({ message: 'Subtask not found or you do not have permission to update it' });
+    }
+
+    // Update subtask fields only if the fields are provided
+    subTask.title = title || subTask.title;
+    subTask.description = description || subTask.description;
+    subTask.dueDate = dueDate || subTask.dueDate;
+    subTask.status = status || subTask.status;
+
+    // Save the updated subtask
+    await subTask.save();
+
+    res.status(200).json({ message: 'Subtask updated successfully', subTask });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating subtask', error: error.message });
+  }
+};
+
+//get the sub task by main id and id
+exports.getSubtaskById = async (req, res) => {
+  const { mainTaskId, subTaskId } = req.params;
+
+  try {
+    const mainTask = await Task.findById(mainTaskId);
+    if (!mainTask) {
+      return res.status(404).json({ message: "Main task not found" });
+    }
+
+    const subtask = mainTask.subtasks.id(subTaskId); // Find subtask in subtasks array
+    if (!subtask) {
+      return res.status(404).json({ message: "Subtask not found" });
+    }
+
+    res.json(subtask);
+  } catch (error) {
+    console.error("Error fetching subtask:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

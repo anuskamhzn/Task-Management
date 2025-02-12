@@ -8,14 +8,16 @@ import Homepage from './Pages/Homepage';
 import UserInfo from './Pages/User/UserInfo';
 import Project from './Components/Dashboard/Project/Project';
 import CreateTask from './Pages/User/Create/CreateTask';
-import HomePage from './Pages/folder/home';
-import Profile from './Pages/folder/doctorP';
 import ForgetPassword from './Pages/Auth/ForgetPass/ForgetPassword';
 import ResetPassword from './Pages/Auth/ForgetPass/ResetPassword';
 import Task from './Components/Dashboard/Task/Task';
 import CreateSubtask from './Pages/User/Create/CreateSubtask';
 import CreateProject from './Pages/User/Create/CreateProject';
 import CreateSubproject from './Pages/User/Create/CreateSubproject';
+
+import HomePage from './Pages/folder/home';
+import Profile from './Pages/folder/doctorP';
+import AdminDashboard from './Pages/folder/admin/Dashboard';
 
 const App = () => {
   return (
@@ -37,6 +39,7 @@ const App = () => {
           <Route path="/create-project/:projectId" element={<CreateSubproject />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
         </Routes>
       </div>
   );

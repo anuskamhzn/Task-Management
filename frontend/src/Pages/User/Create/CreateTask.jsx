@@ -128,7 +128,7 @@ const CreateTask = () => {
                   }`}
                   disabled={loading}
                 >
-                  {loading ? 'Creating...' : 'Create Subtask'}
+                  {loading ? 'Creating...' : 'Create Task'}
                 </button>
               </div>
             </form>

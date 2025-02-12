@@ -5,6 +5,7 @@ const projectSchema = new mongoose.Schema({
   description: { type: String, required: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Owner of the project
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Registered users
+  dueDate: { type: Date },
   pendingInvites: [{ type: String }], // Store emails of unregistered users
   status: {
     type: String,

@@ -7,7 +7,6 @@ const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState({
     user: null,
     token: "",
-    refreshToken: "", // Store the refresh token as well
   });
 
   // Update axios default authorization header whenever the token changes
@@ -42,35 +41,6 @@ const AuthProvider = ({ children }) => {
     }
   }, [auth]);  // Watch for changes in `auth`
 
-    // Token expiration logic: check if token is expired and try to refresh it
-    useEffect(() => {
-      if (auth.token) {
-        const tokenExpiration = JSON.parse(atob(auth.token.split('.')[1])).exp;
-        const now = Math.floor(Date.now() / 1000); // Current time in seconds
-  
-        // If token is expired and refresh token exists, attempt to refresh it
-        if (tokenExpiration < now && auth.refreshToken) {
-          const refreshTokenRequest = async () => {
-            try {
-              const response = await axios.post('/api/auth/refresh', {
-                refreshToken: auth.refreshToken,
-              });
-              const { token, refreshToken, user } = response.data;
-  
-              // Update auth context and localStorage with the new token and user
-              setAuth({ user, token, refreshToken });
-            } catch (error) {
-              console.error("Error refreshing token", error);
-              // Optionally log the user out if refresh token is invalid
-              setAuth({ user: null, token: "", refreshToken: "" });
-              localStorage.removeItem('auth');
-            }
-          };
-  
-          refreshTokenRequest();
-        }
-      }
-    }, [auth.token, auth.refreshToken]);
 
   return (
     <AuthContext.Provider value={[auth, setAuth]}>

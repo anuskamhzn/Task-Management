@@ -13,6 +13,7 @@ const Project = () => {
   const [projects, setProjects] = useState([]);  // Store the fetched sub-projects
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
 
   useEffect(() => {
     if (projectId && auth.token) {
@@ -106,7 +107,7 @@ const Project = () => {
           {/* Render the title and Kanban board only if subProjects exist */}
           {projects.length > 0 ? (
             <>
-              <h1>Project: {mainProject?.title}</h1> {/* You can replace this with actual project details if needed */}
+              <h1 className="text-2xl font-bold">Project Name: {mainProject?.title}</h1>
               <ProjectKanban
                 toDoProjects={projects.filter((task) => task.status === "To Do")}
                 inProgressProjects={projects.filter((task) => task.status === "In Progress")}

@@ -10,6 +10,7 @@ const CreateProjectForm = ({ onProjectCreated }) => {
     title: "",
     description: "",
     members: [], // Store members as an array of emails
+    dueDate: "",
     status: "To Do",
   });
   const [loading, setLoading] = useState(false);
@@ -127,6 +128,18 @@ const CreateProjectForm = ({ onProjectCreated }) => {
                   className="w-full p-3 border border-gray-300 rounded-md"
                   placeholder="Enter project description"
                   required
+                />
+              </div>
+
+              {/* Due Date */}
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">Due Date</label>
+                <input
+                  type="date"
+                  name="dueDate"
+                  value={projectData.dueDate}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
 

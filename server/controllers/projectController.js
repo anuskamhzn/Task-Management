@@ -4,13 +4,13 @@ const User = require('../models/User');
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-
+require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'anuskamhzn33@gmail.com', // your email address from environment variables
-    pass: 'juge duar pqey uwdm', // your email password or app-specific password from environment variables
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -48,12 +48,13 @@ exports.createProject = async (req, res) => {
       description,
       owner,
       members: registeredMembers, // Add registered users
+      dueDate,
       pendingInvites, // Add emails of unregistered users
     });
 
     await newProject.save();
 
-    // ✅ Send emails to ALL members (registered & unregistered)
+    //Send emails to ALL members (registered & unregistered)
     for (const email of members) {
       try {
         await sendInvitationEmail(email, newProject.id);
@@ -67,6 +68,51 @@ exports.createProject = async (req, res) => {
     res.status(500).json({ message: 'Error creating project', error: error.message });
   }
 };
+
+// exports.createProject = async (req, res) => {
+//   try {
+//     const { title, description, members = [] } = req.body;
+
+//     if (!title || !description) {
+//       return res.status(400).json({ message: 'Title and description are required.' });
+//     }
+
+//     if (!req.user || !req.user.id) {
+//       return res.status(401).json({ message: 'Unauthorized: User must be logged in.' });
+//     }
+
+//     const owner = req.user.id;
+
+//     // All users (registered or not) must accept invitation first
+//     const pendingInvites = [...members]; // Store all as pending invites
+//     const newProject = new Project({
+//       title,
+//       description,
+//       owner,
+//       members: [], // No members initially
+//       pendingInvites, // Everyone starts as pending
+//     });
+
+//     await newProject.save();
+
+//     // ✅ Send invitation email to all members (registered & unregistered)
+//     for (const email of members) {
+//       try {
+//         await sendInvitationEmail(email, newProject.id);
+//       } catch (emailError) {
+//         console.error(`Failed to send email to ${email}:`, emailError.message);
+//       }
+//     }
+
+//     res.status(201).json({
+//       message: 'Project created successfully. Invitations sent!',
+//       project: newProject,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Error creating project', error: error.message });
+//   }
+// };
+
 
 // Function to send invitation email
 const sendInvitationEmail = async (email, projectId) => {
@@ -276,9 +322,9 @@ exports.getSubProjectsByMainProject = async (req, res) => {
       mainProject: new mongoose.Types.ObjectId(mainProjectId),
     });
 
-    // Filter sub-projects by owner or member status
+    // Filter sub-projects by whether the user is a member of the main project or is the owner
     const accessibleSubProjects = subProjects.filter(subProject => {
-      return subProject.owner.toString() === userId || subProject.members.some(member => member.toString() === userId);
+      return subProject.owner.toString() === userId || mainProject.members.some(member => member.toString() === userId);
     });
 
     // If no accessible sub-projects are found
@@ -293,6 +339,7 @@ exports.getSubProjectsByMainProject = async (req, res) => {
     res.status(500).json({ message: "Error fetching sub-projects", error: error.message });
   }
 };
+
 
 // Update sub-project status
 exports.updateSubProjectStatus = async (req, res) => {

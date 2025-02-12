@@ -94,30 +94,14 @@ exports.login = async (req, res) => {
     const accessToken = JWT.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET, // Secret key for JWT
-      { expiresIn: '1h' } // Access token expires in 15 minutes
+      { expiresIn: '1d' } // Access token expires in 15 minutes
     );
-
-    // Create a Refresh Token (long-lived)
-    const refreshToken = JWT.sign(
-      { id: user._id },
-      process.env.REFRESH_TOKEN_SECRET, // Secret key for refresh token
-      { expiresIn: '7d' } // Refresh token expires in 7 days
-    );
-
-    // Store the refresh token in an HTTP-only cookie (to prevent XSS attacks)
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,  // Can't be accessed by JavaScript
-      secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
-      sameSite: 'Strict',  // Prevent CSRF
-      maxAge: 7 * 24 * 60 * 60 * 1000  // Set cookie expiration time (7 days)
-    });
 
     // Return success response with the access token
     res.status(200).json({
       success: true,
       message: 'Login successful',
       accessToken,  // Send the Access Token in the response body
-      refreshToken: refreshToken,  // Refresh token
       user: {
         id: user._id,
         name: user.name,
@@ -129,38 +113,6 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error', error });
-  }
-};
-
-exports.refreshToken = async (req, res) => {
-  const { refreshToken } = req.cookies; // Get refresh token from cookies
-
-  if (!refreshToken) {
-    return res.status(401).json({ message: 'No refresh token found' });
-  }
-
-  try {
-    // Verify the refresh token
-    const decoded =   JWT.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-
-    // Check if the user exists
-    const user = await userModel.findById(decoded.id);
-    if (!user) {
-      return res.status(403).json({ message: 'User not found' });
-    }
-
-    // Generate a new access token
-    const accessToken =   JWT.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' } // Access token expires in 15 minutes
-    );
-
-    // Send new access token to the client
-    res.status(200).json({ accessToken });
-  } catch (error) {
-    console.error(error);
-    return res.status(403).json({ message: 'Invalid or expired refresh token' });
   }
 };
 
@@ -193,8 +145,8 @@ exports.userInfo = [
 const transporter = nodemailer.createTransport({
   service: 'Gmail', // e.g., 'Gmail', 'Yahoo', etc.
   auth: {
-    user: 'anuskamhzn33@@gmail.com', // your email address from environment variables
-    pass: 'juge duar pqey uwdm', // your email password or app-specific password from environment variables
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
