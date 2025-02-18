@@ -5,15 +5,16 @@ import { useAuth } from "../../../context/auth";
 import Navbar from "../../Navigation/Navbar";
 import Sidebar from "../../Navigation/Sidebar";
 import ProjectKanban from './ProjectKanban';
+import { FaTrash } from "react-icons/fa";
+
 
 const Project = () => {
   const [auth] = useAuth();  // Access user and token from auth context
   const { projectId } = useParams();  // Get taskId from URL params
-  const [mainProject, setMainProject] = useState(null);
-  const [projects, setProjects] = useState([]);  // Store the fetched sub-projects
+   const [mainProject, setMainProject] = useState(null);
+  const [projects, setProjects] = useState(null);  // Initially set tasks to null
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
 
   useEffect(() => {
     if (projectId && auth.token) {
@@ -28,12 +29,14 @@ const Project = () => {
   
           // Check if the response is an array and set the first item in the array
           if (response.data && response.data.length > 0) {
-            setMainProject(response.data[0]); // Set the first project in the array
-          } else {
+            const foundTask = response.data.find(project => project._id === projectId);
+            setMainProject(foundTask || null); // Set the matched task or null if not found
+          }
+          else {
             setError("No projects found.");
           }
         } catch (err) {
-          console.error();
+          console.error("Error fetching main project:", err);
           setError("Error fetching main project.");
         }
       };
@@ -41,14 +44,13 @@ const Project = () => {
       fetchMainProject();
     }
   }, [projectId, auth.token]);
-  
 
   useEffect(() => {
-    setProjects([]);  // Clear previous data
-    setError(null);  // Clear any errors
-    setLoading(true); // Set loading state
+    setProjects(null);  // Clear previous task data
+    setError(null);  // Clear error message
+    setLoading(true); // Ensure loading state resets
     if (auth && auth.user) {
-      fetchSubProjects();  // Fetch data when auth is available
+      fetchSubProjects();
     }
   }, [auth, projectId]);
 
@@ -84,10 +86,10 @@ const Project = () => {
   };
 
   if (!auth || !auth.user) {
-    return <p>Please log in to view your projects.</p>;
+    return <p>Please log in to view your tasks.</p>;
   }
 
-  if (loading) return <div>Loading...</div>;
+  // if (loading) return <div>Loading...</div>;
 
   return (
     <div className="flex">
@@ -97,29 +99,29 @@ const Project = () => {
         <div className="p-6">
           {error && <div className="text-black mb-4">{error}</div>}  {/* Display error message */}
 
-          {/* Always display the "Create Sub Project" button */}
-          <NavLink to={`/create-project/${projectId}`}>
+          {/* Always display the "Create Sub Task" button */}
+          <NavLink to={`/dashboard/create-project/${projectId}`}>
             <button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">
               Create Sub Project
             </button>
           </NavLink>
+          <NavLink to={`/dashboard/subproject-trash/${projectId}`}><FaTrash /></NavLink>
 
-          {/* Render the title and Kanban board only if subProjects exist */}
-          {projects.length > 0 ? (
+          {/* Render the title and Kanban board only if tasks exist */}
+          {projects && projects.length > 0 ? (
             <>
               <h1 className="text-2xl font-bold">Project Name: {mainProject?.title}</h1>
+
               <ProjectKanban
-                toDoProjects={projects.filter((task) => task.status === "To Do")}
-                inProgressProjects={projects.filter((task) => task.status === "In Progress")}
-                completedProjects={projects.filter((task) => task.status === "Completed")}
+                toDoProjects={projects.filter((project) => project.status === "To Do")}
+                inProgressProjects={projects.filter((project) => project.status === "In Progress")}
+                completedProjects={projects.filter((project) => project.status === "Completed")}
                 projects={projects}
                 setProjects={setProjects}
                 auth={auth}
               />
             </>
-          ) : (
-            <p>No sub-projects available.</p>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -35,8 +35,12 @@ const SubProjectSchema = new mongoose.Schema(
       enum: ["To Do", "In Progress", "Completed"],
       default: "To Do",
     },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
+
+// ✅ Add TTL index separately (only applies when `deletedAt` is set)
+SubProjectSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 2592000 }); // 30 days (30 * 24 * 60 * 60)
 
 module.exports = mongoose.model("SubProject", SubProjectSchema);

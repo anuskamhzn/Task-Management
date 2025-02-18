@@ -5,13 +5,18 @@ const taskSchema = new mongoose.Schema({
   description: { type: String },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // User creating the task (owner)
   dueDate: { type: Date },
+  subTasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubTask' }],
   status: {
     type: String,
     enum: ['To Do', 'In Progress', 'Completed'], // Status of the task
     default: 'To Do',
   },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
+
+// ✅ Add TTL index separately (only applies when `deletedAt` is set)
+taskSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 2592000 }); // 30 days (30 * 24 * 60 * 60)
 
 module.exports = mongoose.model('Task', taskSchema);

@@ -31,24 +31,23 @@ exports.createTask = async (req, res) => {
 };
 
 
-// Get all tasks for an individual (owner)
+// Get all tasks for an individual (owner) excluding soft-deleted ones
 exports.getTasksByOwner = async (req, res) => {
   try {
     const ownerId = req.user.id;  // Get ownerId from the authenticated user's data
-    
-    // Find tasks where the owner is the logged-in user
-    const tasks = await Task.find({ owner: ownerId });
 
-    if (!tasks || tasks.length === 0) {
-      // Instead of 404, return 200 with an empty array
-      return res.status(200).json([]);  // Empty array when no tasks are found
-    }
+    // Find tasks where the owner is the logged-in user and deletedAt is either not set or null
+    const tasks = await Task.find({
+      owner: ownerId,
+      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+    });
 
     res.status(200).json(tasks);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching tasks', error: error.message });
+    res.status(500).json({ message: "Error fetching tasks", error: error.message });
   }
 };
+
 
 
 // Update task status
@@ -73,6 +72,7 @@ exports.updateTaskStatus = async (req, res) => {
 };
 
 // Delete a main task and its associated subtasks
+// Soft delete a main task and its associated subtasks
 exports.deleteTask = async (req, res) => {
   try {
     const { mainTaskId } = req.params; // Get mainTaskId from the URL
@@ -85,37 +85,90 @@ exports.deleteTask = async (req, res) => {
       return res.status(404).json({ message: 'Main task not found or you do not have permission to delete it' });
     }
 
-    // Delete the associated subtasks
-    await SubTask.deleteMany({ mainTask: mainTaskId });
+    // Soft delete the associated subtasks
+    await SubTask.updateMany({ mainTask: mainTaskId }, { $set: { deletedAt: Date.now() } });
 
-    // Delete the main task
-    await Task.deleteOne({ _id: mainTaskId });
+    // Soft delete the main task
+    await Task.updateOne({ _id: mainTaskId }, { $set: { deletedAt: Date.now() } });
 
-    res.status(200).json({ message: 'Main task and its subtasks deleted successfully' });
+    res.status(200).json({ message: 'Main task and its subtasks moved to trash' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting main task and its subtasks', error: error.message });
   }
 };
 
+// Fetch all soft-deleted tasks (main tasks)
+exports.getSoftDeletedTasks = async (req, res) => {
+  try {
+    const ownerId = req.user.id; // Get the authenticated user's ID
+
+    // Query to fetch tasks where 'deletedAt' exists and is not null
+    const query = {
+      owner: ownerId,
+      deletedAt: { $ne: null, $exists: true },
+    };
+
+    // Fetch tasks that match the query
+    const deletedTasks = await Task.find(query);
+
+    if (deletedTasks.length === 0) {
+      return res.status(404).json({ message: 'Tasks not found' });
+    }
+
+    // Return the deleted tasks in the response
+    res.status(200).json({ deletedTasks });
+  } catch (error) {
+    console.error('Error fetching soft-deleted tasks:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+
+// Restore a soft-deleted main task and its subtasks
+exports.restoreTask = async (req, res) => {
+  try {
+    const { mainTaskId } = req.params;
+    const ownerId = req.user.id;
+
+    // Find the soft-deleted main task
+    const mainTask = await Task.findOne({ _id: mainTaskId, owner: ownerId, deletedAt: { $ne: null } });
+
+    if (!mainTask) {
+      return res.status(404).json({ message: 'Task not found or already active' });
+    }
+
+    // Restore the main task
+    await Task.updateOne({ _id: mainTaskId }, { $set: { deletedAt: null } });
+
+    // Restore associated subtasks
+    await SubTask.updateMany({ mainTask: mainTaskId }, { $set: { deletedAt: null } });
+
+    res.status(200).json({ message: 'Task and subtasks restored successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error restoring task and subtasks', error: error.message });
+  }
+};
+
+
 // Update a task
 exports.updateTask = async (req, res) => {
   try {
-    const taskId = req.params.id; // Get task ID from URL parameters
+    const taskId = req.params.taskId; // Get task ID from URL parameters
     const { title, description, dueDate, status } = req.body; // Get updated task data from request body
-    const ownerId = req.user.id;  // Get ownerId from the authenticated user's data
+    const ownerId = req.user.id; // Get ownerId from the authenticated user's data
 
     // Find the task by ID and ensure the task belongs to the logged-in user
-    const task = await Task.findOne({ id: taskId, owner: ownerId });
+    const task = await Task.findOne({ _id: taskId, owner: ownerId });
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found or you do not have permission to update it' });
     }
 
     // Update task fields
-    task.title = title || task.title;
-    task.description = description || task.description;
-    task.dueDate = dueDate || task.dueDate;
-    task.status = status || task.status;
+    task.title = title ?? task.title;
+    task.description = description ?? task.description;
+    task.dueDate = dueDate ?? task.dueDate;
+    task.status = status ?? task.status;
 
     // Save the updated task
     await task.save();
@@ -170,6 +223,9 @@ exports.createSubTask = async (req, res) => {
     });
 
     await newSubTask.save();
+        // Add the new subproject to the parent project's subProjects array
+        mainTask.subTasks.push(newSubTask._id);
+        await mainTask.save();
     res.status(201).json({ message: "Subtask created successfully", subTask: newSubTask });
   } catch (error) {
     console.error("Error creating subtask:", error);
@@ -177,19 +233,20 @@ exports.createSubTask = async (req, res) => {
   }
 };
 // Get all subtasks for a main task
+// Get all subtasks for a main task excluding soft-deleted ones
 exports.getSubTasksByMainTask = async (req, res) => {
   try {
     const { mainTaskId } = req.params;
     const ownerId = req.user.id; 
     
     const subTasks = await SubTask.find({
-      //task: taskId,
       owner: ownerId,
-      mainTask: mainTaskId
+      mainTask: mainTaskId,
+      deletedAt: null, // Exclude soft-deleted subtasks
     });
 
     if (subTasks.length === 0) {
-      return res.status(404).json({ message: 'No subtasks found for this main task' });
+      return res.status(200).json([]); // Return an empty array instead of 404
     }
 
     res.status(200).json(subTasks);
@@ -227,23 +284,68 @@ exports.updateSubTaskStatus = async (req, res) => {
 };
 
 // Delete a subtask for a main task
+// Soft delete a subtask for a main task
 exports.deleteSubTask = async (req, res) => {
   try {
     const { mainTaskId, subTaskId } = req.params; // Get both mainTaskId and subTaskId from the URL
-    const ownerId = req.user.id;  // Get the authenticated user's ID
+    const ownerId = req.user.id; // Get the authenticated user's ID
 
     // Check if the subtask exists and belongs to the logged-in user and the main task
     const subTask = await SubTask.findOne({ _id: subTaskId, mainTask: mainTaskId, owner: ownerId });
+
     if (!subTask) {
       return res.status(404).json({ message: 'Subtask not found or you do not have permission to delete it' });
     }
 
-    // Delete the subtask
-    await SubTask.deleteOne({ _id: subTaskId });
+    // Soft delete: Set deletedAt to the current timestamp
+    subTask.deletedAt = new Date();
+    await subTask.save();
 
-    res.status(200).json({ message: 'Subtask deleted successfully' });
+    res.status(200).json({ message: 'Subtask moved to trash', subTask });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting subtask', error: error.message });
+  }
+};
+
+exports.restoreSubTask = async (req, res) => {
+  try {
+    const { subTaskId } = req.params;
+
+    const subTask = await SubTask.findByIdAndUpdate(
+      subTaskId, 
+      { deletedAt: null }, 
+      { new: true }
+    );
+
+    if (!subTask) {
+      return res.status(404).json({ message: 'Subtask not found' });
+    }
+
+    res.status(200).json({ message: 'Subtask restored successfully', subTask });
+  } catch (error) {
+    res.status(500).json({ message: 'Error restoring subtask', error: error.message });
+  }
+};
+
+// Get all deleted subtasks for a specific main task
+exports.getDeletedSubTasks = async (req, res) => {
+  try {
+    const { mainTaskId } = req.params;
+    const ownerId = req.user.id; // Assuming you're using user authentication
+    
+    const deletedSubTasks = await SubTask.find({
+      owner: ownerId,
+      mainTask: mainTaskId,
+      deletedAt: { $ne: null }, // Fetch subtasks where deletedAt is not null (soft-deleted)
+    });
+
+    if (deletedSubTasks.length === 0) {
+      return res.status(200).json([]); // Return an empty array if no deleted subtasks are found
+    }
+
+    res.status(200).json(deletedSubTasks);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching deleted subtasks', error: error.message });
   }
 };
 
@@ -291,12 +393,16 @@ exports.getSubtaskById = async (req, res) => {
     if (!mainTask) {
       return res.status(404).json({ message: "Main task not found" });
     }
+    // Fetch the subproject and populate the referenced fields (mainProject, owner, members)
+    const subtask = await SubTask.findById(subTaskId)
+      .populate('mainTask')  // Populating the mainProject reference (Project model)
+      .populate('owner')        // Populating the owner reference (User model)
 
-    const subtask = mainTask.subtasks.id(subTaskId); // Find subtask in subtasks array
     if (!subtask) {
       return res.status(404).json({ message: "Subtask not found" });
     }
 
+    // Return the populated subproject
     res.json(subtask);
   } catch (error) {
     console.error("Error fetching subtask:", error);

@@ -21,6 +21,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoute);
 app.use('/api/task', taskRoute);
 
+// Catch-all route for unmatched routes
+app.use('*', (req, res) => {
+    res.status(404).json({ message: 'Route not found' });
+  });
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

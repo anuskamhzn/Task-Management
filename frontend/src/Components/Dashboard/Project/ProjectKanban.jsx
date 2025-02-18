@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { FaEllipsisV } from "react-icons/fa";
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { useParams } from 'react-router-dom';
+import ModifySubproject from '../../../Pages/User/Modify/SubProjectModify';
 
-const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, projects, setProjects, auth }) => {
+const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, setProjects, auth }) => {
   const [openMenu, setOpenMenu] = useState(null); // Track open menu
   const [hoveredProject, setHoveredProject] = useState(null); // Track hovered project
+  const { projectId } = useParams(); // Get the main task ID from the route params
+  const [selectedSubproject, setSelectedSubproject] = useState(null); // Track selected subproject
 
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
@@ -37,12 +41,46 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, pr
     }
   };
 
-  const handleModify = (projectId) => {
-    console.log("Modify project:", projectId);
+  const handleModify = (subProjectId) => {
+    setSelectedSubproject(subProjectId); // Open modal with subproject ID
   };
 
-  const handleDelete = (projectId) => {
-    console.log("Delete project:", projectId);
+  const handleCloseModal = () => {
+    setSelectedSubproject(null); // Close modal
+  };
+
+  const handleDelete = async (subProjectId) => {
+
+    // Confirmation dialog
+    const confirmDelete = window.confirm("Are you sure you want to delete this subtask?");
+
+    if (!confirmDelete) {
+      return; // If the user cancels the delete, do nothing
+    }
+
+
+    // Assuming mainTaskId is now passed correctly, we use it dynamically
+    try {
+      // Make the DELETE request to the backend API
+      const url = `${process.env.REACT_APP_API}/api/project/delete-subproject/${projectId}/${subProjectId}`;
+
+      await axios.delete(url, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+
+      // Update the tasks list by removing the deleted subtask
+      setProjects((prevProject) => prevProject.filter((project) => project._id !== subProjectId));
+
+      // Show a success toast notification
+      toast.success("Subproject deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting subproject:", err);
+      if (err.response && err.response.data.message === "Only owner can delete the project.") {
+        toast.error("Only owner can delete the project.");
+      } else {
+        toast.error("Error deleting project.");
+      }
+    }
   };
 
   const renderUsers = (users) => {
@@ -152,6 +190,17 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, pr
         <h2 className="text-xl font-semibold text-center mb-4">Completed</h2>
         {completedProjects.length === 0 ? <div>No tasks</div> : renderProjects(completedProjects)}
       </div>
+      {/* Modal for Modifying Subproject */}
+      {selectedSubproject && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ModifySubproject
+            auth={auth}
+            setProjects={setProjects}
+            subProjectId={selectedSubproject}
+            onClose={handleCloseModal}
+          />
+        </div>
+      )}
     </div>
   );
 };

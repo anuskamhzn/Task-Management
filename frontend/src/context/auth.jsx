@@ -4,10 +4,11 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
-  const [auth, setAuth] = useState({
-    user: null,
-    token: "",
+  const [auth, setAuth] = useState(() => {
+    const storedData = localStorage.getItem('auth');
+    return storedData ? JSON.parse(storedData) : { user: null, token: "" };
   });
+  
 
   // Update axios default authorization header whenever the token changes
   useEffect(() => {
@@ -25,7 +26,6 @@ const AuthProvider = ({ children }) => {
       setAuth({
         user: parsedData.user,
         token: parsedData.token,
-        refreshToken: parsedData.refreshToken, 
       });
   
     }

@@ -4,9 +4,9 @@ import { toast } from "react-hot-toast";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
 
-const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
-  const { taskId } = useParams(); // Get main task ID from the URL
-  const [subtask, setSubtask] = useState({
+const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
+  const { projectId } = useParams(); // Get main project ID from the URL
+  const [subproject, setSubproject] = useState({
     title: "",
     description: "",
     dueDate: "",
@@ -14,29 +14,34 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
   useEffect(() => {
-    if (auth && auth.user && taskId && subTaskId) {
-      fetchSubtask();
+    if (auth && auth.user && projectId && subProjectId) {
+      fetchSubProject();
     }
-    console.log("Updated tasks:", subtask); 
-  }, [auth, taskId, subTaskId]);
+    console.log("Updated projects:", subproject); 
+  }, [auth, projectId, subProjectId]);
 
-  const fetchSubtask = async () => {
-    if (!taskId || !subTaskId) return;
+  const fetchSubProject = async () => {
+    if (!projectId || !subProjectId) return;
     setLoading(true);
     try {
+      // Correctly fetching subproject data with both projectId and subProjectId
       const response = await axios.get(
-        `${process.env.REACT_APP_API}/api/task/subtask/${taskId}/${subTaskId}`,
+        `${process.env.REACT_APP_API}/api/project/subproject/${projectId}/${subProjectId}`,
         {
-          headers: { Authorization: `Bearer ${auth.token}` },
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
         }
       );
-      const subtaskData = response.data;
-      if (subtaskData) setSubtask(subtaskData);
-      else setError("Subtask not found.");
+      const subProjectData = response.data;
+      if (subProjectData) {
+        setSubproject(subProjectData);
+      } else {
+        setError("Subproject not found.");
+      }
     } catch (err) {
-      setError("Failed to fetch subtask.");
+      setError("Failed to fetch subproject.");
     } finally {
       setLoading(false);
     }
@@ -44,33 +49,32 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setSubtask({ ...subtask, [name]: value });
+    setSubproject({ ...subproject, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const url = `${process.env.REACT_APP_API}/api/task/update-subtask/${taskId}/${subTaskId}`;
-      const response = await axios.put(url, subtask, {
+      const url = `${process.env.REACT_APP_API}/api/project/update-subproject/${projectId}/${subProjectId}`;
+      const response = await axios.put(url, subproject, {
         headers: { Authorization: `Bearer ${auth.token}` },
-      });
+      }); 
 
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === subtask._id ? { ...task, ...response.data.subTask } : task
+      setProjects((prev) =>
+        prev.map((project) =>
+          project._id === subProjectId ? { ...project, ...response.data.subProject } : project
         )
       );
-
-      toast.success("Subtask updated successfully!");
+      
+      toast.success("Subproject updated successfully!");
       onClose();
     } catch (err) {
-      toast.error("Error updating subtask.");
+      toast.error("Error updating subproject.");
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="w-96 bg-white rounded-2xl shadow-lg p-8 relative">
@@ -80,7 +84,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
       >
         ✖
       </button>
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Edit Subtask</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">Edit Subproject</h2>
       {loading ? (
         <p className="text-gray-500">Loading...</p>
       ) : (
@@ -92,7 +96,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
             <input
               type="text"
               name="title"
-              value={subtask?.title || ""}
+              value={subproject?.title || ""}
               onChange={handleChange}
               className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
               placeholder="Enter the title"
@@ -104,7 +108,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
             <label className="block text-sm font-semibold mb-2 text-gray-700">Description</label>
             <textarea
               name="description"
-              value={subtask?.description || ""}
+              value={subproject?.description || ""}
               onChange={handleChange}
               className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
               placeholder="Enter the description"
@@ -117,7 +121,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
             <input
               type="date"
               name="dueDate"
-              value={subtask?.dueDate ? subtask.dueDate.split("T")[0] : ""}
+              value={subproject?.dueDate ? subproject.dueDate.split("T")[0] : ""}
               onChange={handleChange}
               className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
             />
@@ -127,7 +131,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
             <label className="block text-sm font-semibold mb-2 text-gray-700">Status</label>
             <select
               name="status"
-              value={subtask?.status || "To Do"}
+              value={subproject?.status || "To Do"}
               onChange={handleChange}
               className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
               required
@@ -151,4 +155,4 @@ const ModifySubtask = ({ auth, setTasks, subTaskId , onClose}) => {
   );
 };
 
-export default ModifySubtask;
+export default ModifySubproject;

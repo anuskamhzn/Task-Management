@@ -79,7 +79,7 @@ const CreateProjectForm = ({ onProjectCreated }) => {
       );
 
       toast.success("Project created successfully!");
-      navigate('/dashboard');
+      navigate('/dashboard/user');
       onProjectCreated(response.data.project);
       setProjectData({ title: "", description: "", members: [], status: "To Do", newMember: "" });
     } catch (err) {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AiOutlineUser, AiOutlineLock } from 'react-icons/ai';
 import axios from 'axios';
 import { useAuth } from '../../context/auth';
-import { useNavigate, NavLink } from 'react-router-dom'; 
+import { useNavigate, useLocation, NavLink } from 'react-router-dom'; 
 import toast from 'react-hot-toast';
 
 const Login = () => {
@@ -11,36 +11,44 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);  
   const navigate = useNavigate(); 
+  const location = useLocation();
   
   // Access the auth context and setAuth function
   const [auth, setAuth] = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!email || !password) {
-      toast.error('Please fill in both fields'); 
+      toast.error("Please fill in both fields");
       return;
     }
-
+  
     try {
       setLoading(true);
-
-      const response = await axios.post(`${process.env.REACT_APP_API}/api/auth/login`, 
+  
+      const response = await axios.post(
+        `${process.env.REACT_APP_API}/api/auth/login`,
         { email, password }
       );
-
-      // If login is successful
+  
       if (response.data.success) {
-        const { accessToken, refreshToken, user } = response.data; // accessToken is sent in response
+        const { accessToken, user } = response.data;
+  
         setAuth({
           user,
-          token: accessToken, // Store the access token in the auth context
-          refreshToken: refreshToken, 
+          token: accessToken,
         });
-        toast.success('Login successful!');
+  
+        toast.success("Login successful!");
         setLoading(false);
-        navigate('/dashboard');
+  
+        // Redirect based on role
+        if (user.role === "Admin") {
+          navigate("/dashboard/admin"); // Redirect to admin dashboard
+        } else {
+          navigate("/dashboard/user"); // Redirect to user dashboard
+        }
       } else {
         setLoading(false);
         toast.error(response.data.message);
@@ -48,9 +56,10 @@ const Login = () => {
     } catch (error) {
       setLoading(false);
       console.error(error);
-      toast.error('Something went wrong. Please try again.');
+      toast.error("Something went wrong. Please try again.");
     }
   };
+  
 
   return (
     <div className="flex min-h-screen">

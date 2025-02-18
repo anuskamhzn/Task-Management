@@ -62,7 +62,7 @@ const Homepage = () => {
                     </li>
                     {isLoggedIn && (
                         <li>
-                            <a href="/dashboard" className="text-gray-600 hover:text-purple-600 transition-colors">
+                            <a href="/dashboard/user" className="text-gray-600 hover:text-purple-600 transition-colors">
                                 Dashboard
                             </a>
                         </li>

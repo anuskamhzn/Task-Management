@@ -1,14 +1,25 @@
 const express = require('express');
-const { register,login, userInfo, refreshToken, forgotPassword, resetPassword } = require('../controllers/authController');
+const { register, login, userInfo, forgotPassword, resetPassword } = require('../controllers/authController');
+const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// POST route for user 
+// Public Routes
 router.post('/register', register);
 router.post('/login', login);
-router.get('/user-info', userInfo);
-
-// POST route for forget/reset
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+
+// Protected Routes
+router.get('/user-info',authenticate,userInfo); // Protect user info route
+
+// Authentication Check Routes
+router.get('/user-auth', authenticate, (req, res) => {
+    res.status(200).send({ ok: true });
+});
+
+router.get('/admin-auth', authenticate, isAdmin, (req, res) => {
+    res.status(200).send({ ok: true });
+});
+
 module.exports = router;

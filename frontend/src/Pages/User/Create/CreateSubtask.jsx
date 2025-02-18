@@ -55,7 +55,7 @@ const handleSubmit = async (e) => {
     const subtaskId = response.data.subtaskId;
 
     // Navigate to the subtask detail page
-    navigate(`/task/subtask/${mainTaskId}`); // Redirect after success to the correct subtask URL
+    navigate(`/dashboard/task/subtask/${mainTaskId}`); // Redirect after success to the correct subtask URL
     console.log(response.data);
   } catch (error) {
     // Log the error response to see what went wrong

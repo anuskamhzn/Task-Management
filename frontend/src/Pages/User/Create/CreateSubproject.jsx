@@ -82,7 +82,7 @@ const CreateSubproject = () => {
       );
 
       toast.success("Subproject created successfully!");
-      navigate(`/project/subproject/${projectId}`); // Redirect to subproject detail page
+      navigate(`/dashboard/project/subproject/${projectId}`); // Redirect to subproject detail page
     } catch (err) {
       setError(err.response?.data?.message || "Error creating subproject.");
       console.error(err);

@@ -37,8 +37,6 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
   };
 
   const handleModify = (subTaskId) => {
-    console.log("Modify task:", subTaskId);
-    // Implement modify logic
     setSelectedSubtask(subTaskId); // Open modal with subtask ID
   };
 
@@ -75,7 +73,6 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
       toast.error("There was an error deleting the subtask.");
     }
   };
-
 
   const handleDragStart = (e, taskId) => {
     e.dataTransfer.setData("id", taskId);  // Ensure correct taskId is set for drag

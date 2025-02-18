@@ -1,4 +1,4 @@
-// middleware/authMiddleware.js
+const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 // Middleware to check if the user is authenticated
@@ -18,4 +18,31 @@ const authenticate = (req, res, next) => {
   }
 };
 
-module.exports = authenticate;
+// Middleware to check if the user is an admin
+const isAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(401).send({
+        success: false,
+        message: "Unauthorized Access: User not found",
+      });
+    }
+    if (user.role !== 1) {
+      return res.status(401).send({
+        success: false,
+        message: "Unauthorized Access: Admin privileges required",
+      });
+    }
+    next();
+  } catch (error) {
+    console.error("Error in isAdmin middleware:", error);
+    res.status(401).send({
+      success: false,
+      error,
+      message: "Error in admin middleware",
+    });
+  }
+};
+
+module.exports = { authenticate, isAdmin };

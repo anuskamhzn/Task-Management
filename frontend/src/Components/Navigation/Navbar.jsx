@@ -62,7 +62,7 @@ export default function Navbar() {
             style={{ top: '100%' }}
           >
             <NavLink
-              to="/userInfo"
+              to="/dashboard/userInfo"
               className="block px-4 py-2 hover:bg-indigo-100 text-gray-700 transition duration-200 ease-in-out"
               onClick={() => setDropdownOpen(false)}
             >

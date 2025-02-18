@@ -117,9 +117,7 @@ exports.login = async (req, res) => {
 };
 
 // User info route
-exports.userInfo = [
-  authenticate, 
-  async (req, res) => {
+exports.userInfo = async (req, res) => {
     try {
       // Assuming req.user.id contains the user ID
       const user = await userModel.findById(req.user.id); 
@@ -139,8 +137,7 @@ exports.userInfo = [
         error: error.message || 'Internal Server Error'
       });
     }
-  }
-];
+  };
 
 const transporter = nodemailer.createTransport({
   service: 'Gmail', // e.g., 'Gmail', 'Yahoo', etc.

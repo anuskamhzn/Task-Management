@@ -39,7 +39,7 @@ const CreateTask = () => {
       );
 
       toast.success("Task created successfully!");
-      navigate("/dashboard");
+      navigate("/dashboard/user");
       console.log(response.data);
     } catch (error) {
       toast.error("Error creating task");
@@ -61,7 +61,7 @@ const CreateTask = () => {
 
           {/* Form Section */}
           <div className="p-10">
-            <h1 className="text-2xl font-bold mb-6">Create Subtask</h1>
+            <h1 className="text-2xl font-bold mb-6">Create Task</h1>
 
             {/* Success & Error Messages */}
             {message && <p className="text-green-600">{message}</p>}

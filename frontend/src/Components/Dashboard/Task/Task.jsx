@@ -5,11 +5,13 @@ import { useAuth } from "../../../context/auth";
 import Navbar from "../../Navigation/Navbar";
 import Sidebar from "../../Navigation/Sidebar";
 import TaskKanban from './TaskKanban';
+import { FaTrash } from "react-icons/fa";
+
 
 const Task = () => {
   const [auth] = useAuth();  // Access user and token from auth context
   const { taskId } = useParams();  // Get taskId from URL params
-   const [mainTask, setMainTask] = useState(null);
+  const [mainTask, setMainTask] = useState(null);
   const [tasks, setTasks] = useState(null);  // Initially set tasks to null
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,24 +21,26 @@ const Task = () => {
       const fetchMainTask = async () => {
         try {
           const response = await axios.get(
-            `${process.env.REACT_APP_API}/api/task/${auth.user.id}`,
+            `${process.env.REACT_APP_API}/api/task`,
             {
               headers: { Authorization: `Bearer ${auth.token}` },
             }
           );
-  
+
           // Check if the response is an array and set the first item in the array
           if (response.data && response.data.length > 0) {
-            setMainTask(response.data[0]); // Set the first project in the array
-          } else {
-            setError("No projects found.");
+            const foundTask = response.data.find(task => task._id === taskId);
+            setMainTask(foundTask || null); // Set the matched task or null if not found
+          }
+          else {
+            setError("No tasks found.");
           }
         } catch (err) {
-          console.error("Error fetching main project:", err);
-          setError("Error fetching main project.");
+          console.error("Error fetching main task:", err);
+          setError("Error fetching main task.");
         }
       };
-  
+
       fetchMainTask();
     }
   }, [taskId, auth.token]);
@@ -85,7 +89,7 @@ const Task = () => {
     return <p>Please log in to view your tasks.</p>;
   }
 
-  if (loading) return <div>Loading...</div>;
+  // if (loading) return <div>Loading...</div>;
 
   return (
     <div className="flex">
@@ -96,16 +100,18 @@ const Task = () => {
           {error && <div className="text-black mb-4">{error}</div>}  {/* Display error message */}
 
           {/* Always display the "Create Sub Task" button */}
-          <NavLink to={`/create-task/${taskId}`}>
+          <NavLink to={`/dashboard/create-task/${taskId}`}>
             <button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">
               Create Sub Task
             </button>
           </NavLink>
+          <NavLink to={`/dashboard/subtask-trash/${taskId}`}><FaTrash /></NavLink>
+
 
           {/* Render the title and Kanban board only if tasks exist */}
           {tasks && tasks.length > 0 ? (
             <>
-              <h1 className="text-2xl font-bold">Task Name: {mainTask?.title}</h1>
+              <h1 className="text-2xl font-bold">Task Name: {mainTask ? mainTask.title : "Loading..."}</h1>
 
               <TaskKanban
                 toDoTasks={tasks.filter((task) => task.status === "To Do")}

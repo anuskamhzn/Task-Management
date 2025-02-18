@@ -49,7 +49,7 @@ export default function Dashboard() {
     fetchProjects();
   }, [auth.token]);
 
-  if (loading) return <div>Loading...</div>;
+  // if (loading) return <div>Loading...</div>;
 
   return (
     <div className="flex bg-gray-50">
@@ -62,8 +62,8 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col">
         <Navbar />
         <main className="flex-1 p-6 overflow-y-auto">
-          <NavLink to="/task"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button></NavLink>
-          <NavLink to="/create"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 ml-4 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Team Project</button></NavLink>
+          <NavLink to="/dashboard/task"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button></NavLink>
+          <NavLink to="/dashboard/create"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 ml-4 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Team Project</button></NavLink>
           <div className="space-y-6">
             <Metrics />
 

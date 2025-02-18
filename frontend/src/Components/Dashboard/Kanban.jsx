@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { FaEllipsisV } from "react-icons/fa";
 import { useAuth } from "../../context/auth";
+import { toast } from 'react-hot-toast';
+import { useParams } from "react-router-dom";
+import ModifyTask from "../../Pages/User/Modify/ModifyTask";
+import ModifyProject from "../../Pages/User/Modify/ModifyProject";
 
 const Kanban = () => {
   const [auth] = useAuth();
@@ -9,9 +13,11 @@ const Kanban = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-    const [hoveredTask, setHoveredTask] = useState(null); // Track hovered task
-    const [hoveredProject, setHoveredProject] = useState(null); // Track hovered task
-    const [openMenu, setOpenMenu] = useState(null); // Track open menu
+  const [hoveredTask, setHoveredTask] = useState(null); // Track hovered task
+  const [hoveredProject, setHoveredProject] = useState(null); // Track hovered task
+  const [openMenu, setOpenMenu] = useState(null); // Track open menu
+  const [selectedTask, setSelectedTask] = useState(null); // Track selected subtask
+  const [selectedProject, setSelectedProject] = useState(null); // Track selected subtask
 
   useEffect(() => {
     if (auth && auth.user) {
@@ -35,7 +41,7 @@ const Kanban = () => {
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API}/api/task/${auth.user.id}`, {
+      const response = await axios.get(`${process.env.REACT_APP_API}/api/task`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
 
@@ -114,16 +120,73 @@ const Kanban = () => {
     ));
   };
 
-  const handleModify = (taskId) => {
-    console.log("Modify task:", taskId);
-    // Implement modify logic
+  const handleProjectModify = (projectId) => {
+    setSelectedProject(projectId); // Open modal with subtask ID
   };
 
-  const handleDelete = (taskId) => {
-    console.log("Delete task:", taskId);
-    // Implement delete logic
+  const handleProjectDelete = async (projectId) => {
+ // Confirmation dialog
+ const confirmDelete = window.confirm("Are you sure you want to delete this task?");
+
+ if (!confirmDelete) {
+   return; // If the user cancels the delete, do nothing
+ }
+
+ // Assuming mainTaskId is now passed correctly, we use it dynamically
+ try {
+   // Make the DELETE request to the backend API
+   const url = `${process.env.REACT_APP_API}/api/project/delete/${projectId}`;
+
+   await axios.delete(url, {
+     headers: { Authorization: `Bearer ${auth.token}` },
+   });
+
+   // Update the tasks list by removing the deleted task
+   setProjects((prevProjects) => prevProjects.filter((project) => project._id !== projectId));
+
+   // Show a success toast notification
+   toast.success("Project deleted successfully!");
+ } catch (err) {
+   console.error("Error deleting subproject:", err);
+   toast.error("There was an error deleting the subproject.");
+ }
+  };
+  const handleTaskModify = (taskId) => {
+    setSelectedTask(taskId); // Open modal with subtask ID
   };
 
+  const handleCloseModal = () => {
+    setSelectedTask(null); // Close modal
+    setSelectedProject(null);
+  };
+
+  const handleTaskDelete = async (taskId) => {
+    // Confirmation dialog
+    const confirmDelete = window.confirm("Are you sure you want to delete this task?");
+
+    if (!confirmDelete) {
+      return; // If the user cancels the delete, do nothing
+    }
+
+    // Assuming mainTaskId is now passed correctly, we use it dynamically
+    try {
+      // Make the DELETE request to the backend API
+      const url = `${process.env.REACT_APP_API}/api/task/delete/${taskId}`;
+
+      await axios.delete(url, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+
+      // Update the tasks list by removing the deleted task
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+
+      // Show a success toast notification
+      toast.success("Task deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting subtask:", err);
+      toast.error("There was an error deleting the subtask.");
+    }
+  };
 
   const renderProjects = (projects) => {
     return projects.map((project) => (
@@ -147,7 +210,6 @@ const Kanban = () => {
               <FaEllipsisV
                 className="cursor-pointer"
                 onClick={(e) => {
-                  e.stopPropagation();
                   setOpenMenu(openMenu === project._id ? null : project._id);
                 }}
               />
@@ -164,13 +226,13 @@ const Kanban = () => {
                 >
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                    onClick={() => handleModify(project._id)}
+                    onClick={() => handleProjectModify(project._id)}
                   >
                     Modify
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                    onClick={() => handleDelete(project._id)}
+                    onClick={() => handleProjectDelete(project._id)}
                   >
                     Delete
                   </button>
@@ -223,13 +285,13 @@ const Kanban = () => {
                 >
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                    onClick={() => handleModify(task._id)}
+                    onClick={() => handleTaskModify(task._id)}
                   >
                     Modify
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                    onClick={() => handleDelete(task._id)}
+                    onClick={() => handleTaskDelete(task._id)}
                   >
                     Delete
                   </button>
@@ -306,6 +368,28 @@ const Kanban = () => {
           </>
         )}
       </div>
+      {/* Modal for Modifying Subtask */}
+      {selectedTask && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ModifyTask
+            auth={auth}
+            setTasks={setTasks}
+            taskId={selectedTask}
+            onClose={handleCloseModal}
+          />
+        </div>
+      )}
+      {/* Modal for Modifying Subtask */}
+      {selectedProject && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ModifyProject
+            auth={auth}
+            setProjects={setProjects}
+            projectId={selectedProject}
+            onClose={handleCloseModal}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -17,11 +17,16 @@ const transporter = nodemailer.createTransport({
 // Create a new project
 exports.createProject = async (req, res) => {
   try {
-    const { title, description, members = [] } = req.body;
+    const { title, description, members = [], dueDate } = req.body;
 
     // Validate input
-    if (!title || !description) {
-      return res.status(400).json({ message: 'Title and description are required.' });
+    if (!title || !description || !dueDate) {
+      return res.status(400).json({ message: 'Title, description, and due date are required.' });
+    }
+
+    // Ensure the dueDate is a valid date
+    if (isNaN(new Date(dueDate).getTime())) {
+      return res.status(400).json({ message: 'Invalid due date.' });
     }
 
     if (!req.user || !req.user.id) {
@@ -54,7 +59,7 @@ exports.createProject = async (req, res) => {
 
     await newProject.save();
 
-    //Send emails to ALL members (registered & unregistered)
+    // Send emails to ALL members (registered & unregistered)
     for (const email of members) {
       try {
         await sendInvitationEmail(email, newProject.id);
@@ -142,7 +147,6 @@ const sendInvitationEmail = async (email, projectId) => {
   }
 };
 
-
 // Approve invitation
 exports.approveInvitation = async (req, res) => {
   try {
@@ -182,11 +186,12 @@ exports.approveInvitation = async (req, res) => {
 exports.getAllProjects = async (req, res) => {
   try {
     const userId = req.user.id;  // Only use the 'id' from the decoded token
-    
+
     const projects = await Project.find({
       $or: [
         { owner: userId },
-        { members: userId }
+        { members: userId },
+        { deletedAt: null},
       ]
     }).populate('owner members');
 
@@ -221,6 +226,118 @@ exports.updateProjectStatus = async (req, res) => {
     res.status(500).json({ message: 'Error updating project status', error: error.message });
   }
 };
+
+// Soft delete a project by the owner and set `deletedAt` field
+exports.deleteProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const ownerId = req.user.id;
+
+    // Check if the project exists and belongs to the logged-in user (owner)
+    const project = await Project.findOne({ _id: projectId, owner: ownerId });
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or you do not have permission to delete it.' });
+    }
+
+    // Soft delete the project by setting deletedAt
+    project.deletedAt = new Date();
+    await project.save();
+
+    // Soft delete associated sub-projects
+    await SubProject.updateMany(
+      { mainProject: projectId },
+      { deletedAt: new Date() }
+    );
+
+    res.status(200).json({ message: 'Project and associated sub-projects moved to trash successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error soft deleting project', error: error.message });
+  }
+};
+
+// Get all deleted projects
+// Get all deleted projects
+exports.getAllDeletedProjects = async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming you're using user authentication
+
+    const projects = await Project.find({
+      deletedAt: { $ne: null },  // Ensure it's a deleted project
+      $or: [
+        { owner: userId },
+        { members: userId }
+      ]
+    }).populate('owner members');
+
+    res.status(200).json(projects);
+  } catch (error) {
+    console.error('Error fetching deleted projects:', error);
+    res.status(500).json({ message: 'Error fetching projects', error: error.message });
+  }
+};
+
+
+// Restore a soft-deleted project and its associated sub-projects
+exports.restoreProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const ownerId = req.user.id;
+
+    // Find the project that is soft-deleted
+    const project = await Project.findOne({ _id: projectId, owner: ownerId, deletedAt: { $ne: null } });
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or it is not in trash.' });
+    }
+
+    // Restore the project by clearing the `deletedAt` field
+    project.deletedAt = null;
+    await project.save();
+
+    // Restore associated sub-projects by clearing the `deletedAt` field for each
+    await SubProject.updateMany(
+      { mainProject: projectId, deletedAt: { $ne: null } },
+      { deletedAt: null }
+    );
+
+    res.status(200).json({ message: 'Project and associated sub-projects restored successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error restoring project', error: error.message });
+  }
+};
+
+// Update a project (by owner or member)
+exports.updateProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { title, description, dueDate } = req.body;
+    const userId = req.user.id; // The logged-in user's ID
+
+    // Check if the project exists
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check if the logged-in user is the owner or a member of the project
+    if (project.owner.toString() !== userId && !project.members.includes(userId)) {
+      return res.status(403).json({ message: 'You do not have permission to update this project' });
+    }
+
+    // Update the project fields if provided
+    project.title = title || project.title;
+    project.description = description || project.description;
+    project.dueDate = dueDate || project.dueDate;
+
+    // Save the updated project
+    await project.save();
+
+    res.status(200).json({ message: 'Project updated successfully', project });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating project', error: error.message });
+  }
+};
+
 
 //Create Sub Project by owner
 exports.createSubProject = async (req, res) => {
@@ -282,6 +399,10 @@ exports.createSubProject = async (req, res) => {
 
     await newSubProject.save();
 
+    // Add the new subproject to the parent project's subProjects array
+    mainProject.subProjects.push(newSubProject._id);
+    await mainProject.save();
+
     // Optionally, you could add the new sub-project ID to the main project's list of sub-projects here
 
     res.status(201).json({
@@ -320,6 +441,7 @@ exports.getSubProjectsByMainProject = async (req, res) => {
     // Fetch all sub-projects related to the main project
     const subProjects = await SubProject.find({
       mainProject: new mongoose.Types.ObjectId(mainProjectId),
+      deletedAt: null,
     });
 
     // Filter sub-projects by whether the user is a member of the main project or is the owner
@@ -339,7 +461,6 @@ exports.getSubProjectsByMainProject = async (req, res) => {
     res.status(500).json({ message: "Error fetching sub-projects", error: error.message });
   }
 };
-
 
 // Update sub-project status
 exports.updateSubProjectStatus = async (req, res) => {
@@ -378,3 +499,148 @@ exports.updateSubProjectStatus = async (req, res) => {
     res.status(500).json({ message: "Error updating sub-project status", error: error.message });
   }
 };
+
+// Soft delete a sub-project under a main project
+exports.deleteSubProject = async (req, res) => {
+  try {
+    const { mainProjectId, subProjectId } = req.params; // Get both mainProjectId, subProjectId
+    const ownerId = req.user.id;  // Get the authenticated user's ID
+
+    // Check if the sub-project exists and belongs to the main project
+    const subProject = await SubProject.findOne({ _id: subProjectId, mainProject: mainProjectId });
+
+    if (!subProject) {
+      return res.status(404).json({ message: 'Sub-project not found or does not belong to the main project' });
+    }
+
+    // Check if the logged-in user is the owner of the main project or a member of the sub-project
+    if (subProject.owner.toString() !== ownerId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this sub-project' });
+    }
+
+    // Soft delete the sub-project by setting `deletedAt`
+    subProject.deletedAt = new Date();
+    await subProject.save();
+
+    res.status(200).json({ message: 'Sub-project moved to trash successfully', subProject });
+  } catch (error) {
+    res.status(500).json({ message: 'Error soft deleting sub-project', error: error.message });
+  }
+};
+
+// Get all deleted subproject for a specific main task
+exports.getDeletedSubProjects = async (req, res) => {
+  try {
+    const { mainProjectId } = req.params;
+    const ownerId = req.user.id; // Assuming you're using user authentication
+    
+    const deletedSubProjects = await SubProject.find({
+      owner: ownerId,
+      mainProject: mainProjectId,
+      deletedAt: { $ne: null }, // Fetch subtasks where deletedAt is not null (soft-deleted)
+    });
+
+    if (deletedSubProjects.length === 0) {
+      return res.status(200).json([]); // Return an empty array if no deleted subtasks are found
+    }
+    res.status(200).json(deletedSubProjects);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching deleted subprojects', error: error.message });
+  }
+};
+
+// Restore a soft-deleted sub-project
+exports.restoreSubProject = async (req, res) => {
+  try {
+    const { mainProjectId, subProjectId } = req.params;
+    const ownerId = req.user.id;
+
+    // Find the sub-project
+    const subProject = await SubProject.findOne({ _id: subProjectId, mainProject: mainProjectId });
+
+    if (!subProject) {
+      return res.status(404).json({ message: 'Sub-project not found or does not belong to the main project' });
+    }
+
+    // Check if the logged-in user is the owner of the main project or a member of the sub-project
+    if (subProject.owner.toString() !== ownerId) {
+      return res.status(403).json({ message: 'You do not have permission to restore this sub-project' });
+    }
+
+    // Restore the sub-project by clearing the `deletedAt` field
+    subProject.deletedAt = null;
+    await subProject.save();
+
+    res.status(200).json({ message: 'Sub-project restored successfully', subProject });
+  } catch (error) {
+    res.status(500).json({ message: 'Error restoring sub-project', error: error.message });
+  }
+};
+
+
+// Update a sub-project under a main project
+exports.updateSubProject = async (req, res) => {
+  try {
+    const { mainProjectId, subProjectId } = req.params;
+    const { title, description, dueDate, status } = req.body;
+    const ownerId = req.user.id;  // The logged-in user's ID
+    const memberId = req.user.id; // The logged-in user's ID (same for both owner and member)
+
+    // Check if the sub-project exists and belongs to the main project
+    const subProject = await SubProject.findOne({
+      _id: subProjectId,
+      mainProject: mainProjectId,
+    });
+
+    if (!subProject) {
+      return res.status(404).json({ message: 'Sub-project not found or does not belong to the main project' });
+    }
+
+    // Check if the logged-in user is the owner of the sub-project or a member of the sub-project
+    if (subProject.owner.toString() !== ownerId && !subProject.members.includes(ownerId)) {
+      return res.status(403).json({ message: 'You do not have permission to update this sub-project' });
+    }
+
+    // Update sub-project fields if provided
+    subProject.title = title || subProject.title;
+    subProject.description = description || subProject.description;
+    subProject.dueDate = dueDate || subProject.dueDate;
+    subProject.status = status || subProject.status;
+
+    // Save the updated sub-project
+    await subProject.save();
+
+    res.status(200).json({ message: 'Sub-project updated successfully', subProject });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating sub-project', error: error.message });
+  }
+};
+
+exports.getSubProjectById = async (req, res) => {
+  const { mainProjectId, subProjectId } = req.params;
+
+  try {
+        const mainTask = await Project.findById(mainProjectId);
+        if (!mainTask) {
+          return res.status(404).json({ message: "Main task not found" });
+        }
+    // Fetch the subproject and populate the referenced fields (mainProject, owner, members)
+    const subproject = await SubProject.findById(subProjectId)
+      .populate('mainProject')  // Populating the mainProject reference (Project model)
+      .populate('owner')        // Populating the owner reference (User model)
+      .populate('members');     // Populating the members array (User model)
+
+    if (!subproject) {
+      return res.status(404).json({ message: "Subproject not found" });
+    }
+
+    // Return the populated subproject
+    res.json(subproject);
+  } catch (error) {
+    console.error("Error fetching subproject:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
