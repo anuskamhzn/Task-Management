@@ -5,107 +5,178 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../../context/auth';
 
 const TaskTrash = () => {
-    const [tasks, setTasks] = useState([]);
-    const [loading, setLoading] = useState(true);  // Track loading state
-    const [auth] = useAuth();  // Access user and token from auth context
-    const navigate = useNavigate();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [auth] = useAuth();
+  const navigate = useNavigate();
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, action: null, taskId: null, taskTitle: '' });
 
-    // Fetch tasks that are marked as deleted
-    useEffect(() => {
-        const fetchTasks = async () => {
-            try {
-                const response = await fetch(`${process.env.REACT_APP_API}/api/task/getDeletedTask`, {
-                    headers: { Authorization: `Bearer ${auth.token}` },
-                });
-                const data = await response.json();
-                
-                if (Array.isArray(data.deletedTasks)) {
-                    setTasks(data.deletedTasks);  // Set tasks with the deletedTasks array
-                } else {
-                    setTasks([]);  // Set to empty array if deletedTasks isn't an array
-                }
-            } catch (error) {
-                console.error('Error fetching tasks:', error);
-                setTasks([]);  // Set an empty array in case of an error
-            } finally {
-                setLoading(false);  // Set loading to false after data is fetched
-            }
-        };
-
-        fetchTasks();
-    }, [auth.token]);
-
-    // Restore task function
-    const restoreTask = async (taskId) => {
-        try {
-            const url = `${process.env.REACT_APP_API}/api/task/restore/${taskId}`;
-
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: { 
-                    Authorization: `Bearer ${auth.token}` 
-                },
-            });
-
-            const result = await response.json();
-            
-            if (response.ok) {
-                // Remove the restored task from the tasks state
-                setTasks(prevTasks => prevTasks.filter(task => task._id !== taskId));
-
-                alert(result.message);
-                navigate(`/dashboard/task/subtask/${taskId}`);
-            } else {
-                alert(result.message);
-            }
-        } catch (error) {
-            console.error('Error restoring task:', error);
-            alert('An error occurred while restoring the task.');
-        }
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API}/api/task/getDeletedTask`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        });
+        const data = await response.json();
+        setTasks(Array.isArray(data.deletedTasks) ? data.deletedTasks : []);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchTasks();
+  }, [auth.token]);
 
-    return (
-        <div>
-            <div className="flex bg-gray-50">
-                {/* Sidebar - Fixed and Full Height */}
-                <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
-                    <Sidebar />
-                </aside>
+  const restoreTask = async (taskId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API}/api/task/restore/${taskId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+        // No alert here; confirmation dialog suffices
+      } else {
+        console.error('Restore failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Error restoring task:', error);
+    }
+  };
 
-                {/* Main Content - Scrollable */}
-                <div className="flex-1 flex flex-col">
-                    <Navbar />
+  const deleteTask = async (taskId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API}/api/task/perdelete/${taskId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+        // No alert here; confirmation dialog suffices
+      } else {
+        console.error('Delete failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
 
-                    <div className="container mx-auto p-4">
-                        <h1 className="text-xl font-semibold mb-4">Trash</h1>
+  const handleConfirm = () => {
+    if (confirmDialog.action === 'restore') {
+      restoreTask(confirmDialog.taskId);
+    } else if (confirmDialog.action === 'delete') {
+      deleteTask(confirmDialog.taskId);
+    }
+    setConfirmDialog({ isOpen: false, action: null, taskId: null, taskTitle: '' });
+  };
 
-                        {/* If loading is true, show "Loading..." else show tasks */}
-                        {loading ? (
-                            <p>Loading...</p>
-                        ) : tasks.length === 0 ? (
-                            <p>No deleted tasks found.</p>  // Show this message if no tasks are available
-                        ) : (
-                            <ul>
-                                {tasks.map(task => (
-                                    <li key={task._id} className="flex justify-between items-center p-2 bg-white mb-2 shadow-md">
-                                        <span>{task.title}</span>
-                                        <button
-                                            onClick={() => {
-                                                restoreTask(task._id);
-                                            }}
-                                            className="text-blue-500 hover:text-blue-700"
-                                        >
-                                            Restore
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </div>
+  const openConfirmDialog = (action, taskId, taskTitle) => {
+    setConfirmDialog({ isOpen: true, action, taskId, taskTitle });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({ isOpen: false, action: null, taskId: null, taskTitle: '' });
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gray-800 text-white flex-shrink-0">
+        <Sidebar />
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navbar />
+
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Trash</h1>
+            <p className="text-sm text-red-600 mb-6">
+              Tasks in the trash will be permanently deleted after 30 days.
+            </p>
+
+            {loading ? (
+              <div className="text-center text-gray-500 py-4">Loading...</div>
+            ) : tasks.length === 0 ? (
+              <div className="text-center text-gray-500 py-4 bg-white rounded-lg shadow">
+                No deleted tasks found.
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                  {tasks.map((task) => (
+                    <li
+                      key={task._id}
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
+                    >
+                      <span className="text-gray-700 truncate flex-1">{task.title}</span>
+                      <div className="flex space-x-4">
+                        <button
+                          onClick={() => openConfirmDialog('restore', task._id, task.title)}
+                          className="text-blue-600 hover:text-blue-800 font-medium transition"
+                        >
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => openConfirmDialog('delete', task._id, task.title)}
+                          className="text-red-600 hover:text-red-800 font-medium transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              {confirmDialog.action === 'restore' ? 'Restore Task' : 'Delete Task Permanently'}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to {confirmDialog.action === 'restore' ? 'restore' : 'permanently delete'} "
+              <span className="font-medium">{confirmDialog.taskTitle}</span>"?
+              {confirmDialog.action === 'delete' && (
+                <span className="block text-sm text-red-500 mt-1">
+                  This action cannot be undone.
+                </span>
+              )}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeConfirmDialog}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirm}
+                className={`px-4 py-2 rounded-md text-white transition ${
+                  confirmDialog.action === 'restore'
+                    ? 'bg-blue-500 hover:bg-blue-600'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                {confirmDialog.action === 'restore' ? 'Restore' : 'Delete'}
+              </button>
             </div>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default TaskTrash;

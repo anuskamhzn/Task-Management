@@ -1,53 +1,50 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState } from "react";
 import Navbar from "../../Components/Navigation/Navbar"
 import { Metrics } from "../../Components/Homepage/metrics"
 import Sidebar from "../../Components/Navigation/Sidebar"
-import { useAuth } from '../../context/auth';
-import toast from "react-hot-toast";
 
 import FullCalendar from "@fullcalendar/react"; // FullCalendar Component
 import dayGridPlugin from "@fullcalendar/daygrid"; // Day grid view
 import interactionPlugin from "@fullcalendar/interaction";
 
 import Kanban from "../../Components/Dashboard/Kanban";
-import { NavLink } from "react-router-dom";
+import CreateTask from "../User/Create/CreateTask";
+import CreateProjectForm from "../User/Create/CreateProject";
+
 export default function Dashboard() {
-  const [auth, setAuth] = useAuth();
+  const [tasks, setTasks] = useState([]);  // Initialize with an empty array to handle state better
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [date, setDate] = useState(new Date());
 
-  // Fetch projects and handle token expiration
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!auth.token) {
-        return;
-      }
+  // Modal visibility state for CreateTask
+  const [isCreateModalTaskOpen, setIsCreateModalTaskOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API}/api/project`, {
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-          },
-        });
+  // Toggle modal visibility
+  const handleCreateTaskClick = () => {
+    setIsCreateModalTaskOpen(true);
+  };
 
-        setProjects(response.data);
-      } catch (err) {
-        // If the error is related to token expiration (e.g., 401 Unauthorized), refresh the token
-        if (err.response?.status === 401) {
-          fetchProjects(); // Retry fetching projects after refreshing the token
-        } else {
-          setError(err.response?.data?.message);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleCloseCreateTaskModal = () => {
+    setIsCreateModalTaskOpen(false);
+  };
+  // Toggle modal visibility
+  const handleCreateProjectClick = () => {
+    setIsCreateModalOpen(true);
+  };
 
-    fetchProjects();
-  }, [auth.token]);
+  const handleCloseCreateProjectModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  // Function to update task list with newly created task
+  const handleTaskCreated = (newTask) => {
+    setTasks((prevTasks) => [...prevTasks, newTask,]);  // Add the new task to the start of the task list
+  };
+
+  // Function to update task list with newly created task
+  const handleProjectCreated = (newProject) => {
+    setProjects((prevProjects) => [...prevProjects, newProject ]);  // Add the new task to the start of the task list
+  };
 
   // if (loading) return <div>Loading...</div>;
 
@@ -62,8 +59,14 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col">
         <Navbar />
         <main className="flex-1 p-6 overflow-y-auto">
-          <NavLink to="/dashboard/task"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button></NavLink>
-          <NavLink to="/dashboard/create"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 ml-4 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Team Project</button></NavLink>
+          {/* <NavLink to="/dashboard/task"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button></NavLink>
+          <NavLink to="/dashboard/create"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 ml-4 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Team Project</button></NavLink> */}
+          <button
+            onClick={handleCreateTaskClick}
+            className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button>
+          <button
+            onClick={handleCreateProjectClick}
+            className="bg-indigo-900 text-white py-2 px-4 mb-2 ml-4 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Team Project</button>
           <div className="space-y-6">
             <Metrics />
 
@@ -102,8 +105,26 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="p-6">
-              <Kanban />
+              <Kanban
+                tasks={tasks}
+                setTasks={setTasks}
+                projects={projects}
+                setProjects={setProjects}
+              />
             </div>
+            {/* Modal for Creating Task */}
+            {isCreateModalTaskOpen && (
+              <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+                <CreateTask onClose={handleCloseCreateTaskModal} onTaskCreated={handleTaskCreated} />
+              </div>
+            )}
+            {/* Modal for Creating Task */}
+            {isCreateModalOpen && (
+              <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+                <CreateProjectForm onClose={handleCloseCreateProjectModal} onProjectCreated={handleProjectCreated} />
+              </div>
+            )}
+
           </div>
         </main>
       </div>

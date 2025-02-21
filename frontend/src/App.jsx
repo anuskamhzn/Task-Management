@@ -6,11 +6,11 @@ import Register from './Pages/Auth/Registration';
 import Dashboard from './Pages/User/Dashboard';
 import Homepage from './Pages/Homepage';
 import UserInfo from './Pages/User/UserInfo';
-import Project from './Components/Dashboard/Project/Project';
+import Project from './Components/Dashboard/SubProject/Project';
 import CreateTask from './Pages/User/Create/CreateTask';
 import ForgetPassword from './Pages/Auth/ForgetPass/ForgetPassword';
 import ResetPassword from './Pages/Auth/ForgetPass/ResetPassword';
-import Task from './Components/Dashboard/Task/Task';
+import Task from './Components/Dashboard/SubTask/Task';
 import CreateSubtask from './Pages/User/Create/CreateSubtask';
 import CreateProject from './Pages/User/Create/CreateProject';
 import CreateSubproject from './Pages/User/Create/CreateSubproject';
@@ -49,7 +49,7 @@ const App = () => {
           <Route path="tasks" element={<Tasks />} />
           <Route path="trash" element={<TaskTrash />} />
           <Route path="subtask-trash/:mainTaskId" element={<SubtaskTrash />} />
-          <Route path="projects" element={<Projects />} />
+          <Route path="team_projects" element={<Projects />} />
           <Route path="projectTrash" element={<ProjectTrash />} />
           <Route path="subproject-trash/:mainTaskId" element={<SubprojectTrash />} />
           <Route path="messages" element={<Test />} />

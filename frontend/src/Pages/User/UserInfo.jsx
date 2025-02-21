@@ -11,35 +11,6 @@ const UserInfo = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Function to refresh access token using refresh token
-  const refreshAuthToken = async () => {
-    try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_API}/api/auth/refresh-token`,
-        { refreshToken: auth.refreshToken } // Sending the refresh token to backend
-      );
-
-      // Save new access token in localStorage and update state
-      const newToken = response.data.accessToken;
-      localStorage.setItem(
-        "auth",
-        JSON.stringify({ ...auth, token: newToken }) // Update with new token
-      );
-
-      // Update the auth context with new access token
-      setAuth({
-        ...auth,
-        token: newToken,
-      });
-    } catch (err) {
-      console.error("Error refreshing token:", err);
-      toast.error("Session expired. Please log in again.");
-      // Optionally, clear localStorage and redirect to login
-      localStorage.removeItem("auth");
-      window.location.href = "/login"; // Redirect to login
-    }
-  };
-
   useEffect(() => {
     const fetchUserInfo = async () => {
       if (!auth.token) {
@@ -57,7 +28,6 @@ const UserInfo = () => {
       } catch (err) {
         // If the error is related to token expiration (e.g., 401 Unauthorized), refresh the token
         if (err.response?.status === 401) {
-          await refreshAuthToken();
           fetchUserInfo(); // Retry fetching user info after refreshing the token
         } else {
           setError(err.response?.data?.message || 'Error fetching user data');

@@ -8,6 +8,7 @@ const {authenticate} = require('../middleware/authMiddleware');
 router.post('/create', authenticate, taskController.createTask);
 router.get('/', authenticate, taskController.getTasksByOwner);
 router.patch('/status', authenticate, taskController.updateTaskStatus);
+router.delete('/perdelete/:mainTaskId', authenticate, taskController.deleteTaskPermananet); //permananet delete
 router.delete('/delete/:mainTaskId', authenticate, taskController.deleteTask); //soft delete
 router.get('/getDeletedTask', authenticate, taskController.getSoftDeletedTasks);
 router.put('/restore/:mainTaskId', authenticate, taskController.restoreTask); //restore delete
@@ -18,6 +19,7 @@ router.post('/create-task/:mainTaskId', authenticate, taskController.createSubTa
 router.get('/subtask/:mainTaskId', authenticate, taskController.getSubTasksByMainTask);
 router.get('/subtask/:mainTaskId/:subTaskId', authenticate, taskController.getSubtaskById);
 router.patch('/subtask/status', authenticate, taskController.updateSubTaskStatus);
+router.delete('/pdeleteSubtask/:mainTaskId/:subTaskId', authenticate, taskController.deleteSubTaskPermananet); //permanent delete
 router.delete('/delete-subtask/:mainTaskId/:subTaskId', authenticate, taskController.deleteSubTask); //soft delete
 router.get('/subtask-trash/:mainTaskId', authenticate, taskController.getDeletedSubTasks); //get delete
 router.put('/restore-subtask/:mainTaskId/:subTaskId', authenticate, taskController.restoreSubTask); //restore delete

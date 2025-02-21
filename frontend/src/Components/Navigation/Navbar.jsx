@@ -31,13 +31,13 @@ export default function Navbar() {
   }, []);
 
   return (
-    <div className="flex justify-between items-center bg-white p-5 shadow-md">
+    <div className="flex justify-between items-center bg-white p-4 shadow-md">
       {/* Left: Logo and Search Bar */}
       <div className="flex items-center space-x-6">
         <input
           type="text"
           placeholder="Search..."
-          className="border p-3 rounded-full w-full max-w-md bg-gray-50 focus:ring-2 focus:ring-indigo-400 transition duration-300 ease-in-out"
+          className="border p-2 rounded-2xl w-full max-w-md bg-gray-50 focus:ring-2 focus:ring-indigo-400 transition duration-300 ease-in-out"
         />
       </div>
 

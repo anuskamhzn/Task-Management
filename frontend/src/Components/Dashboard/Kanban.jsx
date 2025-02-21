@@ -4,20 +4,25 @@ import { FaEllipsisV } from "react-icons/fa";
 import { useAuth } from "../../context/auth";
 import { toast } from 'react-hot-toast';
 import { useParams } from "react-router-dom";
+import { IoIosAdd } from "react-icons/io";
 import ModifyTask from "../../Pages/User/Modify/ModifyTask";
 import ModifyProject from "../../Pages/User/Modify/ModifyProject";
 
-const Kanban = () => {
+const Kanban = ({tasks, projects, setProjects, setTasks}) => {
   const [auth] = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hoveredTask, setHoveredTask] = useState(null); // Track hovered task
-  const [hoveredProject, setHoveredProject] = useState(null); // Track hovered task
-  const [openMenu, setOpenMenu] = useState(null); // Track open menu
-  const [selectedTask, setSelectedTask] = useState(null); // Track selected subtask
-  const [selectedProject, setSelectedProject] = useState(null); // Track selected subtask
+  const [hoveredTask, setHoveredTask] = useState(null);
+  const [hoveredProject, setHoveredProject] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ 
+    isOpen: false, 
+    id: null, 
+    title: '', 
+    type: '' // 'task' or 'project'
+  });
 
   useEffect(() => {
     if (auth && auth.user) {
@@ -46,10 +51,10 @@ const Kanban = () => {
       });
 
       if (response.data.message === "No tasks found") {
-        setTasks([]); // Set empty tasks array if no tasks found
+        setTasks([]);
         setError("No tasks found");
       } else {
-        setTasks(response.data); // Set tasks if found
+        setTasks(response.data);
       }
     } catch (err) {
       console.error("Error fetching tasks:", err);
@@ -63,8 +68,6 @@ const Kanban = () => {
     e.preventDefault();
     const id = e.dataTransfer.getData("id");
     const type = e.dataTransfer.getData("type");
-
-    console.log("Dropped:", { id, type, newStatus }); // Debugging
 
     if (!id || !type) return;
 
@@ -94,10 +97,61 @@ const Kanban = () => {
     }
   };
 
-
   const handleDragStart = (e, id, type) => {
     e.dataTransfer.setData("id", id);
     e.dataTransfer.setData("type", type);
+  };
+
+  const handleProjectModify = (projectId) => {
+    setSelectedProject(projectId);
+    setOpenMenu(null);
+  };
+
+  const handleTaskModify = (taskId) => {
+    setSelectedTask(taskId);
+    setOpenMenu(null);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedTask(null);
+    setSelectedProject(null);
+  };
+
+  const handleDelete = async (id, type) => {
+    try {
+      const url = type === 'project' 
+        ? `${process.env.REACT_APP_API}/api/project/delete/${id}`
+        : `${process.env.REACT_APP_API}/api/task/delete/${id}`;
+
+      await axios.delete(url, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+
+      if (type === 'project') {
+        setProjects((prevProjects) => prevProjects.filter((project) => project._id !== id));
+        toast.success("Project deleted successfully!");
+      } else {
+        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
+        toast.success("Task deleted successfully!");
+      }
+    } catch (err) {
+      console.error(`Error deleting ${type}:`, err);
+      toast.error(`There was an error deleting the ${type}.`);
+    }
+  };
+
+  const openConfirmDialog = (id, title, type) => {
+    setConfirmDialog({ isOpen: true, id, title, type });
+    setOpenMenu(null);
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({ isOpen: false, id: null, title: '', type: '' });
+  };
+
+  const handleConfirmDelete = () => {
+    handleDelete(confirmDialog.id, confirmDialog.type);
+    closeConfirmDialog();
   };
 
   if (!auth || !auth.user) {
@@ -120,74 +174,6 @@ const Kanban = () => {
     ));
   };
 
-  const handleProjectModify = (projectId) => {
-    setSelectedProject(projectId); // Open modal with subtask ID
-  };
-
-  const handleProjectDelete = async (projectId) => {
- // Confirmation dialog
- const confirmDelete = window.confirm("Are you sure you want to delete this task?");
-
- if (!confirmDelete) {
-   return; // If the user cancels the delete, do nothing
- }
-
- // Assuming mainTaskId is now passed correctly, we use it dynamically
- try {
-   // Make the DELETE request to the backend API
-   const url = `${process.env.REACT_APP_API}/api/project/delete/${projectId}`;
-
-   await axios.delete(url, {
-     headers: { Authorization: `Bearer ${auth.token}` },
-   });
-
-   // Update the tasks list by removing the deleted task
-   setProjects((prevProjects) => prevProjects.filter((project) => project._id !== projectId));
-
-   // Show a success toast notification
-   toast.success("Project deleted successfully!");
- } catch (err) {
-   console.error("Error deleting subproject:", err);
-   toast.error("There was an error deleting the subproject.");
- }
-  };
-  const handleTaskModify = (taskId) => {
-    setSelectedTask(taskId); // Open modal with subtask ID
-  };
-
-  const handleCloseModal = () => {
-    setSelectedTask(null); // Close modal
-    setSelectedProject(null);
-  };
-
-  const handleTaskDelete = async (taskId) => {
-    // Confirmation dialog
-    const confirmDelete = window.confirm("Are you sure you want to delete this task?");
-
-    if (!confirmDelete) {
-      return; // If the user cancels the delete, do nothing
-    }
-
-    // Assuming mainTaskId is now passed correctly, we use it dynamically
-    try {
-      // Make the DELETE request to the backend API
-      const url = `${process.env.REACT_APP_API}/api/task/delete/${taskId}`;
-
-      await axios.delete(url, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      });
-
-      // Update the tasks list by removing the deleted task
-      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
-
-      // Show a success toast notification
-      toast.success("Task deleted successfully!");
-    } catch (err) {
-      console.error("Error deleting subtask:", err);
-      toast.error("There was an error deleting the subtask.");
-    }
-  };
-
   const renderProjects = (projects) => {
     return projects.map((project) => (
       <div
@@ -195,16 +181,14 @@ const Kanban = () => {
         className="bg-white p-4 mb-4 rounded-lg shadow-md cursor-grab relative"
         draggable
         onDragStart={(e) => handleDragStart(e, project._id, "project")}
-        onMouseEnter={() => setHoveredProject(project._id)} // Show menu when hovering
+        onMouseEnter={() => setHoveredProject(project._id)}
         onMouseLeave={() => {
           setHoveredProject(null);
-          setOpenMenu(null); // Close options menu as well
+          setOpenMenu(null);
         }}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{project.title}</h3>
-
-          {/* Three Dots Icon */}
           {hoveredProject === project._id && (
             <div className="relative">
               <FaEllipsisV
@@ -213,14 +197,12 @@ const Kanban = () => {
                   setOpenMenu(openMenu === project._id ? null : project._id);
                 }}
               />
-
-              {/* Dropdown Menu */}
               {openMenu === project._id && (
                 <div
                   className="absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-md z-10"
-                  onMouseEnter={() => setHoveredProject(project._id)} // Keep open on hover
+                  onMouseEnter={() => setHoveredProject(project._id)}
                   onMouseLeave={() => {
-                    setHoveredProject(null); // Hide if mouse leaves
+                    setHoveredProject(null);
                     setOpenMenu(null);
                   }}
                 >
@@ -232,7 +214,7 @@ const Kanban = () => {
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                    onClick={() => handleProjectDelete(project._id)}
+                    onClick={() => openConfirmDialog(project._id, project.title, 'project')}
                   >
                     Delete
                   </button>
@@ -241,7 +223,6 @@ const Kanban = () => {
             </div>
           )}
         </div>
-
         <p className="text-sm text-gray-600">{project.description}</p>
         <p className="text-xs text-gray-500">Due Date: {new Date(project.dueDate).toLocaleDateString()}</p>
         <div className="flex gap-2 mt-2">{renderUsers(project.members || [])}</div>
@@ -256,30 +237,26 @@ const Kanban = () => {
         className="relative bg-white p-4 mb-4 rounded-lg shadow-md cursor-grab"
         draggable
         onDragStart={(e) => handleDragStart(e, task._id, "task")}
-        onMouseEnter={() => setHoveredTask(task._id)} // Show menu when hovering
+        onMouseEnter={() => setHoveredTask(task._id)}
         onMouseLeave={() => {
-          setHoveredTask(null); // Hide menu when not hovering
-          setOpenMenu(null); // Close options menu as well
+          setHoveredTask(null);
+          setOpenMenu(null);
         }}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{task.title}</h3>
-
-          {/* Three Dots Icon - Only show on hover */}
           {hoveredTask === task._id && (
             <div className="relative">
               <FaEllipsisV
                 className="cursor-pointer"
                 onClick={() => setOpenMenu(openMenu === task._id ? null : task._id)}
               />
-
-              {/* Dropdown Menu */}
               {openMenu === task._id && (
                 <div
                   className="absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-md"
-                  onMouseEnter={() => setHoveredTask(task._id)} // Keep open on hover
+                  onMouseEnter={() => setHoveredTask(task._id)}
                   onMouseLeave={() => {
-                    setHoveredTask(null); // Hide if mouse leaves
+                    setHoveredTask(null);
                     setOpenMenu(null);
                   }}
                 >
@@ -291,7 +268,7 @@ const Kanban = () => {
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                    onClick={() => handleTaskDelete(task._id)}
+                    onClick={() => openConfirmDialog(task._id, task.title, 'task')}
                   >
                     Delete
                   </button>
@@ -300,7 +277,6 @@ const Kanban = () => {
             </div>
           )}
         </div>
-
         <p className="text-sm text-gray-600">{task.description}</p>
         <p className="text-xs text-gray-500">
           Due Date: {new Date(task.dueDate).toLocaleDateString()}
@@ -323,7 +299,7 @@ const Kanban = () => {
       <div
         className="flex-1 p-4 bg-blue-200 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDrop(e, "To Do", e.dataTransfer.getData("type"))}
+        onDrop={(e) => handleDrop(e, "To Do")}
       >
         <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
         {toDoProjects.length === 0 && toDoTasks.length === 0 ? (
@@ -335,12 +311,10 @@ const Kanban = () => {
           </>
         )}
       </div>
-
-
       <div
         className="flex-1 p-4 bg-yellow-200 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDrop(e, "In Progress", e.dataTransfer.getData("type"))}
+        onDrop={(e) => handleDrop(e, "In Progress")}
       >
         <h2 className="text-xl font-semibold text-center mb-4">In Progress</h2>
         {inProgressProjects.length === 0 && inProgressTasks.length === 0 ? (
@@ -352,11 +326,10 @@ const Kanban = () => {
           </>
         )}
       </div>
-
       <div
         className="flex-1 p-4 bg-green-200 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDrop(e, "Completed", e.dataTransfer.getData("type"))}
+        onDrop={(e) => handleDrop(e, "Completed")}
       >
         <h2 className="text-xl font-semibold text-center mb-4">Completed</h2>
         {completedProjects.length === 0 && completedTasks.length === 0 ? (
@@ -368,7 +341,6 @@ const Kanban = () => {
           </>
         )}
       </div>
-      {/* Modal for Modifying Subtask */}
       {selectedTask && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ModifyTask
@@ -379,7 +351,6 @@ const Kanban = () => {
           />
         </div>
       )}
-      {/* Modal for Modifying Subtask */}
       {selectedProject && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ModifyProject
@@ -388,6 +359,34 @@ const Kanban = () => {
             projectId={selectedProject}
             onClose={handleCloseModal}
           />
+        </div>
+      )}
+      {/* Custom Confirmation Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Delete {confirmDialog.type === 'project' ? 'Project' : 'Task'}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "<span className="font-medium">{confirmDialog.title}</span>"?
+              <span className="block text-sm text-red-500 mt-1">This action will move the task to the trash.</span>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeConfirmDialog}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition focus:outline-none focus:ring-2 focus:ring-red-300"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

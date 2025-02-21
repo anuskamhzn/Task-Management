@@ -6,10 +6,11 @@ import { useParams } from "react-router-dom";
 import ModifySubtask from "../../../Pages/User/Modify/SubTaskModify";
 
 const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth }) => {
-  const [hoveredTask, setHoveredTask] = useState(null); // Track hovered task
-  const [openMenu, setOpenMenu] = useState(null); // Track open menu
-  const { taskId } = useParams(); // Get the main task ID from the route params
-  const [selectedSubtask, setSelectedSubtask] = useState(null); // Track selected subtask
+  const [hoveredTask, setHoveredTask] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
+  const { taskId } = useParams();
+  const [selectedSubtask, setSelectedSubtask] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, subTaskId: null, subTaskTitle: '' });
 
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
@@ -37,36 +38,21 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
   };
 
   const handleModify = (subTaskId) => {
-    setSelectedSubtask(subTaskId); // Open modal with subtask ID
+    setSelectedSubtask(subTaskId);
+    setOpenMenu(null); // Close dropdown after selecting modify
   };
 
   const handleCloseModal = () => {
-    setSelectedSubtask(null); // Close modal
+    setSelectedSubtask(null);
   };
 
   const handleDelete = async (subTaskId) => {
-
-    // Confirmation dialog
-    const confirmDelete = window.confirm("Are you sure you want to delete this subtask?");
-
-    if (!confirmDelete) {
-      return; // If the user cancels the delete, do nothing
-    }
-
-
-    // Assuming mainTaskId is now passed correctly, we use it dynamically
     try {
-      // Make the DELETE request to the backend API
       const url = `${process.env.REACT_APP_API}/api/task/delete-subtask/${taskId}/${subTaskId}`;
-
       await axios.delete(url, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
-
-      // Update the tasks list by removing the deleted subtask
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== subTaskId));
-
-      // Show a success toast notification
       toast.success("Subtask deleted successfully!");
     } catch (err) {
       console.error("Error deleting subtask:", err);
@@ -74,8 +60,22 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
     }
   };
 
+  const openConfirmDialog = (subTaskId, subTaskTitle) => {
+    setConfirmDialog({ isOpen: true, subTaskId, subTaskTitle });
+    setOpenMenu(null); // Close dropdown when opening confirm dialog
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({ isOpen: false, subTaskId: null, subTaskTitle: '' });
+  };
+
+  const handleConfirmDelete = () => {
+    handleDelete(confirmDialog.subTaskId);
+    closeConfirmDialog();
+  };
+
   const handleDragStart = (e, taskId) => {
-    e.dataTransfer.setData("id", taskId);  // Ensure correct taskId is set for drag
+    e.dataTransfer.setData("id", taskId);
   };
 
   const renderTasks = (tasks) => {
@@ -84,17 +84,16 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
         key={task._id}
         className="relative bg-white p-4 mb-4 rounded-lg shadow-md cursor-grab"
         draggable
-        onDragStart={(e) => handleDragStart(e, task._id)}  // Use subtask _id here
-        onMouseEnter={() => setHoveredTask(task._id)} // Show menu when hovering
+        onDragStart={(e) => handleDragStart(e, task._id)}
+        onMouseEnter={() => setHoveredTask(task._id)}
         onMouseLeave={() => {
-          setHoveredTask(null); // Hide menu when not hovering
-          setOpenMenu(null); // Close options menu as well
+          setHoveredTask(null);
+          setOpenMenu(null);
         }}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{task.title}</h3>
 
-          {/* Three Dots Icon - Only show on hover */}
           {hoveredTask === task._id && (
             <div className="relative">
               <FaEllipsisV
@@ -102,13 +101,12 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
                 onClick={() => setOpenMenu(openMenu === task._id ? null : task._id)}
               />
 
-              {/* Dropdown Menu */}
               {openMenu === task._id && (
                 <div
                   className="absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-md"
-                  onMouseEnter={() => setHoveredTask(task._id)} // Keep open on hover
+                  onMouseEnter={() => setHoveredTask(task._id)}
                   onMouseLeave={() => {
-                    setHoveredTask(null); // Hide if mouse leaves
+                    setHoveredTask(null);
                     setOpenMenu(null);
                   }}
                 >
@@ -120,7 +118,7 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                    onClick={() => handleDelete(task._id)}
+                    onClick={() => openConfirmDialog(task._id, task.title)}
                   >
                     Delete
                   </button>
@@ -140,7 +138,6 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
 
   return (
     <div className="flex gap-6 p-6">
-      {/* To Do Column */}
       <div
         className="flex-1 p-4 bg-gray-300 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
@@ -150,7 +147,6 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
         {toDoTasks.length === 0 ? <div>No tasks</div> : renderTasks(toDoTasks)}
       </div>
 
-      {/* In Progress Column */}
       <div
         className="flex-1 p-4 bg-yellow-300 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
@@ -160,7 +156,6 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
         {inProgressTasks.length === 0 ? <div>No tasks</div> : renderTasks(inProgressTasks)}
       </div>
 
-      {/* Completed Column */}
       <div
         className="flex-1 p-4 bg-green-300 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
@@ -169,7 +164,7 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
         <h2 className="text-xl font-semibold text-center mb-4">Completed</h2>
         {completedTasks.length === 0 ? <div>No tasks</div> : renderTasks(completedTasks)}
       </div>
-      {/* Modal for Modifying Subtask */}
+
       {selectedSubtask && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ModifySubtask
@@ -181,6 +176,32 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
         </div>
       )}
 
+      {/* Custom Confirmation Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Delete Subtask</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "<span className="font-medium">{confirmDialog.subTaskTitle}</span>"?
+              <span className="block text-sm text-red-500 mt-1">This action will move the task to the trash.</span>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeConfirmDialog}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition focus:outline-none focus:ring-2 focus:ring-red-300"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

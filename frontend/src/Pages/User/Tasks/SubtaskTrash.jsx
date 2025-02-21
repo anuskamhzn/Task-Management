@@ -5,105 +5,179 @@ import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from '../../../context/auth';
 
 const SubtaskTrash = () => {
-    const [tasks, setTasks] = useState([]);
-    const { mainTaskId } = useParams();  // Get taskId from URL params
-    const [auth] = useAuth();  // Access user and token from auth context
-    const navigate = useNavigate();
+  const [tasks, setTasks] = useState([]);
+  const { mainTaskId } = useParams();
+  const [auth] = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true); // Added loading state
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, action: null, taskId: null, taskTitle: '' });
 
-    // Fetch tasks that are marked as deleted
-    useEffect(() => {
-        const fetchTasks = async () => {
-          try {
-            const response = await fetch(`${process.env.REACT_APP_API}/api/task/subtask-trash/${mainTaskId}`, {
-              headers: { Authorization: `Bearer ${auth.token}` },
-            });
-            const data = await response.json();
-      
-            if (Array.isArray(data)) {
-              setTasks(data);  // Directly assign to tasks since 'data' is an array
-            } else {
-              setTasks([]);  // If the data isn't in array form, set tasks to an empty array
-            }
-          } catch (error) {
-            console.error('Error fetching tasks:', error);
-            setTasks([]); // Set an empty array in case of an error
-          }
-        };
-      
-        fetchTasks();
-      }, [mainTaskId, auth.token]);
-      
-      
-    // Restore task function
-    const restoreTask = async (subTaskId) => {
-        try {
-            const url = `${process.env.REACT_APP_API}/api/task/restore-subtask/${mainTaskId}/${subTaskId}`;
-    
-            const response = await fetch(url, {
-                method: 'PUT',  // Ensure method is PUT
-                headers: { 
-                    Authorization: `Bearer ${auth.token}` 
-                },
-            });
-    
-            const result = await response.json();
-            
-            if (response.ok) {
-                // Update tasks list to reflect the restored task
-                setTasks(prevTasks => prevTasks.filter(task => task._id !== subTaskId));
-                alert(result.message);
-                navigate(`/dashboard/task/subtask/${mainTaskId}`);  // Navigate to the subtask detail page
-
-            } else {
-                alert(result.message);
-            }
-        } catch (error) {
-            console.error('Error restoring task:', error);
-            alert('An error occurred while restoring the task.');
-        }
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API}/api/task/subtask-trash/${mainTaskId}`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        });
+        const data = await response.json();
+        setTasks(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    
+    fetchTasks();
+  }, [mainTaskId, auth.token]);
 
-    return (
-        <div>
-            <div className="flex bg-gray-50">
-                {/* Sidebar - Fixed and Full Height */}
-                <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
-                    <Sidebar />
-                </aside>
-    
-                {/* Main Content - Scrollable */}
-                <div className="flex-1 flex flex-col">
-                    <Navbar />
-    
-                    <div className="container mx-auto p-4">
-                        <h1 className="text-xl font-semibold mb-4">Trash</h1>
-    
-                        {tasks.length > 0 ? (
-                            <ul>
-                                {tasks.map(task => (
-                                    <li key={task._id} className="flex justify-between items-center p-2 bg-white mb-2 shadow-md">
-                                        <span>{task.title}</span>
-                                        <button
-                                            onClick={() => {
-                                                console.log("Clicked subtask with id:", task._id); // Check which subtask is being clicked
-                                                restoreTask(task._id);
-                                            }}
-                                            className="text-blue-500 hover:text-blue-700"
-                                        >
-                                            Restore
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>No deleted tasks found.</p>
-                        )}
-                    </div>
-                </div>
+  const restoreTask = async (subTaskId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API}/api/task/restore-subtask/${mainTaskId}/${subTaskId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== subTaskId));
+        // Removed alert; confirmation dialog is sufficient
+      } else {
+        console.error('Restore failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Error restoring task:', error);
+    }
+  };
+
+  const deleteTask = async (subTaskId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API}/api/task/pdeleteSubtask/${mainTaskId}/${subTaskId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== subTaskId));
+        // Removed alert; confirmation dialog is sufficient
+      } else {
+        console.error('Delete failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (confirmDialog.action === 'restore') {
+      restoreTask(confirmDialog.taskId);
+    } else if (confirmDialog.action === 'delete') {
+      deleteTask(confirmDialog.taskId);
+    }
+    setConfirmDialog({ isOpen: false, action: null, taskId: null, taskTitle: '' });
+  };
+
+  const openConfirmDialog = (action, taskId, taskTitle) => {
+    setConfirmDialog({ isOpen: true, action, taskId, taskTitle });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({ isOpen: false, action: null, taskId: null, taskTitle: '' });
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gray-800 text-white flex-shrink-0">
+        <Sidebar />
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navbar />
+
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Subtask Trash</h1>
+            <p className="text-sm text-red-600 mb-6">
+              Subtasks in the trash will be permanently deleted after 30 days.
+            </p>
+
+            {loading ? (
+              <div className="text-center text-gray-500 py-4">Loading...</div>
+            ) : tasks.length === 0 ? (
+              <div className="text-center text-gray-500 py-4 bg-white rounded-lg shadow">
+                No deleted subtasks found.
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                  {tasks.map((task) => (
+                    <li
+                      key={task._id}
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
+                    >
+                      <span className="text-gray-700 truncate flex-1">{task.title}</span>
+                      <div className="flex space-x-4">
+                        <button
+                          onClick={() => openConfirmDialog('restore', task._id, task.title)}
+                          className="text-blue-600 hover:text-blue-800 font-medium transition"
+                        >
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => openConfirmDialog('delete', task._id, task.title)}
+                          className="text-red-600 hover:text-red-800 font-medium transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              {confirmDialog.action === 'restore' ? 'Restore Subtask' : 'Delete Subtask Permanently'}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to {confirmDialog.action === 'restore' ? 'restore' : 'permanently delete'} "
+              <span className="font-medium">{confirmDialog.taskTitle}</span>"?
+              {confirmDialog.action === 'delete' && (
+                <span className="block text-sm text-red-500 mt-1">
+                  This action cannot be undone.
+                </span>
+              )}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeConfirmDialog}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirm}
+                className={`px-4 py-2 rounded-md text-white transition ${
+                  confirmDialog.action === 'restore'
+                    ? 'bg-blue-500 hover:bg-blue-600'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                {confirmDialog.action === 'restore' ? 'Restore' : 'Delete'}
+              </button>
             </div>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default SubtaskTrash;

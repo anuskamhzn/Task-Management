@@ -185,18 +185,18 @@ exports.approveInvitation = async (req, res) => {
 // Get all projects
 exports.getAllProjects = async (req, res) => {
   try {
-    const userId = req.user.id;  // Only use the 'id' from the decoded token
+    const userId = req.user.id;
 
     const projects = await Project.find({
       $or: [
         { owner: userId },
-        { members: userId },
-        { deletedAt: null},
-      ]
+        { members: userId }
+      ],
+      deletedAt: null // Mandatory filter outside $or
     }).populate('owner members');
 
     if (!projects || projects.length === 0) {
-      return res.status(200).json([]);  // Return empty array if no projects found
+      return res.status(200).json([]);
     }
 
     res.status(200).json(projects);
@@ -224,6 +224,31 @@ exports.updateProjectStatus = async (req, res) => {
     res.status(200).json({ message: 'Project status updated', project: updatedProject });
   } catch (error) {
     res.status(500).json({ message: 'Error updating project status', error: error.message });
+  }
+};
+
+// Permanent delete a project by the owner and set `deletedAt` field
+exports.deleteProjectPermanent = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const ownerId = req.user.id;
+
+    // Check if the project exists and belongs to the logged-in user (owner)
+    const project = await Project.findOne({ _id: projectId, owner: ownerId });
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or you do not have permission to delete it.' });
+    }
+
+    await project.deleteOne();
+
+    // Soft delete associated sub-projects
+    await SubProject.deleteMany(
+      { mainProject: projectId }
+    );
+
+    res.status(200).json({ message: 'Project and associated sub-projects moved to trash successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error soft deleting project', error: error.message });
   }
 };
 
@@ -256,7 +281,6 @@ exports.deleteProject = async (req, res) => {
 };
 
 // Get all deleted projects
-// Get all deleted projects
 exports.getAllDeletedProjects = async (req, res) => {
   try {
     const userId = req.user.id; // Assuming you're using user authentication
@@ -275,8 +299,6 @@ exports.getAllDeletedProjects = async (req, res) => {
     res.status(500).json({ message: 'Error fetching projects', error: error.message });
   }
 };
-
-
 // Restore a soft-deleted project and its associated sub-projects
 exports.restoreProject = async (req, res) => {
   try {
@@ -310,34 +332,90 @@ exports.restoreProject = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { title, description, dueDate } = req.body;
-    const userId = req.user.id; // The logged-in user's ID
+    const { title, description, dueDate, members } = req.body;
+    const userId = req.user.id;
 
-    // Check if the project exists
     const project = await Project.findById(projectId);
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ message: "Project not found" });
     }
 
-    // Check if the logged-in user is the owner or a member of the project
-    if (project.owner.toString() !== userId && !project.members.includes(userId)) {
-      return res.status(403).json({ message: 'You do not have permission to update this project' });
+    if (project.owner.toString() !== userId && !project.members.some(id => id.toString() === userId)) {
+      return res.status(403).json({ message: "You do not have permission to update this project" });
     }
 
-    // Update the project fields if provided
-    project.title = title || project.title;
-    project.description = description || project.description;
-    project.dueDate = dueDate || project.dueDate;
+    let newMembers = [];
+    let newPendingInvites = [];
+    let removedMembers = [];
 
-    // Save the updated project
+    if (title) project.title = title;
+    if (description) project.description = description;
+    if (dueDate) {
+      if (isNaN(new Date(dueDate).getTime())) {
+        return res.status(400).json({ message: "Invalid due date" });
+      }
+      project.dueDate = dueDate;
+    }
+
+    if (members !== undefined) {
+      for (const email of members) {
+        const user = await User.findOne({ email });
+        if (user) {
+          if (!project.members.some(id => id.toString() === user.id)) {
+            newMembers.push(user.id);
+          }
+        } else {
+          if (!project.pendingInvites.includes(email)) {
+            newPendingInvites.push(email);
+          }
+        }
+      }
+
+      for (const memberId of project.members) {
+        const member = await User.findById(memberId);
+        if (member && !members.includes(member.email)) {
+          removedMembers.push(memberId.toString());
+        }
+      }
+
+      const updatedPendingInvites = project.pendingInvites.filter(email => members.includes(email));
+      project.members = project.members.filter(id => !removedMembers.includes(id.toString()));
+      project.members = [...new Set([...project.members, ...newMembers])];
+      project.pendingInvites = [...new Set([...updatedPendingInvites, ...newPendingInvites])];
+    }
+
     await project.save();
 
-    res.status(200).json({ message: 'Project updated successfully', project });
+    // Update sub-projects when members are removed
+    if (removedMembers.length > 0) {
+      const subProjects = await SubProject.find({ mainProject: projectId, deletedAt: null });
+      for (const subProject of subProjects) {
+        const initialMembersLength = subProject.members.length;
+        subProject.members = subProject.members.filter(id => !removedMembers.includes(id.toString()));
+        if (subProject.members.length !== initialMembersLength) {
+          await subProject.save();
+        }
+      }
+    }
+
+    for (const email of newPendingInvites) {
+      try {
+        await sendInvitationEmail(email, projectId);
+      } catch (emailError) {
+        console.error(`Failed to send email to ${email}:`, emailError.message);
+      }
+    }
+
+    res.status(200).json({
+      message: "Project updated successfully",
+      project,
+      removedMembers,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating project', error: error.message });
+    console.error("Error updating project:", error);
+    res.status(500).json({ message: "Error updating project", error: error.message });
   }
 };
-
 
 //Create Sub Project by owner
 exports.createSubProject = async (req, res) => {
@@ -500,6 +578,32 @@ exports.updateSubProjectStatus = async (req, res) => {
   }
 };
 
+// permanent delete a sub-project under a main project
+exports.deleteSubProjectPermanent = async (req, res) => {
+  try {
+    const { mainProjectId, subProjectId } = req.params; // Get both mainProjectId, subProjectId
+    const ownerId = req.user.id;  // Get the authenticated user's ID
+
+    // Check if the sub-project exists and belongs to the main project
+    const subProject = await SubProject.findOne({ _id: subProjectId, mainProject: mainProjectId });
+
+    if (!subProject) {
+      return res.status(404).json({ message: 'Sub-project not found or does not belong to the main project' });
+    }
+
+    // Check if the logged-in user is the owner of the main project or a member of the sub-project
+    if (subProject.owner.toString() !== ownerId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this sub-project' });
+    }
+
+    await subProject.deleteOne();
+
+    res.status(200).json({ message: 'Sub-project deleted successfully', subProject });
+  } catch (error) {
+    res.status(500).json({ message: 'Error soft deleting sub-project', error: error.message });
+  }
+};
+
 // Soft delete a sub-project under a main project
 exports.deleteSubProject = async (req, res) => {
   try {
@@ -577,45 +681,105 @@ exports.restoreSubProject = async (req, res) => {
   }
 };
 
-
 // Update a sub-project under a main project
 exports.updateSubProject = async (req, res) => {
   try {
     const { mainProjectId, subProjectId } = req.params;
-    const { title, description, dueDate, status } = req.body;
-    const ownerId = req.user.id;  // The logged-in user's ID
-    const memberId = req.user.id; // The logged-in user's ID (same for both owner and member)
+    const { title, description, dueDate, status, addMembers, removeMembers } = req.body; // Use addMembers and removeMembers instead of members
+    const userId = req.user.id; // The logged-in user's ID
 
-    // Check if the sub-project exists and belongs to the main project
+    // Find the sub-project
     const subProject = await SubProject.findOne({
       _id: subProjectId,
       mainProject: mainProjectId,
     });
 
     if (!subProject) {
-      return res.status(404).json({ message: 'Sub-project not found or does not belong to the main project' });
+      return res.status(404).json({ message: "Sub-project not found or does not belong to the main project" });
     }
 
-    // Check if the logged-in user is the owner of the sub-project or a member of the sub-project
-    if (subProject.owner.toString() !== ownerId && !subProject.members.includes(ownerId)) {
-      return res.status(403).json({ message: 'You do not have permission to update this sub-project' });
+    // Check if the logged-in user is the owner or a member of the sub-project
+    if (subProject.owner.toString() !== userId && !subProject.members.some(id => id.toString() === userId)) {
+      return res.status(403).json({ message: "You do not have permission to update this sub-project" });
     }
 
-    // Update sub-project fields if provided
-    subProject.title = title || subProject.title;
-    subProject.description = description || subProject.description;
-    subProject.dueDate = dueDate || subProject.dueDate;
-    subProject.status = status || subProject.status;
+    // Find the main project to validate members
+    const mainProject = await Project.findById(mainProjectId);
+    if (!mainProject) {
+      return res.status(404).json({ message: "Main project not found" });
+    }
+
+    // Update basic sub-project fields if provided
+    if (title) subProject.title = title;
+    if (description) subProject.description = description;
+    if (dueDate) {
+      if (isNaN(new Date(dueDate).getTime())) {
+        return res.status(400).json({ message: "Invalid due date" });
+      }
+      subProject.dueDate = dueDate;
+    }
+    if (status) {
+      const validStatuses = ["To Do", "In Progress", "Completed"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+      subProject.status = status;
+    }
+
+    // Get the current main project members' IDs as strings
+    const mainProjectMemberIds = mainProject.members.map(id => id.toString());
+
+    // Process adding members if provided
+    if (Array.isArray(addMembers) && addMembers.length > 0) {
+      const newMemberIds = [];
+      for (const email of addMembers) {
+        const user = await User.findOne({ email });
+        if (!user) {
+          return res.status(400).json({ message: `User with email ${email} not found` });
+        }
+        const userIdStr = user._id.toString();
+        if (!mainProjectMemberIds.includes(userIdStr)) {
+          return res.status(400).json({
+            message: `User with email ${email} is not a member of the main project`,
+          });
+        }
+        if (!subProject.members.some(id => id.toString() === userIdStr)) {
+          newMemberIds.push(userIdStr); // Only add if not already in sub-project
+        }
+      }
+      // Add new members to the existing array
+      subProject.members = [...new Set([...subProject.members.map(id => id.toString()), ...newMemberIds])];
+    }
+
+    // Process removing members if provided
+    if (Array.isArray(removeMembers) && removeMembers.length > 0) {
+      const memberIdsToRemove = [];
+      for (const email of removeMembers) {
+        const user = await User.findOne({ email });
+        if (!user) {
+          return res.status(400).json({ message: `User with email ${email} not found` });
+        }
+        const userIdStr = user._id.toString();
+        if (subProject.members.some(id => id.toString() === userIdStr)) {
+          memberIdsToRemove.push(userIdStr); // Only remove if currently in sub-project
+        }
+      }
+      // Remove specified members from the existing array
+      subProject.members = subProject.members.filter(id => !memberIdsToRemove.includes(id.toString()));
+    }
 
     // Save the updated sub-project
     await subProject.save();
 
-    res.status(200).json({ message: 'Sub-project updated successfully', subProject });
+    res.status(200).json({
+      message: "Sub-project updated successfully",
+      subProject,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating sub-project', error: error.message });
+    console.error("Error updating sub-project:", error);
+    res.status(500).json({ message: "Error updating sub-project", error: error.message });
   }
 };
-
 exports.getSubProjectById = async (req, res) => {
   const { mainProjectId, subProjectId } = req.params;
 

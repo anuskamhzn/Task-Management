@@ -5,38 +5,55 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
 
 const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
-  const { projectId } = useParams(); // Get main project ID from the URL
+  const { projectId } = useParams();
   const [subproject, setSubproject] = useState({
     title: "",
     description: "",
     dueDate: "",
     status: "",
+    members: [],
+    newMember: "", // Consolidated into subproject state
   });
+  const [initialSubproject, setInitialSubproject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Sample email suggestions (replace with your API if available)
+  const emailSuggestions = [
+    "john.doe@example.com",
+    "jane.smith@example.com",
+    "bob.johnson@example.com",
+    "alice.wilson@example.com",
+    "mike.brown@example.com",
+  ];
+
   useEffect(() => {
     if (auth && auth.user && projectId && subProjectId) {
       fetchSubProject();
     }
-    console.log("Updated projects:", subproject); 
   }, [auth, projectId, subProjectId]);
 
   const fetchSubProject = async () => {
     if (!projectId || !subProjectId) return;
     setLoading(true);
     try {
-      // Correctly fetching subproject data with both projectId and subProjectId
       const response = await axios.get(
         `${process.env.REACT_APP_API}/api/project/subproject/${projectId}/${subProjectId}`,
         {
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-          },
+          headers: { Authorization: `Bearer ${auth.token}` },
         }
       );
       const subProjectData = response.data;
       if (subProjectData) {
-        setSubproject(subProjectData);
+        const formattedSubproject = {
+          ...subProjectData,
+          members: subProjectData.members.map((member) => member.email),
+          dueDate: subProjectData.dueDate ? subProjectData.dueDate.split("T")[0] : "",
+          newMember: "",
+        };
+        setSubproject(formattedSubproject);
+        setInitialSubproject(formattedSubproject);
       } else {
         setError("Subproject not found.");
       }
@@ -50,91 +67,154 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSubproject({ ...subproject, [name]: value });
+    if (name === "newMember") {
+      setShowDropdown(value.length > 0);
+    }
+  };
+
+  const handleAddMember = () => {
+    if (subproject.newMember && !subproject.members.includes(subproject.newMember)) {
+      setSubproject({
+        ...subproject,
+        members: [...subproject.members, subproject.newMember],
+        newMember: "",
+      });
+      setShowDropdown(false);
+    }
+  };
+
+  const handleSelectSuggestion = (email) => {
+    setSubproject({
+      ...subproject,
+      newMember: email,
+    });
+    setShowDropdown(false);
+  };
+
+  const handleRemoveMember = (email) => {
+    setSubproject({
+      ...subproject,
+      members: subproject.members.filter((member) => member !== email),
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const addMembers = subproject.members.filter(
+        (email) => !initialSubproject.members.includes(email)
+      );
+      const removeMembers = initialSubproject.members.filter(
+        (email) => !subproject.members.includes(email)
+      );
+
+      const payload = {
+        title: subproject.title,
+        description: subproject.description,
+        dueDate: subproject.dueDate,
+        status: subproject.status,
+        addMembers: addMembers.length > 0 ? addMembers : undefined,
+        removeMembers: removeMembers.length > 0 ? removeMembers : undefined,
+      };
+
       const url = `${process.env.REACT_APP_API}/api/project/update-subproject/${projectId}/${subProjectId}`;
-      const response = await axios.put(url, subproject, {
+      const response = await axios.put(url, payload, {
         headers: { Authorization: `Bearer ${auth.token}` },
-      }); 
+      });
+
+      const updatedSubproject = {
+        ...subproject,
+        ...response.data.subProject,
+        members: response.data.subProject.members.map((member) => member.email),
+        newMember: "",
+      };
+      setSubproject(updatedSubproject);
+      setInitialSubproject(updatedSubproject);
 
       setProjects((prev) =>
         prev.map((project) =>
           project._id === subProjectId ? { ...project, ...response.data.subProject } : project
         )
       );
-      
+
       toast.success("Subproject updated successfully!");
       onClose();
     } catch (err) {
-      toast.error("Error updating subproject.");
+      toast.error(err.response?.data?.message || "Error updating subproject.");
+      setSubproject(initialSubproject);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredSuggestions = emailSuggestions.filter(
+    (email) =>
+      email.toLowerCase().includes(subproject.newMember.toLowerCase()) &&
+      !subproject.members.includes(email)
+  );
+
   return (
-    <div className="w-96 bg-white rounded-2xl shadow-lg p-8 relative">
-      <button
-        className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
-        onClick={onClose}
-      >
-        ✖
-      </button>
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Edit Subproject</h2>
+    <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-800">Edit Subproject</h2>
+        <button
+          className="text-gray-500 hover:text-gray-700 text-xl font-medium"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+
       {loading ? (
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-gray-500 text-center py-4">Loading...</p>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && <p className="text-red-500 font-medium">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
               name="title"
-              value={subproject?.title || ""}
+              value={subproject.title}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              placeholder="Enter the title"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              placeholder="Enter subproject title"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               name="description"
-              value={subproject?.description || ""}
+              value={subproject.description}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              placeholder="Enter the description"
+              className="w-full border border-gray-300 rounded-md p-2 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none"
+              placeholder="Enter description"
               required
-            ></textarea>
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Due Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
             <input
               type="date"
               name="dueDate"
-              value={subproject?.dueDate ? subproject.dueDate.split("T")[0] : ""}
+              value={subproject.dueDate}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
-              value={subproject?.status || "To Do"}
+              value={subproject.status || "To Do"}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              required
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             >
               <option value="To Do">To Do</option>
               <option value="In Progress">In Progress</option>
@@ -142,10 +222,69 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
             </select>
           </div>
 
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Members</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="email"
+                name="newMember"
+                value={subproject.newMember}
+                onChange={handleChange}
+                className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="Enter email"
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                onFocus={() => setShowDropdown(subproject.newMember.length > 0)}
+              />
+              <button
+                type="button"
+                onClick={handleAddMember}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+              >
+                Add
+              </button>
+            </div>
+
+            {showDropdown && filteredSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full max-w-[calc(100%-80px)] bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                {filteredSuggestions.map((email, index) => (
+                  <div
+                    key={index}
+                    className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm text-gray-700"
+                    onMouseDown={() => handleSelectSuggestion(email)}
+                  >
+                    {email}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-gray-50">
+              {subproject.members.length === 0 ? (
+                <p className="text-gray-500 text-sm">No members added</p>
+              ) : (
+                subproject.members.map((email, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-blue-100 rounded-md p-1 mb-1"
+                  >
+                    <span className="text-blue-700 text-sm truncate flex-1">{email}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMember(email)}
+                      className="text-red-500 hover:text-red-700 ml-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 text-white py-3 px-5 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
+            className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50 transition"
           >
             {loading ? "Saving..." : "Save Changes"}
           </button>

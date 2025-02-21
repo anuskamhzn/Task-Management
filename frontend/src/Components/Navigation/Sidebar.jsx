@@ -94,11 +94,11 @@ export default function Sidebar() {
 
       {/* Sidebar Menu */}
       <ul className="flex flex-col space-y-6">
-        {['dashboard/user', 'dashboard/tasks', 'dashboard/projects', 'dashboard/messages', 'dashboard/members', 'dashboard/settings'].map((item) => {
+        {['dashboard/user', 'dashboard/tasks', 'dashboard/team_projects', 'dashboard/messages', 'dashboard/members', 'dashboard/settings'].map((item) => {
           const icons = {
             'dashboard/user': <FaHome />,
             'dashboard/tasks': <FaTasks />,
-            'dashboard/projects': <FaFileAlt />,
+            'dashboard/team_projects': <FaFileAlt />,
             'dashboard/messages': <FaEnvelope />,
             'dashboard/members': <FaUsers />,
             'dashboard/settings': <FaCog />,
@@ -106,7 +106,12 @@ export default function Sidebar() {
 
           // Extracting the last part of the path for the label
           const label = item.split('/')[1];
-          const formattedLabel = label.charAt(0).toUpperCase() + label.slice(1);
+          let formattedLabel = label.charAt(0).toUpperCase() + label.slice(1);
+
+          // Override for 'team_projects' to show 'Team Projects'
+          if (label === 'team_projects') {
+            formattedLabel = 'Team Projects';
+          }
 
           return (
             <li key={item}>
@@ -124,6 +129,7 @@ export default function Sidebar() {
           );
         })}
       </ul>
+
 
       {/* My Items Section (Combining Projects and Tasks) */}
       {/* <div className="mt-auto pt-10">

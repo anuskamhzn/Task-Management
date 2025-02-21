@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import Navbar from "../../../Components/Navigation/Navbar";
 import Sidebar from "../../../Components/Navigation/Sidebar";
 
-const CreateSubproject = () => {
+const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
   const [auth] = useAuth(); // Use authentication context
   const navigate = useNavigate();
   const { projectId } = useParams(); // Get the mainProjectId from URL
@@ -82,7 +82,11 @@ const CreateSubproject = () => {
       );
 
       toast.success("Subproject created successfully!");
-      navigate(`/dashboard/project/subproject/${projectId}`); // Redirect to subproject detail page
+      // Pass the newly created task to the parent component (Tasks)
+      if (onSubProjectCreated) {
+        onSubProjectCreated(response.data); // This updates the task list in the parent
+      }
+      onClose(); // Close modal on successful task creation
     } catch (err) {
       setError(err.response?.data?.message || "Error creating subproject.");
       console.error(err);
@@ -93,24 +97,24 @@ const CreateSubproject = () => {
 
   return (
     <div>
-      <div className="flex bg-gray-50 min-h-screen">
-        {/* Sidebar */}
-        <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
-          <Sidebar />
-        </aside>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          <Navbar />
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        {/* Modal Container */}
+        <div className="bg-white p-8 rounded-lg shadow-lg w-96 relative">
+          {/* Close Button (X) */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-xl text-gray-600 hover:text-gray-800"
+          >
+            &times;
+          </button>
 
           {/* Form Section */}
-          <div className="p-10">
             <h1 className="text-2xl font-bold mb-6">Create Subproject</h1>
 
             {/* Error Message */}
             {error && <p className="text-red-600">{error}</p>}
 
-            <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <form onSubmit={handleSubmit} >
               {/* Title */}
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">Title</label>
@@ -216,7 +220,6 @@ const CreateSubproject = () => {
           </div>
         </div>
       </div>
-    </div>
   );
 };
 

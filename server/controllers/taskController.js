@@ -72,6 +72,30 @@ exports.updateTaskStatus = async (req, res) => {
 };
 
 // Delete a main task and its associated subtasks
+exports.deleteTaskPermananet = async (req, res) => {
+  try {
+    const { mainTaskId } = req.params; // Get mainTaskId from the URL
+    const ownerId = req.user.id;  // Get the authenticated user's ID
+
+    // Find the main task
+    const mainTask = await Task.findOne({ _id: mainTaskId, owner: ownerId });
+
+    if (!mainTask) {
+      return res.status(404).json({ message: 'Main task not found or you do not have permission to delete it' });
+    }
+
+    // Soft delete the associated subtasks
+    await SubTask.deleteMany({ mainTask: mainTaskId });
+
+    // Soft delete the main task
+    await Task.deleteOne({ _id: mainTaskId });
+
+    res.status(200).json({ message: 'Main task and its subtasks moved to trash' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting main task and its subtasks', error: error.message });
+  }
+};
+
 // Soft delete a main task and its associated subtasks
 exports.deleteTask = async (req, res) => {
   try {
@@ -284,6 +308,27 @@ exports.updateSubTaskStatus = async (req, res) => {
 };
 
 // Delete a subtask for a main task
+exports.deleteSubTaskPermananet = async (req, res) => {
+  try {
+    const { mainTaskId, subTaskId } = req.params; // Get both mainTaskId and subTaskId from the URL
+    const ownerId = req.user.id; // Get the authenticated user's ID
+
+    // Check if the subtask exists and belongs to the logged-in user and the main task
+    const subTask = await SubTask.findOne({ _id: subTaskId, mainTask: mainTaskId, owner: ownerId });
+
+    if (!subTask) {
+      return res.status(404).json({ message: 'Subtask not found or you do not have permission to delete it' });
+    }
+
+    // Soft delete: Set deletedAt to the current timestamp
+    await SubTask.deleteOne({ _id: subTaskId });
+
+    res.status(200).json({ message: 'Subtask deleted', subTask });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting subtask', error: error.message });
+  }
+};
+
 // Soft delete a subtask for a main task
 exports.deleteSubTask = async (req, res) => {
   try {

@@ -6,10 +6,11 @@ import { useParams } from 'react-router-dom';
 import ModifySubproject from '../../../Pages/User/Modify/SubProjectModify';
 
 const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, setProjects, auth }) => {
-  const [openMenu, setOpenMenu] = useState(null); // Track open menu
-  const [hoveredProject, setHoveredProject] = useState(null); // Track hovered project
-  const { projectId } = useParams(); // Get the main task ID from the route params
-  const [selectedSubproject, setSelectedSubproject] = useState(null); // Track selected subproject
+  const [openMenu, setOpenMenu] = useState(null);
+  const [hoveredProject, setHoveredProject] = useState(null);
+  const { projectId } = useParams();
+  const [selectedSubproject, setSelectedSubproject] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, subProjectId: null, subProjectTitle: '' });
 
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
@@ -42,36 +43,22 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   };
 
   const handleModify = (subProjectId) => {
-    setSelectedSubproject(subProjectId); // Open modal with subproject ID
+    setSelectedSubproject(subProjectId);
+    setOpenMenu(null); // Close dropdown after selecting modify
   };
 
   const handleCloseModal = () => {
-    setSelectedSubproject(null); // Close modal
+    setSelectedSubproject(null);
   };
 
   const handleDelete = async (subProjectId) => {
-
-    // Confirmation dialog
-    const confirmDelete = window.confirm("Are you sure you want to delete this subtask?");
-
-    if (!confirmDelete) {
-      return; // If the user cancels the delete, do nothing
-    }
-
-
-    // Assuming mainTaskId is now passed correctly, we use it dynamically
     try {
-      // Make the DELETE request to the backend API
       const url = `${process.env.REACT_APP_API}/api/project/delete-subproject/${projectId}/${subProjectId}`;
-
       await axios.delete(url, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
 
-      // Update the tasks list by removing the deleted subtask
-      setProjects((prevProject) => prevProject.filter((project) => project._id !== subProjectId));
-
-      // Show a success toast notification
+      setProjects((prev) => prev.filter((project) => project._id !== subProjectId));
       toast.success("Subproject deleted successfully!");
     } catch (err) {
       console.error("Error deleting subproject:", err);
@@ -81,6 +68,20 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         toast.error("Error deleting project.");
       }
     }
+  };
+
+  const openConfirmDialog = (subProjectId, subProjectTitle) => {
+    setConfirmDialog({ isOpen: true, subProjectId, subProjectTitle });
+    setOpenMenu(null); // Close dropdown when opening confirm dialog
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({ isOpen: false, subProjectId: null, subProjectTitle: '' });
+  };
+
+  const handleConfirmDelete = () => {
+    handleDelete(confirmDialog.subProjectId);
+    closeConfirmDialog();
   };
 
   const renderUsers = (users) => {
@@ -107,16 +108,14 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         className="bg-white p-4 mb-4 rounded-lg shadow-md cursor-grab relative"
         draggable
         onDragStart={(e) => handleDragStart(e, project._id)}
-        onMouseEnter={() => setHoveredProject(project._id)} // Show menu when hovering
+        onMouseEnter={() => setHoveredProject(project._id)}
         onMouseLeave={() => {
           setHoveredProject(null);
-          setOpenMenu(null); // Close options menu as well
+          setOpenMenu(null);
         }}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{project.title}</h3>
-
-          {/* Three Dots Icon */}
           {hoveredProject === project._id && (
             <div className="relative">
               <FaEllipsisV
@@ -126,14 +125,12 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
                   setOpenMenu(openMenu === project._id ? null : project._id);
                 }}
               />
-
-              {/* Dropdown Menu */}
               {openMenu === project._id && (
                 <div
                   className="absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-md z-10"
-                  onMouseEnter={() => setHoveredProject(project._id)} // Keep open on hover
+                  onMouseEnter={() => setHoveredProject(project._id)}
                   onMouseLeave={() => {
-                    setHoveredProject(null); // Hide if mouse leaves
+                    setHoveredProject(null);
                     setOpenMenu(null);
                   }}
                 >
@@ -145,7 +142,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
                   </button>
                   <button
                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                    onClick={() => handleDelete(project._id)}
+                    onClick={() => openConfirmDialog(project._id, project.title)}
                   >
                     Delete
                   </button>
@@ -154,7 +151,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
             </div>
           )}
         </div>
-
         <p className="text-sm text-gray-600">{project.description}</p>
         <p className="text-xs text-gray-500">Due Date: {new Date(project.dueDate).toLocaleDateString()}</p>
         <div className="flex gap-2 mt-2">{renderUsers(project.members || [])}</div>
@@ -172,7 +168,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
         {toDoProjects.length === 0 ? <div>No tasks</div> : renderProjects(toDoProjects)}
       </div>
-
       <div
         className="flex-1 p-4 bg-yellow-300 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
@@ -181,7 +176,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         <h2 className="text-xl font-semibold text-center mb-4">In Progress</h2>
         {inProgressProjects.length === 0 ? <div>No tasks</div> : renderProjects(inProgressProjects)}
       </div>
-
       <div
         className="flex-1 p-4 bg-green-300 rounded-lg shadow-md"
         onDragOver={(e) => e.preventDefault()}
@@ -190,7 +184,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         <h2 className="text-xl font-semibold text-center mb-4">Completed</h2>
         {completedProjects.length === 0 ? <div>No tasks</div> : renderProjects(completedProjects)}
       </div>
-      {/* Modal for Modifying Subproject */}
       {selectedSubproject && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ModifySubproject
@@ -199,6 +192,32 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
             subProjectId={selectedSubproject}
             onClose={handleCloseModal}
           />
+        </div>
+      )}
+      {/* Custom Confirmation Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Delete Subproject</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "<span className="font-medium">{confirmDialog.subProjectTitle}</span>"?
+              <span className="block text-sm text-red-500 mt-1">This action will move the task to the trash.</span>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeConfirmDialog}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition focus:outline-none focus:ring-2 focus:ring-red-300"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
