@@ -139,6 +139,7 @@ exports.userInfo = async (req, res) => {
     }
   };
 
+
 const transporter = nodemailer.createTransport({
   service: 'Gmail', // e.g., 'Gmail', 'Yahoo', etc.
   auth: {

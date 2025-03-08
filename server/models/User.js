@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   confirmPassword : {type: String, required:true},
   phone: { type: String, required: true},
+  avatar: { type: String, default: 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg' },
+  contacts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // List of added users
   role: {
     type: String,
     default: 'User',

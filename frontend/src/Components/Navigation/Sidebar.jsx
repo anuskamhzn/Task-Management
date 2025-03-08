@@ -94,10 +94,10 @@ export default function Sidebar() {
 
       {/* Sidebar Menu */}
       <ul className="flex flex-col space-y-6">
-        {['dashboard/user', 'dashboard/tasks', 'dashboard/team_projects', 'dashboard/messages', 'dashboard/members', 'dashboard/settings'].map((item) => {
+        {['dashboard/user', 'dashboard/my_tasks', 'dashboard/team_projects', 'dashboard/messages', 'dashboard/members', 'dashboard/settings'].map((item) => {
           const icons = {
             'dashboard/user': <FaHome />,
-            'dashboard/tasks': <FaTasks />,
+            'dashboard/my_tasks': <FaTasks />,
             'dashboard/team_projects': <FaFileAlt />,
             'dashboard/messages': <FaEnvelope />,
             'dashboard/members': <FaUsers />,
@@ -111,6 +111,10 @@ export default function Sidebar() {
           // Override for 'team_projects' to show 'Team Projects'
           if (label === 'team_projects') {
             formattedLabel = 'Team Projects';
+          }
+          // Override for 'team_projects' to show 'Team Projects'
+          if (label === 'my_tasks') {
+            formattedLabel = 'My Tasks';
           }
 
           return (

@@ -19,7 +19,7 @@ import AdminRoutes from './Components/Routes/AdminRoute';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
 import Tasks from './Pages/User/Tasks/Tasks';
 import Projects from './Pages/User/Projects/Projects';
-import Test from './Pages/User/Test';
+import Message from './Pages/User/Message';
 import TaskTrash from './Pages/User/Tasks/Trash';
 import SubtaskTrash from './Pages/User/Tasks/SubtaskTrash';
 import SubprojectTrash from './Pages/User/Projects/SubprojectTrash';
@@ -46,13 +46,13 @@ const App = () => {
           <Route path="create" element={<CreateProject />} />
           <Route path="project/subproject/:projectId" element={<Project />} />
           <Route path="create-project/:projectId" element={<CreateSubproject />} />
-          <Route path="tasks" element={<Tasks />} />
+          <Route path="my_tasks" element={<Tasks />} />
           <Route path="trash" element={<TaskTrash />} />
           <Route path="subtask-trash/:mainTaskId" element={<SubtaskTrash />} />
           <Route path="team_projects" element={<Projects />} />
           <Route path="projectTrash" element={<ProjectTrash />} />
           <Route path="subproject-trash/:mainTaskId" element={<SubprojectTrash />} />
-          <Route path="messages" element={<Test />} />
+          <Route path="messages" element={<Message />} />
         </Route>
 
         {/* Admin Routes */}

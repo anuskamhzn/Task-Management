@@ -28,7 +28,7 @@ const isAdmin = async (req, res, next) => {
         message: "Unauthorized Access: User not found",
       });
     }
-    if (user.role !== 1) {
+    if (user.role !== 'Admin') {
       return res.status(401).send({
         success: false,
         message: "Unauthorized Access: Admin privileges required",
