@@ -13,6 +13,7 @@ const socketController = require('./controllers/socketController'); // Import so
 const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken'); // For token verification
+const formidable = require('express-formidable'); // For token verification
 
 const app = express();
 
@@ -80,6 +81,9 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
+
+// Middleware to parse form-data
+app.use(formidable());
 
 const PORT = process.env.PORT || 5000;
 

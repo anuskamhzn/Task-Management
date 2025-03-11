@@ -29,8 +29,6 @@ exports.createTask = async (req, res) => {
     res.status(500).json({ message: 'Error creating task', error: error.message });
   }
 };
-
-
 // Get all tasks for an individual (owner) excluding soft-deleted ones
 exports.getTasksByOwner = async (req, res) => {
   try {

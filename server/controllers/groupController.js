@@ -1,7 +1,9 @@
 // controllers/groupChatController.js
 const Group = require('../models/GroupChat');
 const Message = require('../models/Message');
+const GrpMsg = require('../models/GrpMsg');
 const User = require('../models/User');
+const fs = require('fs');
 
 exports.createGroup = async (req, res) => {
   try {
@@ -89,26 +91,106 @@ exports.addMemberToGroup = async (req, res) => {
   }
 };
 
+// exports.sendGroupMessage = async (req, res) => {
+//   try {
+//     const { groupId, content } = req.body;
+    
+//     const group = await Group.findById(groupId);
+//     if (!group || !group.members.includes(req.user.id)) {
+//       return res.status(403).json({ message: 'Unauthorized' });
+//     }
+
+//     const message = new Message({
+//       sender: req.user.id,
+//       group: groupId,
+//       content
+//     });
+
+//     await message.save();
+//     res.status(200).json({ success: true, message });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: 'Error sending message' });
+//   }
+// };
+
 exports.sendGroupMessage = async (req, res) => {
   try {
-    const { groupId, content } = req.body;
-    
+    const userId = req.user.id;
+    const { groupId, content } = req.fields || {};
+    const file = req.files?.file; // Uploaded file
+    const photo = req.files?.photo; // Uploaded photo
+
+
+    // Validation
+    if (!groupId) {
+      return res.status(400).json({ success: false, message: 'Group ID is required' });
+    }
+
     const group = await Group.findById(groupId);
     if (!group || !group.members.includes(req.user.id)) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    const message = new Message({
-      sender: req.user.id,
+    const messageData = {
+      sender: userId,
       group: groupId,
-      content
-    });
+      content: content || "", // Default to empty string if no content
+      type: "text",
+    };
 
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+    // Handle photo upload
+    if (photo) {
+      try {
+        const photoData = fs.readFileSync(photo.path);
+        if (photoData.length > MAX_SIZE) {
+          return res.status(400).json({ success: false, message: "Photo exceeds 10MB limit" });
+        }
+        messageData.photo = {
+          data: photoData,
+          contentType: photo.type,
+        };
+        messageData.type = "photo";
+      } catch (err) {
+        return res.status(500).json({ success: false, message: "Error reading photo file" });
+      } finally {
+        fs.unlink(photo.path, (err) => {
+          if (err) console.error("Error deleting temp photo file:", err);
+        });
+      }
+    }
+
+    // Handle file upload
+    if (file) {
+      try {
+        const fileData = fs.readFileSync(file.path);
+        if (fileData.length > MAX_SIZE) {
+          return res.status(400).json({ success: false, message: "File exceeds 10MB limit" });
+        }
+        messageData.file = {
+          data: fileData,
+          contentType: file.type,
+          fileName: file.name,
+        };
+        messageData.type = "file";
+      } catch (err) {
+        return res.status(500).json({ success: false, message: "Error reading file" });
+      } finally {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error("Error deleting temp file:", err);
+        });
+      }
+    }
+
+    const message = new GrpMsg(messageData);
     await message.save();
+
     res.status(200).json({ success: true, message });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Error sending message' });
+    console.error('Error sending group message:', error);
+    res.status(500).json({ success: false, message: 'Error sending message', error: error.message });
   }
 };
 
@@ -121,7 +203,7 @@ exports.getGroupMessages = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    const messages = await Message.find({ group: groupId })
+    const messages = await GrpMsg.find({ group: groupId })
       .populate('sender', 'username')
       .sort({ timestamp: 1 });
 

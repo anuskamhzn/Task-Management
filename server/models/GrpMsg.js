@@ -61,4 +61,4 @@ messageSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Message', messageSchema);
+module.exports = mongoose.model('GrpMsg', messageSchema);
