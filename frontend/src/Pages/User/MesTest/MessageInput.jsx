@@ -10,6 +10,9 @@ const MessageInput = ({
   handleSendMessage,
   photoPreviewUrl,
   setPhotoPreviewUrl,
+  replyToMessageId,
+  setReplyToMessageId,
+  messages,
 }) => {
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
 
@@ -22,7 +25,7 @@ const MessageInput = ({
   };
 
   const handlePhotoChange = (e) => {
-    const selectedPhoto = e?.target?.files?.[0]; // Defensive check for e, e.target, and e.target.files
+    const selectedPhoto = e?.target?.files?.[0];
     if (selectedPhoto) {
       setPhoto(selectedPhoto);
       const reader = new FileReader();
@@ -36,6 +39,23 @@ const MessageInput = ({
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      {/* Reply Context UI */}
+      {replyToMessageId && (
+        <div className="bg-gray-100 p-2 rounded-lg mb-2 flex justify-between items-center border-l-4 border-blue-500">
+          <span className="text-sm text-gray-700 truncate max-w-[80%]">
+            Replying to: {messages?.find(m => m._id === replyToMessageId)?.content || 'Message'}
+          </span>
+          <button
+            onClick={() => setReplyToMessageId(null)}
+            className="text-red-500 hover:text-red-700 text-xs font-medium ml-2"
+            aria-label="Cancel reply"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Attachment Preview */}
       {(photo || file) && (
         <div className="mb-3 flex flex-wrap gap-2">
           {photo && photoPreviewUrl && (
@@ -68,6 +88,8 @@ const MessageInput = ({
           )}
         </div>
       )}
+
+      {/* Input Area */}
       <div className="relative flex items-center space-x-3">
         <button
           onClick={() => setShowAttachmentOptions(!showAttachmentOptions)}
@@ -99,7 +121,7 @@ const MessageInput = ({
             }
           }}
           className="flex-1 p-3 rounded-lg border border-gray-300 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Type a message..."
+          placeholder={replyToMessageId ? "Type your reply..." : "Type a message..."}
           aria-label="Message input"
         />
         <button
@@ -136,7 +158,7 @@ const MessageInput = ({
               <input
                 type="file"
                 accept="image/*"
-                onChange={handlePhotoChange} // Pass the entire event object
+                onChange={handlePhotoChange}
                 className="hidden"
                 aria-label="Upload photo"
               />

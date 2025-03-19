@@ -1,4 +1,4 @@
-import { FaHome, FaTasks, FaFileAlt, FaEnvelope, FaUsers, FaCog } from 'react-icons/fa';
+import { FaHome, FaTasks, FaFileAlt, FaEnvelope, FaUsers, FaColumns , FaCog } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import axios from 'axios';
@@ -94,13 +94,15 @@ export default function Sidebar() {
 
       {/* Sidebar Menu */}
       <ul className="flex flex-col space-y-6">
-        {['dashboard/user', 'dashboard/my_tasks', 'dashboard/team_projects', 'dashboard/messages', 'dashboard/members', 'dashboard/settings'].map((item) => {
+        {/* {['dashboard/user', 'dashboard/my_tasks', 'dashboard/team_projects', 'dashboard/messages', 'dashboard/members', 'dashboard/settings'].map((item) => { */}
+        {['dashboard/user',  'dashboard/kanban', 'dashboard/my_tasks', 'dashboard/team_projects', 'dashboard/messages', 'dashboard/settings'].map((item) => {
           const icons = {
             'dashboard/user': <FaHome />,
+            'dashboard/kanban': <FaColumns  />,
             'dashboard/my_tasks': <FaTasks />,
             'dashboard/team_projects': <FaFileAlt />,
             'dashboard/messages': <FaEnvelope />,
-            'dashboard/members': <FaUsers />,
+            // 'dashboard/members': <FaUsers />,
             'dashboard/settings': <FaCog />,
           };
 

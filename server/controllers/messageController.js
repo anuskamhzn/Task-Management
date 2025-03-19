@@ -3,26 +3,6 @@ const User = require('../models/User');
 const Project = require('../models/Project');
 const fs = require('fs');                      // File System module to handle file saving
 
-// Send private message
-// exports.sendPrivateMessage = async (req, res) => {
-//   try {
-//     const userId = req.user.id; // From auth middleware
-//     const { recipientId, content } = req.body; // sender's message content and recipient ID
-
-//     const message = new Message({
-//       sender: userId,
-//       recipient: recipientId,
-//       content,
-//     });
-//     await message.save();
-
-//     res.status(200).json({ success: true, message });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ success: false, message: 'Error sending message', error });
-//   }
-// };
-
 exports.sendPrivateMessage = async (req, res) => {
   try {
     const userId = req.user.id; // Sender's ID from auth middleware
@@ -126,23 +106,219 @@ exports.sendProjectMessage = async (req, res) => {
   }
 };
 
+// In your message controller file
+exports.sendPrivateMessageReply = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { recipientId, content, parentMessageId } = req.fields || {};
+    const file = req.files?.file;
+    const photo = req.files?.photo;
+
+    if (!recipientId) return res.status(400).json({ success: false, message: "Recipient ID is required" });
+    if (!parentMessageId) return res.status(400).json({ success: false, message: "Parent message ID is required" });
+    if (!content && !photo && !file) {
+      return res.status(400).json({ success: false, message: "Message must contain text, a photo, or a file" });
+    }
+
+    const parentMessage = await Message.findById(parentMessageId);
+    if (!parentMessage) return res.status(404).json({ success: false, message: "Parent message not found" });
+
+    const isSenderOrRecipient = (
+      (parentMessage.sender.toString() === userId && parentMessage.recipient.toString() === recipientId) ||
+      (parentMessage.sender.toString() === recipientId && parentMessage.recipient.toString() === userId)
+    );
+    if (!isSenderOrRecipient) {
+      return res.status(403).json({ success: false, message: "Parent message is not part of this conversation" });
+    }
+
+    const messageData = {
+      sender: userId,
+      recipient: recipientId,
+      content: content || "",
+      type: "text",
+      replies: [parentMessageId], // Consistent naming
+    };
+
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (photo) {
+      const photoData = fs.readFileSync(photo.path);
+      if (photoData.length > MAX_SIZE) return res.status(400).json({ success: false, message: "Photo exceeds 10MB limit" });
+      messageData.photo = { data: photoData, contentType: photo.type };
+      messageData.type = "photo";
+      fs.unlinkSync(photo.path);
+    } else if (file) {
+      const fileData = fs.readFileSync(file.path);
+      if (fileData.length > MAX_SIZE) return res.status(400).json({ success: false, message: "File exceeds 10MB limit" });
+      messageData.file = { data: fileData, contentType: file.type, fileName: file.name };
+      messageData.type = "file";
+      fs.unlinkSync(file.path);
+    }
+
+    const message = new Message(messageData);
+    await message.save();
+
+    await Message.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
+
+    const populatedMessage = await Message.findById(message._id)
+      .populate('sender', 'username')
+      .populate('recipient', 'username');
+
+    res.status(200).json({ success: true, message: populatedMessage });
+  } catch (error) {
+    console.error("Error sending reply:", error);
+    res.status(500).json({ success: false, message: "Error sending reply", error: error.message });
+  }
+};
+
 // Get private message history
+// exports.getPrivateMessages = async (req, res) => {
+//   try {
+//     const userId = req.user.id; // From auth middleware
+//     const recipientId = req.params.recipientId;
+
+//     const messages = await Message.find({
+//       $or: [
+//         { sender: userId, recipient: recipientId },
+//         { sender: recipientId, recipient: userId },
+//       ],
+//     })
+//       .populate('sender', 'username')
+//       .populate('recipient', 'username') // Ensure recipient is populated properly
+//       .sort({ timestamp: 1 });
+
+//     res.status(200).json({ success: true, messages });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: 'Error fetching messages', error });
+//   }
+// };
+
+// Delete private message (updated to handle replies)
+exports.deletePrivateMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { messageId } = req.body;
+
+    if (!messageId) {
+      return res.status(400).json({ success: false, message: 'No message ID provided' });
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+    if (message.sender.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own messages' });
+    }
+    if (message.deletedAt) {
+      return res.status(400).json({ success: false, message: 'Message already deleted' });
+    }
+
+    // Soft delete the message
+    message.deletedAt = new Date();
+    await message.save();
+
+    // If this message is a reply, remove it from the parent's replies array
+    if (message.replies && message.replies.length > 0) {
+      const parentMessageId = message.replies[0];
+      await Message.findByIdAndUpdate(parentMessageId, {
+        $pull: { replies: messageId },
+      });
+    }
+
+    res.status(200).json({ success: true, message: 'Message deleted', messageId });
+  } catch (error) {
+    console.error('Error deleting private message:', error);
+    res.status(500).json({ success: false, message: 'Error deleting private message', error: error.message });
+  }
+};
+
+// Edit private message
+exports.editPrivateMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { messageId, content } = req.fields || {};
+
+    if (!messageId) {
+      return res.status(400).json({ success: false, message: 'No message ID provided' });
+    }
+    if (!content || content.trim() === "") {
+      return res.status(400).json({ success: false, message: 'New content cannot be empty' });
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+    if (message.sender.toString() !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only edit your own messages' });
+    }
+    if (message.deletedAt) {
+      return res.status(400).json({ success: false, message: 'Cannot edit a deleted message' });
+    }
+    if (message.type !== 'text') {
+      return res.status(400).json({ success: false, message: 'Only text messages can be edited' });
+    }
+
+    message.content = content;
+    message.updatedAt = new Date(); // Optional: track edit time
+    await message.save();
+
+    const populatedMessage = await Message.findById(messageId)
+      .populate('sender', 'username')
+      .populate('recipient', 'username');
+
+    res.status(200).json({ success: true, message: populatedMessage });
+  } catch (error) {
+    console.error('Error editing message:', error);
+    res.status(500).json({ success: false, message: 'Error editing message', error: error.message });
+  }
+};
+
+// Update getPrivateMessages to include replies
 exports.getPrivateMessages = async (req, res) => {
   try {
-    const userId = req.user.id; // From auth middleware
+    const userId = req.user.id;
     const recipientId = req.params.recipientId;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
 
     const messages = await Message.find({
       $or: [
         { sender: userId, recipient: recipientId },
         { sender: recipientId, recipient: userId },
       ],
+      // deletedAt: null,
     })
       .populate('sender', 'username')
-      .populate('recipient', 'username') // Ensure recipient is populated properly
-      .sort({ timestamp: 1 });
+      .populate('recipient', 'username')
+      .populate({
+        path: 'replies',
+        populate: { path: 'sender', select: 'username' },
+      })
+      .sort({ timestamp: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
-    res.status(200).json({ success: true, messages });
+    const totalMessages = await Message.countDocuments({
+      $or: [
+        { sender: userId, recipient: recipientId },
+        { sender: recipientId, recipient: userId },
+      ],
+      // deletedAt: null,
+    });
+    const totalPages = Math.ceil(totalMessages / limit);
+
+    res.status(200).json({
+      success: true,
+      messages,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalMessages,
+        limit: parseInt(limit),
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Error fetching messages', error });

@@ -25,6 +25,10 @@ import TaskTrash from './Pages/User/Tasks/Trash';
 import SubtaskTrash from './Pages/User/Tasks/SubtaskTrash';
 import SubprojectTrash from './Pages/User/Projects/SubprojectTrash';
 import ProjectTrash from './Pages/User/Projects/ProjectTrash';
+import Setting from './Pages/User/Setting';
+import UserInfom from './Pages/User/MesTest/UserInfo/UserInfo';
+import Notifications from './Pages/User/Notifications';
+import KanbanUser from './Pages/User/Kanban';
 
 const App = () => {
   return (
@@ -53,7 +57,11 @@ const App = () => {
           <Route path="team_projects" element={<Projects />} />
           <Route path="projectTrash" element={<ProjectTrash />} />
           <Route path="subproject-trash/:mainTaskId" element={<SubprojectTrash />} />
+          <Route path="userInfom/:userId" element={<UserInfom />} />
           <Route path="messages" element={<Message />} />
+          <Route path="settings" element={<Setting />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="kanban" element={<KanbanUser />} />
         </Route>
 
         {/* Admin Routes */}

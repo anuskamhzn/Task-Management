@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, userInfo, forgotPassword, resetPassword, users } = require('../controllers/authController');
+const { register, login, userInfo, forgotPassword, resetPassword, userInfoById } = require('../controllers/authController');
 const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -12,6 +12,7 @@ router.post('/reset-password', resetPassword);
 
 // Protected Routes
 router.get('/user-info',authenticate,userInfo); // Protect user info route
+router.get('/user-info/:userId',userInfoById); // Protect user info route
 
 // Authentication Check Routes
 router.get('/user-auth', authenticate, (req, res) => {

@@ -25,10 +25,10 @@ const messageSchema = new mongoose.Schema({
   isRead: { type: Boolean, default: false }, // Track if the message is read
 
   // Message Type (Text, Photo, File)
-  type: { 
-    type: String, 
-    enum: ['text', 'photo', 'file'], 
-    default: 'text' 
+  type: {
+    type: String,
+    enum: ['text', 'photo', 'file'],
+    default: 'text'
   },
 
   // Message Reactions (Emoji-based)
@@ -39,12 +39,14 @@ const messageSchema = new mongoose.Schema({
 
   // Message Replies (Threaded messages)
   replies: [{
-    type: mongoose.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Message' // Self-referencing message model for replies
   }],
+  parentMessageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null }, // Add this field
 
-  // Soft Delete Feature
-  deletedAt: { type: Date, default: null } // Set to Date when deleted
+  updatedAt: { type: Date, default: null }, // Add this to track edits
+  deletedAt: { type: Date, default: null }, // Set to Date when deleted soft delete
+  isEdited: { type: Boolean, default: false } // Added to track edits
 });
 
 // Indexing for faster lookups (especially for chat history)
@@ -54,7 +56,7 @@ messageSchema.index({ group: 1 });
 messageSchema.index({ timestamp: -1 });
 
 // Ensure at least one of recipient, project, or group is set
-messageSchema.pre('save', function(next) {
+messageSchema.pre('save', function (next) {
   if (!this.recipient && !this.project && !this.group) {
     return next(new Error('Message must belong to a recipient, project, or group.'));
   }

@@ -5,10 +5,13 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { useAuth } from '../../../context/auth';
 import AddGroupMembers from './AddGroupMembers';
-import PrivateChat from './PrivateChat';
-import GroupChat from './GroupChat';
 import MessageDisplay from './MessageDisplay';
 import MessageInput from './MessageInput';
+import { NavLink } from 'react-router-dom';
+import UserInfom from '../../User/MesTest/UserInfo/UserInfo';
+import Manage from '../../User/MesTest/GroupManage/Manage';
+import ChatList from '../../User/MesTest/ChatList';
+import toast from 'react-hot-toast'; // Import react-hot-toast
 
 let socket;
 
@@ -33,6 +36,9 @@ const Message = () => {
   const messagesEndRef = useRef(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
+  const [replyToMessageId, setReplyToMessageId] = useState(null);
+  const [showUserInfoSidebar, setShowUserInfoSidebar] = useState(false); // Toggle for sidebar
+  const [showGroupInfoSidebar, setShowGroupInfoSidebar] = useState(false); // New state for group sidebar
 
   const arrayBufferToBase64 = (buffer) => {
     const bytes = new Uint8Array(buffer);
@@ -69,6 +75,24 @@ const Message = () => {
       setPhotoPreviewUrl(null);
     }
     if (type === 'file') setFile(null);
+  };
+
+  const fetchMessages = async (chatId, type) => {
+    try {
+      const endpoint =
+        type === 'group'
+          ? `${process.env.REACT_APP_API}/api/group-chat/messages/${chatId}`
+          : `${process.env.REACT_APP_API}/api/message/private/${chatId}`;
+      const response = await axios.get(endpoint, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const sortedMessages = (response.data.messages || []).sort((a, b) =>
+        new Date(a.timestamp) - new Date(b.timestamp)
+      );
+      setMessages(sortedMessages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
   };
 
   useEffect(() => {
@@ -109,6 +133,14 @@ const Message = () => {
           avatar: user.avatar || 'https://example.com/default-avatar.jpg',
         }));
         setUsers(mappedUsers);
+        // Simulate a large number of users
+        // const mockUsers = Array.from({ length: 20 }, (_, i) => ({
+        //   id: i.toString(),
+        //   username: `User ${i + 1}`,
+        //   email: `user${i + 1}@example.com`,
+        //   avatar: 'https://example.com/default-avatar.jpg',
+        // }));
+        // setUsers(mockUsers);
       } catch (error) {
         console.error('Error fetching users:', error);
       }
@@ -123,6 +155,7 @@ const Message = () => {
           id: group._id,
           name: group.name,
           avatar: 'https://example.com/default-group-avatar.jpg',
+          members: group.members || [], // Include members initially
         }));
         setGroups(mappedGroups);
       } catch (error) {
@@ -146,20 +179,14 @@ const Message = () => {
 
   useEffect(() => {
     if (socket && currentUser?._id && currentChat) {
-      // Force re-join the room even for the same chat to ensure messages are updated
       if (chatType === 'group') {
         socket.emit('joinGroupRoom', currentChat.id);
         socket.on('joinedRoom', ({ groupId }) => {
           // console.log(`Joined group room: ${groupId}`);
-          // Optionally fetch historical messages here if supported by your backend
-          // Example: fetchMessages(currentChat.id, chatType);
         });
-      } else if (chatType === 'private') {
-        // For private chats, you might need to emit a join event if your backend requires it
-        // socket.emit('joinPrivateRoom', { userId: currentChat.id, myId: currentUser._id });
       }
 
-      socket.on('newMessage', (message) => {
+      const handleNewMessage = (message) => {
         // console.log('Received new message on frontend:', message);
         const senderId = message.sender?._id || (message.sender && message.sender.toString());
         const groupId = message.group?._id || (message.group && message.group.toString());
@@ -169,19 +196,126 @@ const Message = () => {
           const isDuplicate = prev.some((msg) => msg._id === message._id);
           if (isDuplicate) return prev;
 
+          let updatedMessages = [...prev];
+
+          // Add the new message (reply or regular)
           if (chatType === 'private') {
             if (
               (senderId === currentUser?._id && recipientId === currentChat?.id) ||
               (senderId === currentChat?.id && recipientId === currentUser?._id)
             ) {
-              return [...prev, message];
+              updatedMessages.push(message);
             }
           } else if (chatType === 'group' && groupId && groupId === currentChat?.id) {
-            return [...prev, message];
+            updatedMessages.push(message);
           }
-          return prev;
+
+          // Sort messages by timestamp ascending
+          return updatedMessages.sort((a, b) =>
+            new Date(a.timestamp) - new Date(b.timestamp)
+          );
         });
+      };
+
+      // Handle message deletion
+      // const handleMessageDeleted = ({ messageId }) => {
+      //   setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+      // };
+
+      const handleMessageDeleted = (updatedMessage) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === updatedMessage._id ? { ...msg, ...updatedMessage } : msg
+          )
+        );
+      };
+
+      // Handle message edited
+      const handleMessageEdited = (updatedMessage) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === updatedMessage._id ? { ...msg, ...updatedMessage } : msg
+          )
+        );
+      };
+
+      // Handle group-specific Socket.IO events
+      socket.on('memberAdded', (data) => {
+        // console.log('Member added event:', data); // Debug log
+        setGroups((prev) =>
+          prev.map((group) =>
+            group.id === data.groupId
+              ? { ...group, members: [...(group.members || []), ...data.newMembers] }
+              : group
+          )
+        );
+        // Force re-render of Manage component by triggering a re-fetch
+        if (showGroupInfoSidebar && currentChat.id === data.groupId) {
+          setShowGroupInfoSidebar(false);
+          setTimeout(() => setShowGroupInfoSidebar(true), 0); // Toggle to force re-render
+        }
       });
+
+      socket.on('memberRemoved', (data) => {
+        setGroups((prev) =>
+          prev.map((group) =>
+            group.id === data.groupId
+              ? {
+                ...group,
+                members: (group.members || []).filter((m) => m._id !== data.memberId),
+              }
+              : group
+          )
+        );
+      });
+
+      socket.on('memberQuit', (data) => {
+        // console.log('Member quit event:', data); // Debug log
+        if (data.memberId === currentUser._id) {
+          // If the current user quit, remove the group from their list
+          setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
+          setCurrentChat(null);
+          setChatType(null);
+          setMessages([]);
+          setShowGroupInfoSidebar(false);
+        } else {
+          // If another member quit, update the member list
+          setGroups((prev) =>
+            prev.map((group) =>
+              group.id === data.groupId
+                ? {
+                  ...group,
+                  members: (group.members || []).filter((m) => m._id !== data.memberId),
+                }
+                : group
+            )
+          );
+          // Force re-render of Manage.jsx if sidebar is open
+          if (showGroupInfoSidebar && currentChat.id === data.groupId) {
+            setShowGroupInfoSidebar(false);
+            setTimeout(() => setShowGroupInfoSidebar(true), 0);
+          }
+        }
+      });
+
+      socket.on('groupDeleted', (data) => {
+        console.log('Group deleted event:', data); // Debug log
+        setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
+        if (currentChat?.id === data.groupId) {
+          setCurrentChat(null);
+          setChatType(null);
+          setMessages([]);
+          setShowGroupInfoSidebar(false);
+        }
+      });
+
+      socket.on('newMessage', handleNewMessage);
+      socket.on('newMessageReply', handleNewMessage);
+      socket.on('newGroupMessageReply', handleNewMessage);
+      socket.on('messageDeleted', handleMessageDeleted);
+      socket.on('groupMessageDeleted', handleMessageDeleted);
+      socket.on('messageEdited', handleMessageEdited);
+      socket.on('groupMessageEdited', handleMessageEdited);
 
       socket.on('error', (error) => {
         console.error('Socket error:', error);
@@ -189,9 +323,19 @@ const Message = () => {
       });
 
       return () => {
-        socket.off('newMessage');
+        socket.off('newMessage', handleNewMessage);
+        socket.off('newMessageReply', handleNewMessage);
+        socket.off('newGroupMessageReply', handleNewMessage);
+        socket.off('messageDeleted', handleMessageDeleted);
+        socket.off('groupMessageDeleted', handleMessageDeleted);
+        socket.off('messageEdited', handleMessageEdited);
+        socket.off('groupMessageEdited', handleMessageEdited);
         socket.off('error');
         socket.off('joinedRoom');
+        socket.off('memberAdded');
+        socket.off('memberRemoved');
+        socket.off('memberQuit');
+        socket.off('groupDeleted');
       };
     }
   }, [currentUser, currentChat, chatType]);
@@ -200,20 +344,40 @@ const Message = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleUserInfoClick = (e) => {
+    e.preventDefault();
+    setShowUserInfoSidebar(!showUserInfoSidebar); // Toggle the sidebar visibility
+  };
+
+  const handleCloseUserInfo = () => {
+    setShowUserInfoSidebar(false); // Close the sidebar
+  };
+
+  const handleGroupInfoClick = (e) => {
+    e.preventDefault();
+    setShowGroupInfoSidebar(!showGroupInfoSidebar); // Toggle group sidebar
+  };
+
+  const handleCloseGroupInfo = () => {
+    setShowGroupInfoSidebar(false); // Close group sidebar
+  };
+
   const handleChatClick = (chat, type) => {
-    // Force a re-render or re-join by checking if the chat is the same
-    if (currentChat && currentChat.id === chat.id) {
-      // If the same chat is clicked, clear messages and re-set to trigger useEffect
+    if (currentChat && currentChat?.id === chat?.id) {
       setMessages([]);
-      setCurrentChat(null); // Temporarily unset to force re-render
+      setCurrentChat(null);
+      setShowUserInfoSidebar(false); // Close sidebar when switching chats
       setTimeout(() => {
         setCurrentChat(chat);
         setChatType(type);
+        fetchMessages(chat?.id, type);
       }, 0);
     } else {
       setCurrentChat(chat);
       setChatType(type);
-      setMessages([]); // Clear messages for new chat
+      setMessages([]);
+      setShowUserInfoSidebar(false); // Close sidebar when switching chats
+      fetchMessages(chat?.id, type);
     }
   };
 
@@ -221,51 +385,85 @@ const Message = () => {
     if ((!messageInput.trim() && !photo && !file) || !currentChat || !socket) return;
 
     try {
-      if (chatType === 'private') {
-        const payload = { recipientId: currentChat.id };
-        if (messageInput.trim()) payload.content = messageInput;
-        if (photo) {
-          payload.photo = {
-            data: await fileToBase64(photo),
-            contentType: photo.type,
-          };
-        }
-        if (file) {
-          payload.file = {
-            data: await fileToBase64(file),
-            contentType: file.type,
-            fileName: file.name,
-          };
-        }
-        socket.emit('sendPrivateMessage', payload);
-      } else if (chatType === 'group') {
-        const payload = { groupId: currentChat.id };
-        if (messageInput.trim()) payload.content = messageInput;
-        if (photo) {
-          payload.photo = {
-            data: await fileToBase64(photo),
-            contentType: photo.type,
-          };
-        }
-        if (file) {
-          payload.file = {
-            data: await fileToBase64(file),
-            contentType: file.type,
-            fileName: file.name,
-          };
-        }
-        socket.emit('sendGroupMessage', payload);
+      const payload = chatType === 'group' ? { groupId: currentChat.id } : { recipientId: currentChat.id };
+      if (messageInput.trim()) payload.content = messageInput;
+      if (photo) {
+        payload.photo = {
+          data: await fileToBase64(photo),
+          contentType: photo.type,
+        };
       }
+      if (file) {
+        payload.file = {
+          data: await fileToBase64(file),
+          contentType: file.type,
+          fileName: file.name,
+        };
+      }
+
+      if (replyToMessageId) {
+        payload.parentMessageId = replyToMessageId;
+      }
+      const MAX_SIZE = 7.5 * 1024 * 1024; // 7.5MB to account for Base64 overhead
+
+      if (photo && photo.size > MAX_SIZE) {
+        console.log('Photo exceeds limit:', photo.size, '>', MAX_SIZE);
+        toast.error('Photo exceeds 7.5MB limit');
+        return;
+      }
+      if (file && file.size > MAX_SIZE) {
+        console.log('File exceeds limit:', file.size, '>', MAX_SIZE);
+        toast.error('File exceeds 7.5MB limit');
+        return;
+      }
+
+      // if (chatType === 'private') {
+      //   socket.emit(replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage', payload);
+      // } else if (chatType === 'group') {
+      //   socket.emit(replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage', payload);
+      // }
+
+      // Emit the message via socket and listen for response
+      const event = chatType === 'private'
+        ? (replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage')
+        : (replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage');
+
+      socket.emit(event, payload, (response) => {
+        if (response && !response.success) {
+          // Display error from backend using toast
+          toast.error(response.message || 'Failed to send message');
+        }
+      });
 
       setMessageInput('');
       setPhoto(null);
       setFile(null);
       setPhotoPreviewUrl(null);
       setShowAttachmentOptions(false);
+      setReplyToMessageId(null);
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message');
+      toast.error('Failed to send message');
     }
+  };
+
+  const handleReply = (messageId) => {
+    setReplyToMessageId(messageId);
+  };
+
+  // Add handler functions for edit and delete
+  const handleDeleteMessage = (messageId) => {
+    if (!socket || !currentChat) return;
+
+    const event = chatType === 'group' ? 'deleteGroupMessage' : 'deletePrivateMessage';
+    socket.emit(event, { messageId });
+  };
+
+  const handleEditMessage = (messageId, newContent) => {
+    if (!socket || !currentChat || !newContent.trim()) return;
+
+    const event = chatType === 'group' ? 'editGroupMessage' : 'editPrivateMessage';
+    socket.emit(event, { messageId, content: newContent });
   };
 
   return (
@@ -277,78 +475,73 @@ const Message = () => {
         <div className="flex-1 flex flex-col">
           <Navbar />
           <div className="flex flex-1 overflow-hidden">
-            <aside className="w-64 bg-gray-100 text-gray-900 p-4 shrink-0 border-r border-gray-200">
-              <div className="flex justify-between items-center mb-4">
-                <h2
-                  className="text-xl font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => { handleChatClick(null, null); setMessages([]); }}
-                  title="Reset to initial state"
-                >
-                  Chats
-                </h2>
-                <div className="flex space-x-2">
-                  <button
-                    className="text-white bg-blue-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-                    onClick={() => setShowAddUserModal(true)}
-                    title="Add User"
-                    aria-label="Add User"
-                  >
-                    + User
-                  </button>
-                  <button
-                    className="text-white bg-green-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-green-700 transition-colors shadow-sm"
-                    onClick={() => setShowAddGroupModal(true)}
-                    title="Add Group"
-                    aria-label="Add Group"
-                  >
-                    + Group
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {users.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No users available</p>
-                ) : (
-                  <>
-                    <PrivateChat
-                      users={users}
-                      currentChat={currentChat}
-                      chatType={chatType}
-                      handleChatClick={handleChatClick}
-                      setMessages={setMessages}
-                      socket={socket}
-                      token={auth.token}
-                      currentUser={currentUser}
-                    />
-                  </>
-                )}
-                <hr className="border-gray-300 my-4" />
-                {groups.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No groups available</p>
-                ) : (
-                  <>
-                    <GroupChat
-                      groups={groups}
-                      currentChat={currentChat}
-                      chatType={chatType}
-                      handleChatClick={handleChatClick}
-                      setMessages={setMessages}
-                      socket={socket}
-                      token={auth.token}
-                      currentUser={currentUser}
-                    />
-                  </>
-                )}
-              </div>
-            </aside>
+            <ChatList
+              users={users}
+              groups={groups}
+              currentChat={currentChat}
+              chatType={chatType}
+              handleChatClick={handleChatClick}
+              setMessages={setMessages}
+              socket={socket}
+              token={auth.token}
+              currentUser={currentUser}
+              setShowAddUserModal={setShowAddUserModal}
+              setShowAddGroupModal={setShowAddGroupModal}
+            />
 
             <div className="flex-1 flex flex-col p-6">
               <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
-                <h2 className="text-xl font-semibold text-gray-800">
+                {/* <h2 className="text-xl font-semibold text-gray-800">
                   {currentChat
                     ? `Chat with ${currentChat.name || currentChat.username}${chatType === 'group' ? ' (Group)' : ''}`
                     : 'Select a Chat'}
+                </h2> */}
+                {/* <h2 className="text-xl font-semibold text-gray-800">
+                  {currentChat ? (
+                    <>
+                      Chat with{' '}
+                      <NavLink to="" className="text-blue-600 hover:text-blue-800">
+                        {currentChat.name || currentChat.username}
+                      </NavLink>
+                      {chatType === 'group' ? ' (Group)' : ''}
+                    </>
+                  ) : (
+                    'Select a Chat'
+                  )}
+                </h2> */}
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {currentChat ? (
+                    <>
+                      Chat with{' '}
+                      {chatType !== 'group' ? (
+                        <button
+                          onClick={handleUserInfoClick}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          {currentChat.name || currentChat.username}
+                        </button>
+                      ) : (
+                        currentChat.name || currentChat.username
+                      )}
+                    </>
+                  ) : (
+                    'Select a Chat'
+                  )}
                 </h2>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {currentChat ? (
+                    chatType === 'group' ? (
+                      <NavLink to="" className="inline-flex items-center text-blue-600 hover:text-blue-800">
+                        <button onClick={handleGroupInfoClick} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                          Manage
+                        </button>
+                      </NavLink>
+                    ) : null
+                  ) : (
+                    'Select a Chat'
+                  )}
+                </h2>
+
               </div>
               <MessageDisplay
                 currentChat={currentChat}
@@ -357,6 +550,9 @@ const Message = () => {
                 currentUser={currentUser}
                 arrayBufferToBase64={arrayBufferToBase64}
                 messagesEndRef={messagesEndRef}
+                onReply={handleReply}
+                onDelete={handleDeleteMessage}
+                onEdit={handleEditMessage}
               />
               {currentChat && (
                 <MessageInput
@@ -369,14 +565,62 @@ const Message = () => {
                   handleSendMessage={handleSendMessage}
                   photoPreviewUrl={photoPreviewUrl}
                   setPhotoPreviewUrl={setPhotoPreviewUrl}
+                  replyToMessageId={replyToMessageId}
+                  setReplyToMessageId={setReplyToMessageId}
+                  messages={messages}
                 />
               )}
             </div>
+            {/* User info sidebar */}
+            {showUserInfoSidebar && currentChat && chatType !== 'group' && (
+              <div className="w-1/4 bg-gray-800 text-white p-4 overflow-y-auto border-l border-gray-700 transition-all duration-300">
+                <button
+                  onClick={handleCloseUserInfo}
+                  className="text-white mb-4 hover:text-gray-300"
+                >
+                  ×
+                </button>
+                <UserInfom userId={currentChat.id} />
+              </div>
+            )}
+            {/* Group info sidebar */}
+            {showGroupInfoSidebar && currentChat && chatType === 'group' && (
+              <div className="w-1/4 bg-gray-800 text-white p-4 overflow-y-auto border-l border-gray-700 transition-all duration-300">
+                <button
+                  onClick={handleCloseGroupInfo}
+                  className="text-white mb-4 hover:text-gray-300 text-xl"
+                >
+                  ×
+                </button>
+                <Manage
+                  groupId={currentChat.id}
+                  currentUser={currentUser}
+                  token={auth.token}
+                  socket={socket}
+                  onGroupUpdate={(updatedGroup) => {
+                    // console.log('Updated group in Message.jsx:', updatedGroup);
+                    setGroups((prev) =>
+                      prev.map((group) =>
+                        group.id === updatedGroup._id
+                          ? { ...group, members: updatedGroup.members || group.members || [] }
+                          : group
+                      )
+                    );
+                  }}
+                  onGroupDeleted={(groupId) => {
+                    setGroups((prev) => prev.filter((group) => group.id !== groupId));
+                    setCurrentChat(null);
+                    setChatType(null);
+                    setMessages([]);
+                    setShowGroupInfoSidebar(false);
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Image Preview Modal */}
       {selectedImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
@@ -401,7 +645,6 @@ const Message = () => {
         </div>
       )}
 
-      {/* Add User Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg relative w-80 shadow-lg">
@@ -441,7 +684,7 @@ const Message = () => {
                     alert(response.data.message);
                   }
                 } catch (error) {
-                  console.error("Error adding user:", error);
+                  // console.error("Error adding user:", error);
                   alert("Failed to add user.");
                 }
               }}
@@ -453,7 +696,6 @@ const Message = () => {
         </div>
       )}
 
-      {/* Add Group Modal */}
       {showAddGroupModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg relative w-80 shadow-lg">
@@ -498,7 +740,7 @@ const Message = () => {
                     setGroupNameInput('');
                   }
                 } catch (error) {
-                  console.error("Error creating group:", error);
+                  // console.error("Error creating group:", error);
                   alert("Failed to create group.");
                 }
               }}

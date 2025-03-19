@@ -34,18 +34,20 @@ export default function Navbar() {
     <div className="flex justify-between items-center bg-white p-4 shadow-md">
       {/* Left: Logo and Search Bar */}
       <div className="flex items-center space-x-6">
-        <input
+        {/* <input
           type="text"
           placeholder="Search..."
           className="border p-2 rounded-2xl w-full max-w-md bg-gray-50 focus:ring-2 focus:ring-indigo-400 transition duration-300 ease-in-out"
-        />
+        /> */}
       </div>
 
       {/* Right: Notifications, Calendar, Profile */}
       <div className="flex space-x-6 items-center relative" ref={dropdownRef}>
-        <button className="text-xl text-gray-700 hover:text-indigo-600 transition-colors duration-300 ease-in-out">
-          <FaBell />
-        </button>
+        <NavLink to="/dashboard/notifications">
+          <button className="text-xl text-gray-700 hover:text-indigo-600 transition-colors duration-300 ease-in-out">
+            <FaBell />
+          </button>
+        </NavLink>
 
         {/* Profile Icon with Dropdown */}
         <div

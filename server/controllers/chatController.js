@@ -31,7 +31,6 @@ exports.getAddedUsers = async (req, res) => {
 };
 
 // Add a user to the chat list by email
-// Add a user to the chat list by email
 exports.addUserToChat = async (req, res) => {
     try {
       const { email } = req.body;

@@ -14,7 +14,7 @@ const PrivateChat = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [showAllUsers, setShowAllUsers] = useState(false);
-  const initialLimit = 1; // Show 5 users initially
+  const initialLimit = 2; // Show 5 users initially
 
   // Fetch private messages
   useEffect(() => {

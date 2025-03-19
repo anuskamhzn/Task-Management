@@ -40,11 +40,12 @@ const messageSchema = new mongoose.Schema({
   // Message Replies (Threaded messages)
   replies: [{
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Message' // Self-referencing message model for replies
+    ref: 'GrpMsg' // Self-referencing message model for replies
   }],
 
-  // Soft Delete Feature
-  deletedAt: { type: Date, default: null } // Set to Date when deleted
+  parentMessageId: { type: mongoose.Schema.Types.ObjectId, ref: 'GrpMsg', default: null }, // Add this field
+  deletedAt: { type: Date, default: null }, // Set to Date when deleted soft delete
+  isEdited: { type: Boolean, default: false } // Added to track edits
 });
 
 // Indexing for faster lookups (especially for chat history)

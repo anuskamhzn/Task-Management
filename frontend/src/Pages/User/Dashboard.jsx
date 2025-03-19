@@ -104,14 +104,14 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <div className="p-6">
+            {/* <div className="p-6">
               <Kanban
                 tasks={tasks}
                 setTasks={setTasks}
                 projects={projects}
                 setProjects={setProjects}
               />
-            </div>
+            </div> */}
             {/* Modal for Creating Task */}
             {isCreateModalTaskOpen && (
               <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">

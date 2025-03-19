@@ -88,6 +88,8 @@ const Project = () => {
       return [...updatedProjects, subProject.subProject];
     });
   };
+  const handleMembers = (subProject) => {
+  };
   
 
   return (
@@ -104,6 +106,7 @@ const Project = () => {
               Project Name: {mainProject ? mainProject.title : "Loading..."}
             </h1>
             <div className="flex gap-4 items-center">
+              <NavLink to={handleMembers}><button className="flex items-center bg-blue-800 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition">See Members</button></NavLink>
               <button
                 onClick={handleCreateSubprojectClick}
                 className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition"

@@ -14,7 +14,7 @@ const GroupChat = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [showAllGroups, setShowAllGroups] = useState(false);
-  const initialLimit = 1; // Show 5 groups initially
+  const initialLimit = 2; // Show 5 groups initially
 
   // Fetch group messages
   useEffect(() => {
