@@ -8,6 +8,8 @@ import { FaTrash, FaEllipsisV } from "react-icons/fa";
 import { toast } from 'react-hot-toast';
 import ModifyProject from "../Modify/ModifyProject";
 import CreateProjectForm from "../Create/CreateProject";
+import parse from 'html-react-parser';
+import ViewProjectDetail from './ViewProjectDetail';
 
 const Projects = () => {
   const [auth] = useAuth();
@@ -19,6 +21,8 @@ const Projects = () => {
   const [openMenu, setOpenMenu] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, projectId: null, projectTitle: '' });
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for ViewProjectDetail popup
+  const [viewProjectId, setViewProjectId] = useState(null); // Track project to view
 
   useEffect(() => {
     setProjects([]);
@@ -89,7 +93,8 @@ const Projects = () => {
     closeConfirmDialog();
   };
 
-  const handleMenuToggle = (projectId) => {
+  const handleMenuToggle = (e, projectId) => {
+    e.stopPropagation(); // Prevent card click from triggering when clicking the menu icon
     setOpenMenu(openMenu === projectId ? null : projectId);
   };
 
@@ -103,6 +108,17 @@ const Projects = () => {
 
   const handleProjectCreated = (newProject) => {
     setProjects((prevProjects) => [newProject, ...prevProjects]);
+  };
+
+  const handleViewDetail = (projectId) => {
+    setViewProjectId(projectId);
+    setIsDetailModalOpen(true); // Open ViewProjectDetail popup
+    setOpenMenu(null);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false); // Close ViewProjectDetail popup
+    setViewProjectId(null);
   };
 
   return (
@@ -145,14 +161,15 @@ const Projects = () => {
               {projects.map((project) => (
                 <div
                   key={project._id}
-                  className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200"
+                  onClick={() => handleViewDetail(project._id)} // Card click opens ViewProjectDetail
+                  className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200 cursor-pointer"
                   onMouseLeave={() => {
                     setHoveredProject(null);
                     setOpenMenu(null);
                   }}
                 >
                   <h3 className="text-lg font-semibold text-gray-800 mb-2 truncate">{project.title}</h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{parse(project.description)}</p>
                   <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                     <span>Due: {new Date(project.dueDate).toLocaleDateString()}</span>
                     <span
@@ -166,24 +183,32 @@ const Projects = () => {
                     </span>
                   </div>
 
+                  {/* View Project Button (NavLink to Kanban) */}
                   <NavLink
                     to={`/dashboard/project/subproject/${project._id}`}
+                    onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
                     className="inline-block bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-md transition"
                   >
                     View Project
                   </NavLink>
 
                   {/* Three Dots Icon */}
-                  <div className="absolute top-3 right-3 cursor-pointer hidden group-hover:block">
+                  <div
+                    className="absolute top-3 right-3 cursor-pointer hidden group-hover:block"
+                    onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with menu
+                  >
                     <FaEllipsisV
-                      onClick={() => handleMenuToggle(project._id)}
+                      onClick={(e) => handleMenuToggle(e, project._id)}
                       className="text-gray-600 hover:text-gray-800 transition"
                     />
                   </div>
 
                   {/* Dropdown Menu */}
                   {openMenu === project._id && (
-                    <div className="absolute right-3 top-8 w-32 bg-white shadow-lg border border-gray-200 rounded-md z-10">
+                    <div
+                      className="absolute right-3 top-8 w-32 bg-white shadow-lg border border-gray-200 rounded-md z-10"
+                      onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with dropdown
+                    >
                       <button
                         onClick={() => handleModify(project._id)}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
@@ -221,6 +246,13 @@ const Projects = () => {
             projectId={selectedProject}
             onClose={handleCloseModal}
           />
+        </div>
+      )}
+
+      {/* Modal for Viewing Project Details */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ViewProjectDetail projectId={viewProjectId} onClose={handleCloseDetailModal} />
         </div>
       )}
 

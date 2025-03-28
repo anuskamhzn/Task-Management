@@ -39,6 +39,7 @@ const Message = () => {
   const [replyToMessageId, setReplyToMessageId] = useState(null);
   const [showUserInfoSidebar, setShowUserInfoSidebar] = useState(false); // Toggle for sidebar
   const [showGroupInfoSidebar, setShowGroupInfoSidebar] = useState(false); // New state for group sidebar
+  const [recentSenders, setRecentSenders] = useState([]); // New state for recent senders
 
   const arrayBufferToBase64 = (buffer) => {
     const bytes = new Uint8Array(buffer);
@@ -110,6 +111,23 @@ const Message = () => {
       });
     }
 
+    // Handle recent sender updates globally
+    socket.on('recentSenderUpdate', (senderData) => {
+      // console.log('Received recentSenderUpdate:', senderData);
+      setRecentSenders((prev) => {
+        const existingIndex = prev.findIndex(s => s.senderId === senderData.senderId);
+        let updated = [...prev];
+        if (existingIndex !== -1) {
+          updated[existingIndex] = { ...updated[existingIndex], ...senderData };
+        } else {
+          updated.push(senderData);
+        }
+        updated = updated.sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp));
+        // console.log('Updated recentSenders:', updated);
+        return updated;
+      });
+    });
+
     const fetchCurrentUser = async () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API}/api/auth/user-info`, {
@@ -163,9 +181,22 @@ const Message = () => {
       }
     };
 
+    // Fetch recent private senders
+    const fetchRecentSenders = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API}/api/message/recent-private-senders`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        });
+        setRecentSenders(response.data.recentSenders || []);
+      } catch (error) {
+        console.error('Error fetching recent senders:', error);
+      }
+    };
+
     fetchCurrentUser();
     fetchUsers();
     fetchGroups();
+    fetchRecentSenders();
 
     return () => {
       if (socket) {
@@ -299,7 +330,7 @@ const Message = () => {
       });
 
       socket.on('groupDeleted', (data) => {
-        console.log('Group deleted event:', data); // Debug log
+        // console.log('Group deleted event:', data); // Debug log
         setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
         if (currentChat?.id === data.groupId) {
           setCurrentChat(null);
@@ -316,7 +347,6 @@ const Message = () => {
       socket.on('groupMessageDeleted', handleMessageDeleted);
       socket.on('messageEdited', handleMessageEdited);
       socket.on('groupMessageEdited', handleMessageEdited);
-
       socket.on('error', (error) => {
         console.error('Socket error:', error);
         alert(`Error: ${error.message}`);
@@ -376,6 +406,18 @@ const Message = () => {
       setCurrentChat(chat);
       setChatType(type);
       setMessages([]);
+      if (type === 'private') {
+        setRecentSenders((prev) => {
+          const existingIndex = prev.findIndex(s => s.senderId === chat.id);
+          if (existingIndex !== -1) {
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], unreadCount: 0 };
+            // console.log('Manually updated recentSenders on chat click:', updated);
+            return updated;
+          }
+          return prev; // No change if user not in recentSenders
+        });
+      }
       setShowUserInfoSidebar(false); // Close sidebar when switching chats
       fetchMessages(chat?.id, type);
     }
@@ -407,12 +449,12 @@ const Message = () => {
       const MAX_SIZE = 7.5 * 1024 * 1024; // 7.5MB to account for Base64 overhead
 
       if (photo && photo.size > MAX_SIZE) {
-        console.log('Photo exceeds limit:', photo.size, '>', MAX_SIZE);
+        // console.log('Photo exceeds limit:', photo.size, '>', MAX_SIZE);
         toast.error('Photo exceeds 7.5MB limit');
         return;
       }
       if (file && file.size > MAX_SIZE) {
-        console.log('File exceeds limit:', file.size, '>', MAX_SIZE);
+        // console.log('File exceeds limit:', file.size, '>', MAX_SIZE);
         toast.error('File exceeds 7.5MB limit');
         return;
       }
@@ -466,6 +508,17 @@ const Message = () => {
     socket.emit(event, { messageId, content: newContent });
   };
 
+  // Callback to update recentSenders when messages are marked as read
+  const handleMarkAsRead = (conversationId) => {
+    setRecentSenders((prev) => {
+      const updated = prev.map((sender) =>
+        sender.senderId === conversationId ? { ...sender, unreadCount: 0 } : sender
+      );
+      // console.log('Updated recentSenders after mark as read:', updated);
+      return updated;
+    });
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <div className="flex flex-1 overflow-hidden">
@@ -487,6 +540,7 @@ const Message = () => {
               currentUser={currentUser}
               setShowAddUserModal={setShowAddUserModal}
               setShowAddGroupModal={setShowAddGroupModal}
+              recentSenders={recentSenders} // Pass recentSenders to ChatList
             />
 
             <div className="flex-1 flex flex-col p-6">
@@ -553,6 +607,8 @@ const Message = () => {
                 onReply={handleReply}
                 onDelete={handleDeleteMessage}
                 onEdit={handleEditMessage}
+                socket={socket}              // Pass socket
+                onMarkAsRead={handleMarkAsRead}  // Pass callback
               />
               {currentChat && (
                 <MessageInput

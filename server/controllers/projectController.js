@@ -520,7 +520,7 @@ exports.getSubProjectsByMainProject = async (req, res) => {
     const subProjects = await SubProject.find({
       mainProject: new mongoose.Types.ObjectId(mainProjectId),
       deletedAt: null,
-    });
+    }).populate('members','name email username');
 
     // Filter sub-projects by whether the user is a member of the main project or is the owner
     const accessibleSubProjects = subProjects.filter(subProject => {
@@ -806,5 +806,64 @@ exports.getSubProjectById = async (req, res) => {
   }
 };
 
+// Get a specific project by ID with member details
+exports.getProjectById = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
 
+    // Validate the project ID format
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ message: "Invalid project ID format." });
+    }
 
+    // Find the project where the user is either the owner or a member
+    const project = await Project.findOne({
+      _id: projectId,
+      $or: [{ owner: userId }, { members: userId }],
+      deletedAt: null, // Exclude deleted projects
+    })
+      .populate('owner', 'name email username') // Populate owner with specific fields
+      .populate('members', 'name email username'); // Populate members with specific fields
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found or you do not have access to it.",
+      });
+    }
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    res.status(500).json({ message: "Error fetching project", error: error.message });
+  }
+};
+
+// Get sub-projects by parent project ID
+// exports.getSubProjectById = async (req, res) => {
+//   const { mainProjectId, subProjectId } = req.params;
+
+//   try {
+//     // Verify the main project exists
+//     const mainTask = await Project.findById(mainProjectId);
+//     if (!mainTask) {
+//       return res.status(404).json({ message: "Main task not found" });
+//     }
+
+//     // Fetch the sub-project and populate the referenced fields
+//     const subproject = await SubProject.findById(subProjectId)
+//       .populate('mainProject')  // Populating the mainProject reference (Project model)
+//       .populate('owner')        // Populating the owner reference (User model)
+//       .populate('members');     // Populating the members array (User model)
+
+//     if (!subproject) {
+//       return res.status(404).json({ message: "Subproject not found" });
+//     }
+
+//     // Return the populated sub-project
+//     res.json(subproject);
+//   } catch (error) {
+//     console.error("Error fetching subproject:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };

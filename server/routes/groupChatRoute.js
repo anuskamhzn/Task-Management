@@ -14,6 +14,8 @@ router.post('/grp/edit', authenticate, formidable() ,groupChatController.editGro
 router.get('/messages/:groupId', authenticate, groupChatController.getGroupMessages);
 router.get('/my-groups', authenticate, groupChatController.getUserGroups);
 
+router.get('/recent-group-senders', authenticate, groupChatController.getRecentGroupSenders);
+
 // New routes
 router.get('/members/:groupId', authenticate, groupChatController.getGroupMembers);
 router.post('/remove-member', authenticate, groupChatController.removeMemberFromGroup);

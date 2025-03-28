@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/auth";
 import toast from "react-hot-toast";
+import ReactQuill from "react-quill"; // Import React Quill
+import "react-quill/dist/quill.snow.css"; // Import Quill styles
 
 const CreateTask = ({ onClose, onTaskCreated }) => {
   const [auth] = useAuth();
@@ -82,6 +84,8 @@ const CreateTask = ({ onClose, onTaskCreated }) => {
               name="description"
               value={taskData.description}
               onChange={handleChange}
+              // className="bg-white"
+              // theme="snow"
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

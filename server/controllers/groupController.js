@@ -4,6 +4,7 @@ const Message = require('../models/Message');
 const GrpMsg = require('../models/GrpMsg');
 const User = require('../models/User');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 exports.createGroup = async (req, res) => {
   try {
@@ -644,5 +645,88 @@ exports.deleteGroup = async (req, res) => {
   } catch (error) {
     console.error('Error deleting group:', error);
     return res.status(500).json({ success: false, message: 'Error deleting group', error: error.message });
+  }
+};
+
+// Get recent group message senders with counts
+// Get recent group message senders with counts and all contributing users
+exports.getRecentGroupSenders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Step 1: Aggregate groups with their latest message timestamp
+    const recentGroups = await GrpMsg.aggregate([
+      {
+        $match: {
+          group: { $in: await Group.find({ members: userId }).distinct("_id") },
+          sender: { $ne: new mongoose.Types.ObjectId(userId) }, // Exclude user's own messages
+          deletedAt: null, // Exclude deleted messages
+        },
+      },
+      {
+        $group: {
+          _id: "$group",
+          latestTimestamp: { $max: "$timestamp" },
+          unreadCount: {
+            $sum: { $cond: [{ $eq: ["$isRead", false] }, 1, 0] },
+          },
+          totalCount: { $sum: 1 },
+          senderIds: { $addToSet: "$sender" }, // Collect unique senders in this group
+        },
+      },
+      {
+        $lookup: {
+          from: "groups",
+          localField: "_id",
+          foreignField: "_id",
+          as: "groupInfo",
+        },
+      },
+      { $unwind: "$groupInfo" },
+      {
+        $lookup: {
+          from: "users",
+          localField: "senderIds",
+          foreignField: "_id",
+          as: "senders",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          groupId: "$_id",
+          groupName: "$groupInfo.name",
+          latestTimestamp: 1,
+          unreadCount: 1,
+          totalCount: 1,
+          senders: {
+            $map: {
+              input: "$senders",
+              as: "sender",
+              in: {
+                senderId: "$$sender._id",
+                username: "$$sender.username",
+                email: "$$sender.email",
+              },
+            },
+          },
+        },
+      },
+      { $sort: { latestTimestamp: -1 } },
+      // Removed limit to show all groups with recent activity
+    ]);
+
+    res.status(200).json({
+      success: true,
+      recentGroups,
+      total: recentGroups.length,
+    });
+  } catch (error) {
+    console.error("Error fetching recent group senders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching recent group senders",
+      error: error.message,
+    });
   }
 };

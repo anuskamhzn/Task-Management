@@ -13,6 +13,8 @@ router.post('/priv-reply', authenticate, formidable(), messageController.sendPri
 router.post('/private/delete', authenticate, messageController.deletePrivateMessage); // No formidable needed
 router.post('/private/edit', authenticate, formidable(), messageController.editPrivateMessage); // Keep formidable for consistency
 
+router.get('/recent-private-senders', authenticate, messageController.getRecentPrivateSenders);
+
 // Group Message Send
 router.post('/group', authenticate, messageController.sendProjectMessage);
 // Private Message History

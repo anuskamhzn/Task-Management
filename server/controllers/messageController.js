@@ -1,7 +1,8 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
 const Project = require('../models/Project');
-const fs = require('fs');                      // File System module to handle file saving
+const fs = require('fs');                    
+const mongoose = require('mongoose');
 
 exports.sendPrivateMessage = async (req, res) => {
   try {
@@ -344,5 +345,79 @@ exports.getProjectMessages = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Error fetching messages', error });
+  }
+};
+
+// Get recent private message senders with counts and user details
+exports.getRecentPrivateSenders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const recentSenders = await Message.aggregate([
+      {
+        $match: {
+          $or: [
+            { recipient: new mongoose.Types.ObjectId(userId), deletedAt: null }, // Received messages
+            { sender: new mongoose.Types.ObjectId(userId), deletedAt: null },   // Sent messages
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ['$sender', new mongoose.Types.ObjectId(userId)] },
+              '$recipient',
+              '$sender',
+            ],
+          },
+          latestTimestamp: { $max: '$timestamp' },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$recipient', new mongoose.Types.ObjectId(userId)] }, { $eq: ['$isRead', false] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          totalCount: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userInfo',
+        },
+      },
+      { $unwind: '$userInfo' },
+      {
+        $project: {
+          _id: 0,
+          senderId: '$_id',
+          username: '$userInfo.username',
+          email: '$userInfo.email',
+          latestTimestamp: 1,
+          unreadCount: 1,
+          totalCount: 1,
+        },
+      },
+      { $sort: { latestTimestamp: -1 } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      recentSenders,
+      total: recentSenders.length,
+    });
+  } catch (error) {
+    console.error('Error fetching recent private senders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching recent private senders',
+      error: error.message,
+    });
   }
 };

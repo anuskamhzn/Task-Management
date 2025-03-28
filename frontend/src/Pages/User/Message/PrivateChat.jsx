@@ -13,6 +13,8 @@ const PrivateChat = ({
   sendMessage,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [showAllUsers, setShowAllUsers] = useState(false);
+  const initialLimit = 2; // Show 5 users initially
 
   // Fetch private messages
   useEffect(() => {
@@ -34,10 +36,13 @@ const PrivateChat = ({
     }
   }, [currentChat, chatType, token, setMessages]);
 
+  // Determine the users to display based on the toggle state
+  const displayedUsers = showAllUsers ? users : users.slice(0, initialLimit);
+
   return (
     <div className="space-y-2">
       <h3 className="text-md font-semibold text-gray-600 px-2">Private Chats</h3>
-      {users.map((user) => (
+      {displayedUsers.map((user) => (
         <div
           key={`user-${user.id}`}
           onClick={() => handleChatClick(user, 'private')}
@@ -49,6 +54,14 @@ const PrivateChat = ({
           <span className="text-sm">{user.username}</span>
         </div>
       ))}
+      {users.length > initialLimit && (
+        <button
+          onClick={() => setShowAllUsers(!showAllUsers)}
+          className="text-blue-600 text-sm font-medium hover:underline focus:outline-none"
+        >
+          {showAllUsers ? 'Show Less' : `Show More (${users.length - initialLimit} more)`}
+        </button>
+      )}
       {loading && <p className="text-sm text-gray-500">Loading messages...</p>}
     </div>
   );

@@ -14,6 +14,7 @@ router.delete('/delete/:projectId', authenticate, projectController.deleteProjec
 router.get('/fetchDeleted', authenticate, projectController.getAllDeletedProjects);
 router.put('/restore/:projectId', authenticate, projectController.restoreProject); //restore delete
 router.put('/update-project/:projectId', authenticate, projectController.updateProject);
+router.get('/:projectId', authenticate, projectController.getProjectById);
 
 //sub project
 router.post('/create-project/:mainProjectId', authenticate, projectController.createSubProject);
@@ -25,6 +26,7 @@ router.delete('/delete-subproject/:mainProjectId/:subProjectId', authenticate, p
 router.get('/subproject-trash/:mainProjectId', authenticate, projectController.getDeletedSubProjects); //get delete
 router.put('/restore-subproject/:mainProjectId/:subProjectId', authenticate, projectController.restoreSubProject); //restore delete
 router.put('/update-subproject/:mainProjectId/:subProjectId', authenticate, projectController.updateSubProject);
+// router.get('/:projectId/subprojects', authenticate, projectController.getSubProjectById);
 
 
 module.exports = router;

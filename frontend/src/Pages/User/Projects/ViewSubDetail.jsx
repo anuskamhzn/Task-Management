@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
-import Navbar from "../../Navigation/Navbar";
-import Sidebar from "../../Navigation/Sidebar";
-import ProjectKanban from './ProjectKanban';
+import Navbar from "../../../Components/Navigation/Navbar";
+import Sidebar from "../../../Components/Navigation/Sidebar";
+import ProjectKanban from '../../../Components/Dashboard/SubProject/ProjectKanban';
 import { FaTrash } from "react-icons/fa";
 import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
-import Members from "../../../Pages/User/Projects/Members"; // Import Members component
+import Members from "../../../Pages/User/Projects/Members";
 import ViewSubDetail from "../../../Pages/User/Projects/ViewSubDetail";
 
 const Project = () => {
@@ -18,7 +18,9 @@ const Project = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false); // State for Members popup
+  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+  const [isSubDetailModalOpen, setIsSubDetailModalOpen] = useState(false); // New state for subproject detail popup
+  const [selectedSubProjectId, setSelectedSubProjectId] = useState(null); // Track selected subproject
 
   useEffect(() => {
     if (projectId && auth.token) {
@@ -92,11 +94,22 @@ const Project = () => {
   };
 
   const handleSeeMembers = () => {
-    setIsMembersModalOpen(true); // Open Members popup
+    setIsMembersModalOpen(true);
   };
 
   const handleCloseMembersModal = () => {
-    setIsMembersModalOpen(false); // Close Members popup
+    setIsMembersModalOpen(false);
+  };
+
+  // New handler for viewing subproject details
+  const handleViewSubDetail = (subProjectId) => {
+    setSelectedSubProjectId(subProjectId);
+    setIsSubDetailModalOpen(true);
+  };
+
+  const handleCloseSubDetailModal = () => {
+    setIsSubDetailModalOpen(false);
+    setSelectedSubProjectId(null);
   };
 
   return (
@@ -139,6 +152,7 @@ const Project = () => {
               projects={projects}
               setProjects={setProjects}
               auth={auth}
+              onViewSubDetail={handleViewSubDetail} // Pass the handler to ProjectKanban
             />
           ) : (
             <p className="text-center text-gray-500">No subprojects available.</p>
@@ -153,7 +167,19 @@ const Project = () => {
       )}
 
       {isMembersModalOpen && (
-        <Members onClose={handleCloseMembersModal} />
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <Members onClose={handleCloseMembersModal} />
+        </div>
+      )}
+
+      {isSubDetailModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ViewSubDetail 
+            mainProjectId={projectId} 
+            subProjectId={selectedSubProjectId} 
+            onClose={handleCloseSubDetailModal} 
+          />
+        </div>
       )}
     </div>
   );

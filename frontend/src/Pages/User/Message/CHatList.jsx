@@ -14,7 +14,6 @@ const ChatList = ({
   currentUser,
   setShowAddUserModal,
   setShowAddGroupModal,
-  recentSenders, // Receive recentSenders prop
 }) => {
   return (
     <aside className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
@@ -45,9 +44,10 @@ const ChatList = ({
           </button>
         </div>
       </div>
+      {/* Scrollable container for the entire chat list (Private Chats + Groups) */}
       <div
         className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-200"
-        style={{ maxHeight: 'calc(100vh - 150px)' }}
+        style={{ maxHeight: 'calc(100vh - 150px)' }} // Adjust height to fit within the viewport
       >
         <div className="space-y-2">
           {users.length === 0 ? (
@@ -62,7 +62,6 @@ const ChatList = ({
               socket={socket}
               token={token}
               currentUser={currentUser}
-              recentSenders={recentSenders} // Pass recentSenders to PrivateChat
             />
           )}
           <hr className="border-gray-300 my-4" />

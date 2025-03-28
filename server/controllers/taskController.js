@@ -46,8 +46,6 @@ exports.getTasksByOwner = async (req, res) => {
   }
 };
 
-
-
 // Update task status
 exports.updateTaskStatus = async (req, res) => {
   try {
@@ -145,7 +143,6 @@ exports.getSoftDeletedTasks = async (req, res) => {
   }
 };
 
-
 // Restore a soft-deleted main task and its subtasks
 exports.restoreTask = async (req, res) => {
   try {
@@ -170,7 +167,6 @@ exports.restoreTask = async (req, res) => {
     res.status(500).json({ message: 'Error restoring task and subtasks', error: error.message });
   }
 };
-
 
 // Update a task
 exports.updateTask = async (req, res) => {
@@ -200,7 +196,6 @@ exports.updateTask = async (req, res) => {
     res.status(500).json({ message: 'Error updating task', error: error.message });
   }
 };
-
 
 // Create a subtask for a main task
 exports.createSubTask = async (req, res) => {
@@ -254,7 +249,7 @@ exports.createSubTask = async (req, res) => {
     res.status(500).json({ message: "Error creating subtask", error: error.message });
   }
 };
-// Get all subtasks for a main task
+
 // Get all subtasks for a main task excluding soft-deleted ones
 exports.getSubTasksByMainTask = async (req, res) => {
   try {
