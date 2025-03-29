@@ -422,6 +422,35 @@ exports.updateSubTask = async (req, res) => {
   }
 };
 
+// Get a specific task by ID
+exports.getTaskById = async (req, res) => {
+  try {
+    const { taskId } = req.params; // Get taskId from URL parameters
+    const ownerId = req.user.id;   // Get the authenticated user's ID
+
+    // Find the task by ID, ensuring it belongs to the owner and is not soft-deleted
+    const task = await Task.findOne({
+      _id: taskId,
+      owner: ownerId,
+      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+    })
+    .populate('owner', 'name email username') // Populate owner with specific fields
+
+    if (!task) {
+      return res.status(404).json({ 
+        message: 'Task not found or you do not have permission to access it' 
+      });
+    }
+
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Error fetching task', 
+      error: error.message 
+    });
+  }
+};
+
 //get the sub task by main id and id
 exports.getSubtaskById = async (req, res) => {
   const { mainTaskId, subTaskId } = req.params;

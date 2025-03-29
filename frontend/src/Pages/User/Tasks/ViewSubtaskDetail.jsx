@@ -3,27 +3,41 @@ import axios from "axios";
 import { useAuth } from "../../../context/auth";
 import parse from 'html-react-parser';
 
-const ViewTaskDetail = ({ taskId, onClose }) => {
+const ViewSubtaskDetail = ({ mainTaskId, subTaskId, onClose }) => {
   const [auth] = useAuth();
-  const [task, settask] = useState(null);
+  const [subTask, setSubTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (taskId && auth.token) {
-      fetchTaskDetails();
+    if (mainTaskId && subTaskId && auth.token) {
+      fetchSubTask(); // Fixed function name casing
     }
-  }, [taskId, auth]);
+  }, [mainTaskId, subTaskId, auth.token]);
 
-  const fetchTaskDetails = async () => {
+  const fetchSubTask = async () => { // Consistent casing
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API}/api/task/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      });
-      settask(response.data);
+      console.log("Fetching subtask with mainTaskId:", mainTaskId, "subTaskId:", subTaskId);
+      const response = await axios.get(
+        `${process.env.REACT_APP_API}/api/task/subtask/${mainTaskId}/${subTaskId}`,
+        {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        }
+      );
+      console.log("API Response:", response.data);
+
+      if (response.data) {
+        setSubTask(response.data); // Response is the subtask object directly
+      } else {
+        setError("No subtask found.");
+      }
     } catch (err) {
-      setError("Error fetching task details");
-      console.error(err);
+      console.error("Error fetching subtask:", err.response?.data || err.message);
+      if (err.response && err.response.status === 404) {
+        setError(err.response.data.message || "No subtask found.");
+      } else {
+        setError("Failed to fetch subtask. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -51,10 +65,10 @@ const ViewTaskDetail = ({ taskId, onClose }) => {
     );
   }
 
-  if (!task) {
+  if (!subTask) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
-        <p className="text-center text-gray-500">No task data available.</p>
+        <p className="text-center text-gray-500">No subtask data available.</p>
         <button
           onClick={onClose}
           className="mt-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
@@ -67,34 +81,36 @@ const ViewTaskDetail = ({ taskId, onClose }) => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Task Name: {task.title}</h2>
-      
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">Subtask Name: {subTask.title}</h2>
+
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Description</h3>
-          <p className="text-gray-600">{parse(task.description)}</p>
+          <p className="text-gray-600">
+            {subTask.description ? parse(subTask.description) : "No description available."}
+          </p>
         </div>
 
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Due Date</h3>
-          <p className="text-gray-600">{new Date(task.dueDate).toLocaleDateString()}</p>
+          <p className="text-gray-600">{new Date(subTask.dueDate).toLocaleDateString()}</p>
         </div>
 
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Status</h3>
           <span
             className={`px-2 py-1 rounded-full text-sm ${
-              task.status === "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+              subTask.status === "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
             }`}
           >
-            {task.status}
+            {subTask.status}
           </span>
         </div>
 
-        {/* <div>
-          <h3 className="text-lg font-semibold text-gray-700">Owner</h3>
-          <p className="text-gray-600">{task.owner?.username} ({task.owner?.email})</p>
-        </div> */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700">Task Owner</h3>
+          <p className="text-gray-600">{subTask.owner?.username} ({subTask.owner?.email})</p>
+        </div>
       </div>
 
       <div className="mt-6 flex justify-end">
@@ -109,4 +125,4 @@ const ViewTaskDetail = ({ taskId, onClose }) => {
   );
 };
 
-export default ViewTaskDetail;
+export default ViewSubtaskDetail;

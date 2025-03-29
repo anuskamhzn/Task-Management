@@ -67,7 +67,7 @@ const ViewProjectDetail = ({ projectId, onClose }) => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">{project.title}</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">Project Name: {project.title}</h2>
       
       <div className="space-y-4">
         <div>
@@ -92,12 +92,12 @@ const ViewProjectDetail = ({ projectId, onClose }) => {
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold text-gray-700">Owner</h3>
+          <h3 className="text-lg font-semibold text-gray-700">Project Lead</h3>
           <p className="text-gray-600">{project.owner?.username} ({project.owner?.email})</p>
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold text-gray-700">Members</h3>
+          <h3 className="text-lg font-semibold text-gray-700">Project Members</h3>
           {project.members && project.members.length > 0 ? (
             <ul className="list-disc pl-5 text-gray-600">
               {project.members.map((member) => (

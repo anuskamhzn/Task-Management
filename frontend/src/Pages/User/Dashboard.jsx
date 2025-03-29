@@ -2,12 +2,9 @@ import React, { useState } from "react";
 import Navbar from "../../Components/Navigation/Navbar"
 import { Metrics } from "../../Components/Homepage/metrics"
 import Sidebar from "../../Components/Navigation/Sidebar"
-
 import FullCalendar from "@fullcalendar/react"; // FullCalendar Component
 import dayGridPlugin from "@fullcalendar/daygrid"; // Day grid view
 import interactionPlugin from "@fullcalendar/interaction";
-
-import Kanban from "../../Components/Dashboard/Kanban";
 import CreateTask from "../User/Create/CreateTask";
 import CreateProjectForm from "../User/Create/CreateProject";
 
@@ -50,7 +47,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex bg-gray-50">
-      {/* Sidebar - Fixed and Full Height */}
       <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
         <Sidebar />
       </aside>
@@ -59,8 +55,6 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col">
         <Navbar />
         <main className="flex-1 p-6 overflow-y-auto">
-          {/* <NavLink to="/dashboard/task"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button></NavLink>
-          <NavLink to="/dashboard/create"><button className="bg-indigo-900 text-white py-2 px-4 mb-2 ml-4 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Team Project</button></NavLink> */}
           <button
             onClick={handleCreateTaskClick}
             className="bg-indigo-900 text-white py-2 px-4 mb-2 rounded-lg shadow-md hover:bg-indigo-800 hover:shadow-lg transition duration-300 ease-in-out">Create Task</button>
@@ -118,7 +112,7 @@ export default function Dashboard() {
                 <CreateTask onClose={handleCloseCreateTaskModal} onTaskCreated={handleTaskCreated} />
               </div>
             )}
-            {/* Modal for Creating Task */}
+            {/* Modal for Creating Project */}
             {isCreateModalOpen && (
               <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
                 <CreateProjectForm onClose={handleCloseCreateProjectModal} onProjectCreated={handleProjectCreated} />

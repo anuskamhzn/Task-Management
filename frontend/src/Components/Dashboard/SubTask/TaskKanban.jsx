@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { FaEllipsisV } from "react-icons/fa";
+import { FaEllipsisV, FaPlusCircle } from "react-icons/fa";
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useParams } from "react-router-dom";
 import ModifySubtask from "../../../Pages/User/Modify/SubTaskModify";
+import CreateSubtask from "../../../Pages/User/Create/CreateSubtask";
+import ViewSubtaskDetail from '../../../Pages/User/Tasks/ViewSubtaskDetail';
 
 const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth }) => {
   const [hoveredTask, setHoveredTask] = useState(null);
@@ -11,6 +13,25 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
   const { taskId } = useParams();
   const [selectedSubtask, setSelectedSubtask] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, subTaskId: null, subTaskTitle: '' });
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for ViewProjectDetail popup
+  const [viewSubTaskId, setViewSubTaskId] = useState(null); // Track project to view
+
+  // Modal visibility state for CreateTask
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Toggle modal visibility
+  const handleCreateSubtaskClick = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateSubtaskModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleSubtaskCreated = (subTask) => {
+    setTasks((prevTasks) => [...prevTasks, subTask.subTask,]); // Add to the top
+  };
 
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
@@ -90,6 +111,7 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
           setHoveredTask(null);
           setOpenMenu(null);
         }}
+        onClick={() => handleViewDetail(task._id)}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{task.title}</h3>
@@ -136,6 +158,17 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
     ));
   };
 
+  const handleViewDetail = (subTaskId) => {
+    setViewSubTaskId(subTaskId); // Use subproject ID
+    setIsDetailModalOpen(true);
+    setOpenMenu(null);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false); // Close ViewProjectDetail popup
+    setViewSubTaskId(null);
+  };
+
   return (
     <div className="flex gap-6 p-6">
       <div
@@ -143,7 +176,18 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, "To Do")}
       >
-        <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
+        {/* <h2 className="text-xl font-semibold text-center mb-4">To Do</h2> */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
+          <div className="relative inline-block">
+            <button
+              onClick={handleCreateSubtaskClick}
+              className="text-2xl text-gray-800 hover:text-gray-600"
+            >
+              <FaPlusCircle />
+            </button>
+          </div>
+        </div>
         {toDoTasks.length === 0 ? <div>No tasks</div> : renderTasks(toDoTasks)}
       </div>
 
@@ -200,6 +244,24 @@ const TaskKanban = ({ toDoTasks, inProgressTasks, completedTasks, setTasks, auth
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal for Creating Task */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <CreateSubtask onClose={handleCloseCreateSubtaskModal} onSubTaskCreated={handleSubtaskCreated} />
+        </div>
+      )}
+
+      {/* Modal for Viewing Project Details */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ViewSubtaskDetail
+            mainTaskId={taskId} // Main task ID from useParams
+            subTaskId={viewSubTaskId} // Subtask ID from clicked card
+            onClose={handleCloseDetailModal}
+          />
         </div>
       )}
     </div>

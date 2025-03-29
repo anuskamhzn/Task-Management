@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FaEllipsisV } from "react-icons/fa";
+import { FaEllipsisV, FaPlusCircle, FaTasks } from "react-icons/fa";
+import { GrProjects } from "react-icons/gr";
 import { useAuth } from "../../context/auth";
 import { toast } from 'react-hot-toast';
-import { useParams } from "react-router-dom";
-import { IoIosAdd } from "react-icons/io";
 import ModifyTask from "../../Pages/User/Modify/ModifyTask";
 import ModifyProject from "../../Pages/User/Modify/ModifyProject";
+import CreateTask from "../../Pages/User/Create/CreateTask";
+import CreateProjectForm from "../../Pages/User/Create/CreateProject";
+import ViewTaskDetail from '../../Pages/User/Tasks/ViewTaskDetail';
+import ViewProjectDetail from '../../Pages/User/Projects/ViewProjectDetail';
 
-const Kanban = ({tasks, projects, setProjects, setTasks}) => {
+const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
   const [auth] = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,12 +20,50 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
   const [openMenu, setOpenMenu] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    id: null, 
-    title: '', 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    id: null,
+    title: '',
     type: '' // 'task' or 'project'
   });
+  const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
+
+  // Modal visibility state for CreateTask
+  const [isCreateModalTaskOpen, setIsCreateModalTaskOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // State for detail modals
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
+  const [isProjectDetailOpen, setIsProjectDetailOpen] = useState(false);
+  const [viewTaskId, setViewTaskId] = useState(null);
+  const [viewProjectId, setViewProjectId] = useState(null);
+
+  // Toggle modal visibility
+  const handleCreateTaskClick = () => {
+    setIsCreateModalTaskOpen(true);
+  };
+
+  const handleCloseCreateTaskModal = () => {
+    setIsCreateModalTaskOpen(false);
+  };
+  // Toggle modal visibility
+  const handleCreateProjectClick = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateProjectModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  // Function to update task list with newly created task
+  const handleTaskCreated = (newTask) => {
+    setTasks((prevTasks) => [...prevTasks, newTask,]);  // Add the new task to the start of the task list
+  };
+
+  // Function to update task list with newly created task
+  const handleProjectCreated = (newProject) => {
+    setProjects((prevProjects) => [...prevProjects, newProject]);  // Add the new task to the start of the task list
+  };
 
   useEffect(() => {
     if (auth && auth.user) {
@@ -119,7 +160,7 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
 
   const handleDelete = async (id, type) => {
     try {
-      const url = type === 'project' 
+      const url = type === 'project'
         ? `${process.env.REACT_APP_API}/api/project/delete/${id}`
         : `${process.env.REACT_APP_API}/api/task/delete/${id}`;
 
@@ -154,6 +195,28 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
     closeConfirmDialog();
   };
 
+  // Handle opening subtask or subproject details
+  const handleViewTaskDetail = (mainTaskId) => {
+    // console.log("Opening subtask details for mainTaskId:", mainTaskId);
+    setViewTaskId(mainTaskId); // For now, assuming mainTaskId is used as subTaskId; adjust if needed
+    setIsTaskDetailOpen(true);
+    setOpenMenu(null);
+  };
+
+  const handleViewProjectDetail = (mainProjectId) => {
+    // console.log("Opening subproject details for mainProjectId:", mainProjectId);
+    setViewProjectId(mainProjectId); // For now, assuming mainProjectId is used as subProjectId; adjust if needed
+    setIsProjectDetailOpen(true);
+    setOpenMenu(null);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsTaskDetailOpen(false);
+    setIsProjectDetailOpen(false);
+    setViewTaskId(null);
+    setViewProjectId(null);
+  };
+
   if (!auth || !auth.user) {
     return <p>Please log in to view your Kanban board.</p>;
   }
@@ -186,11 +249,13 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
           setHoveredProject(null);
           setOpenMenu(null);
         }}
+        onClick={() => handleViewProjectDetail(project._id)}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{project.title}</h3>
           {hoveredProject === project._id && (
-            <div className="relative">
+            <div className="relative"
+            onClick={(e) => e.stopPropagation()}>
               <FaEllipsisV
                 className="cursor-pointer"
                 onClick={(e) => {
@@ -242,11 +307,13 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
           setHoveredTask(null);
           setOpenMenu(null);
         }}
+        onClick={() => handleViewTaskDetail(task._id)}
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{task.title}</h3>
           {hoveredTask === task._id && (
-            <div className="relative">
+            <div className="relative"
+            onClick={(e) => e.stopPropagation()}>
               <FaEllipsisV
                 className="cursor-pointer"
                 onClick={() => setOpenMenu(openMenu === task._id ? null : task._id)}
@@ -301,7 +368,44 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, "To Do")}
       >
-        <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
+          <div className="relative inline-block">
+            <button
+              onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+              className="text-2xl text-gray-800 hover:text-gray-600"
+            >
+              <FaPlusCircle />
+            </button>
+            {isCreateDropdownOpen && (
+              <div className="absolute left-0 mt-2 w-40 bg-white border rounded-md shadow-lg z-50">
+                <button
+                  onClick={() => {
+                    setIsCreateDropdownOpen(false);
+                    handleCreateTaskClick();
+                  }}
+                  className="w-full text-left px-4 py-2 flex items-center gap-3 rounded-md hover:bg-gray-100 transition-all duration-200 ease-in-out"
+                >
+                  <FaTasks className="text-blue-500" />
+                  <span className="text-sm font-medium text-gray-700">Create Task</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsCreateDropdownOpen(false);
+                    handleCreateProjectClick();
+                  }}
+                  className="w-full text-left px-4 py-2 flex items-center gap-3 rounded-md hover:bg-gray-100 transition-all duration-200 ease-in-out"
+                >
+                  <GrProjects className="text-green-500" />
+                  <span className="text-sm font-medium text-gray-700">Create Project</span>
+                </button>
+              </div>
+
+
+            )}
+          </div>
+        </div>
+
         {toDoProjects.length === 0 && toDoTasks.length === 0 ? (
           <div className="text-center text-gray-500">No items</div>
         ) : (
@@ -389,6 +493,31 @@ const Kanban = ({tasks, projects, setProjects, setTasks}) => {
           </div>
         </div>
       )}
+
+      {/* Modal for Creating Task */}
+      {isCreateModalTaskOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <CreateTask onClose={handleCloseCreateTaskModal} onTaskCreated={handleTaskCreated} />
+        </div>
+      )}
+      {/* Modal for Creating Project */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <CreateProjectForm onClose={handleCloseCreateProjectModal} onProjectCreated={handleProjectCreated} />
+        </div>
+      )}
+
+      {isTaskDetailOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        <ViewTaskDetail taskId={viewTaskId} onClose={handleCloseDetailModal} />
+      </div>
+      )}
+      {isProjectDetailOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        <ViewProjectDetail projectId={viewProjectId} onClose={handleCloseDetailModal} />
+      </div>
+      )}
+
     </div>
   );
 };

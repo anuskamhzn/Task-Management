@@ -13,6 +13,7 @@ router.delete('/delete/:mainTaskId', authenticate, taskController.deleteTask); /
 router.get('/getDeletedTask', authenticate, taskController.getSoftDeletedTasks);
 router.put('/restore/:mainTaskId', authenticate, taskController.restoreTask); //restore delete
 router.put('/update-task/:taskId', authenticate, taskController.updateTask);
+router.get('/tasks/:taskId', authenticate, taskController.getTaskById);
 
 //sub task
 router.post('/create-task/:mainTaskId', authenticate, taskController.createSubTask);

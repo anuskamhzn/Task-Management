@@ -9,6 +9,7 @@ import { FaTrash } from "react-icons/fa";
 import { toast } from 'react-hot-toast';
 import ModifyTask from "../Modify/ModifyTask";
 import CreateTask from "../Create/CreateTask";
+import ViewTaskDetail from './ViewTaskDetail';
 
 const Tasks = () => {
   const [auth] = useAuth();
@@ -20,6 +21,8 @@ const Tasks = () => {
   const [openMenu, setOpenMenu] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, taskId: null, taskTitle: '' });
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for ViewProjectDetail popup
+  const [viewTaskId, setViewTaskId] = useState(null); // Track project to view
 
   useEffect(() => {
     setTasks([]);
@@ -103,6 +106,17 @@ const Tasks = () => {
     setTasks((prevTasks) => [newTask, ...prevTasks]);
   };
 
+  const handleViewDetail = (taskId) => {
+    setViewTaskId(taskId);
+    setIsDetailModalOpen(true); // Open ViewTaskDetail popup
+    setOpenMenu(null);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false); // Close ViewTaskDetail popup
+    setViewTaskId(null);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
@@ -143,7 +157,8 @@ const Tasks = () => {
               {tasks.map((task) => (
                 <div
                   key={task._id}
-                  className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200"
+                  onClick={() => handleViewDetail(task._id)} // Card click opens ViewTaskDetail
+                  className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200 cursor-pointer"
                   onMouseLeave={() => {
                     setHoveredTask(null);
                     setOpenMenu(null);
@@ -154,11 +169,10 @@ const Tasks = () => {
                   <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                     <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        task.status === 'Completed'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
+                      className={`px-2 py-1 rounded-full text-xs ${task.status === 'Completed'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                        }`}
                     >
                       {task.status}
                     </span>
@@ -172,7 +186,9 @@ const Tasks = () => {
                   </NavLink>
 
                   {/* Three Dots Icon */}
-                  <div className="absolute top-3 right-3 cursor-pointer hidden group-hover:block">
+                  <div className="absolute top-3 right-3 cursor-pointer hidden group-hover:block"
+                    onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with menu
+                  >
                     <FaEllipsisV
                       onClick={() => handleMenuToggle(task._id)}
                       className="text-gray-600 hover:text-gray-800 transition"
@@ -219,6 +235,13 @@ const Tasks = () => {
             taskId={selectedTask}
             onClose={handleCloseModal}
           />
+        </div>
+      )}
+
+      {/* Modal for Viewing Project Details */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ViewTaskDetail taskId={viewTaskId} onClose={handleCloseDetailModal} />
         </div>
       )}
 

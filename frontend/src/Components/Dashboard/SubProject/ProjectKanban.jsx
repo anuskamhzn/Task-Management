@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { FaEllipsisV } from "react-icons/fa";
+import { FaEllipsisV, FaPlusCircle } from "react-icons/fa";
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
 import ModifySubproject from '../../../Pages/User/Modify/SubProjectModify';
+import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
+import ViewSubDetail from '../../../Pages/User/Projects/ViewSubDetail';
 
 const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, setProjects, auth }) => {
   const [openMenu, setOpenMenu] = useState(null);
@@ -11,6 +13,27 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   const { projectId } = useParams();
   const [selectedSubproject, setSelectedSubproject] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, subProjectId: null, subProjectTitle: '' });
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for ViewProjectDetail popup
+  const [viewSubProjectId, setViewSubProjectId] = useState(null); // Track project to view
+
+  // Modal visibility state for CreateTask
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleCreateSubprojectClick = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateSubprojectModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleSubprojectCreated = (subProject) => {
+    setProjects((prevProjects) => {
+      const updatedProjects = Array.isArray(prevProjects) ? prevProjects : [];
+      return [...updatedProjects, subProject.subProject];
+    });
+  };
 
   const handleDrop = async (e, newStatus) => {
     e.preventDefault();
@@ -113,6 +136,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
           setHoveredProject(null);
           setOpenMenu(null);
         }}
+        onClick={() => handleViewDetail(project._id)} // Pass subproject ID
       >
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">{project.title}</h3>
@@ -158,6 +182,17 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
     ));
   };
 
+  const handleViewDetail = (subProjectId) => {
+    setViewSubProjectId(subProjectId); // Use subproject ID
+    setIsDetailModalOpen(true);
+    setOpenMenu(null);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false); // Close ViewProjectDetail popup
+    setViewSubProjectId(null);
+  };
+
   return (
     <div className="flex gap-6 p-6">
       <div
@@ -165,8 +200,19 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, "To Do")}
       >
-        <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
-        {toDoProjects.length === 0 ? <div>No tasks</div> : renderProjects(toDoProjects)}
+        {/* <h2 className="text-xl font-semibold text-center mb-4">To Do</h2> */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-center mb-4">To Do</h2>
+          <div className="relative inline-block">
+            <button
+              onClick={handleCreateSubprojectClick}
+              className="text-2xl text-gray-800 hover:text-gray-600"
+            >
+              <FaPlusCircle />
+            </button>
+          </div>
+        </div>
+        {toDoProjects.length === 0 ? <div>No Projects</div> : renderProjects(toDoProjects)}
       </div>
       <div
         className="flex-1 p-4 bg-yellow-300 rounded-lg shadow-md"
@@ -174,7 +220,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         onDrop={(e) => handleDrop(e, "In Progress")}
       >
         <h2 className="text-xl font-semibold text-center mb-4">In Progress</h2>
-        {inProgressProjects.length === 0 ? <div>No tasks</div> : renderProjects(inProgressProjects)}
+        {inProgressProjects.length === 0 ? <div>No Projects</div> : renderProjects(inProgressProjects)}
       </div>
       <div
         className="flex-1 p-4 bg-green-300 rounded-lg shadow-md"
@@ -182,7 +228,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         onDrop={(e) => handleDrop(e, "Completed")}
       >
         <h2 className="text-xl font-semibold text-center mb-4">Completed</h2>
-        {completedProjects.length === 0 ? <div>No tasks</div> : renderProjects(completedProjects)}
+        {completedProjects.length === 0 ? <div>No Projects</div> : renderProjects(completedProjects)}
       </div>
       {selectedSubproject && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
@@ -218,6 +264,23 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <CreateSubproject onClose={handleCloseCreateSubprojectModal} onSubProjectCreated={handleSubprojectCreated} />
+        </div>
+      )}
+
+      {/* Modal for Viewing Project Details */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <ViewSubDetail
+            mainProjectId={projectId} // Main project ID from useParams
+            subProjectId={viewSubProjectId} // Subproject ID from clicked card
+            onClose={handleCloseDetailModal}
+          />
         </div>
       )}
     </div>
