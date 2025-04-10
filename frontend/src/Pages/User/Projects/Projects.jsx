@@ -4,7 +4,7 @@ import { useAuth } from "../../../context/auth";
 import Navbar from "../../../Components/Navigation/Navbar";
 import Sidebar from "../../../Components/Navigation/Sidebar";
 import { NavLink } from "react-router-dom";
-import { FaTrash, FaEllipsisV } from "react-icons/fa";
+import { FaTrash, FaEllipsisV, FaEdit, FaTrashAlt } from "react-icons/fa";
 import { toast } from 'react-hot-toast';
 import ModifyProject from "../Modify/ModifyProject";
 import CreateProjectForm from "../Create/CreateProject";
@@ -211,15 +211,15 @@ const Projects = () => {
                     >
                       <button
                         onClick={() => handleModify(project._id)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                         className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
                       >
-                        Modify
+                        <FaEdit/> Modify 
                       </button>
                       <button
                         onClick={() => openConfirmDialog(project._id, project.title)}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition"
-                      >
-                        Delete
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                        <FaTrashAlt />Delete
                       </button>
                     </div>
                   )}

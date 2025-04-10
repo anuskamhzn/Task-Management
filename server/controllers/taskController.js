@@ -476,3 +476,163 @@ exports.getSubtaskById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Get task status counts using aggregation
+exports.getTaskStatusCountsWithAggregation = async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+
+    const statusCounts = await Task.aggregate([
+      {
+        $match: {
+          owner: new mongoose.Types.ObjectId(ownerId),
+          $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+        },
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    let totalTasks = 0;
+    let counts = { toDo: 0, inProgress: 0, completed: 0 };
+
+    statusCounts.forEach((group) => {
+      totalTasks += group.count;
+      switch (group._id) {
+        case "To Do":
+          counts.toDo = group.count;
+          break;
+        case "In Progress":
+          counts.inProgress = group.count;
+          break;
+        case "Completed":
+          counts.completed = group.count;
+          break;
+      }
+    });
+
+    res.status(200).json({
+      message: "Task status counts retrieved successfully",
+      statusCounts: { totalTasks, ...counts },
+    });
+  } catch (error) {
+    console.error("Error fetching task status counts:", error);
+    res.status(500).json({
+      message: "Error fetching task status counts",
+      error: error.message,
+    });
+  }
+};
+
+// Get detailed task analytics for the logged-in user
+exports.getTaskAnalytics = async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    const currentDate = new Date();
+
+    // Aggregation for task statistics
+    const taskStats = await Task.aggregate([
+      {
+        $match: {
+          owner: new mongoose.Types.ObjectId(ownerId),
+          $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+        },
+      },
+      {
+        $facet: {
+          // Status counts
+          statusCounts: [
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+          // Overdue tasks
+          overdueTasks: [
+            {
+              $match: {
+                dueDate: { $lt: currentDate },
+                status: { $ne: "Completed" },
+              },
+            },
+            { $count: "overdueCount" },
+          ],
+          // Total tasks
+          totalTasks: [
+            { $count: "totalCount" },
+          ],
+          // Subtask completion stats
+          subTaskStats: [
+            {
+              $lookup: {
+                from: "subtasks",
+                localField: "_id",
+                foreignField: "mainTask",
+                as: "subTasks",
+              },
+            },
+            { $unwind: { path: "$subTasks", preserveNullAndEmptyArrays: true } },
+            {
+              $group: {
+                _id: null,
+                totalSubTasks: { $sum: 1 },
+                completedSubTasks: {
+                  $sum: {
+                    $cond: [{ $eq: ["$subTasks.status", "Completed"] }, 1, 0],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    // Process the results
+    const statusCounts = { toDo: 0, inProgress: 0, completed: 0 };
+    taskStats[0].statusCounts.forEach((group) => {
+      switch (group._id) {
+        case "To Do":
+          statusCounts.toDo = group.count;
+          break;
+        case "In Progress":
+          statusCounts.inProgress = group.count;
+          break;
+        case "Completed":
+          statusCounts.completed = group.count;
+          break;
+      }
+    });
+
+    const totalTasks = taskStats[0].totalTasks[0]?.totalCount || 0;
+    const overdueTasks = taskStats[0].overdueTasks[0]?.overdueCount || 0;
+    const totalSubTasks = taskStats[0].subTaskStats[0]?.totalSubTasks || 0;
+    const completedSubTasks = taskStats[0].subTaskStats[0]?.completedSubTasks || 0;
+
+    const completionRate = totalTasks > 0 ? (statusCounts.completed / totalTasks) * 100 : 0;
+    const subTaskCompletionRate = totalSubTasks > 0 ? (completedSubTasks / totalSubTasks) * 100 : 0;
+
+    // Response
+    res.status(200).json({
+      message: "Task analytics retrieved successfully",
+      analytics: {
+        totalTasks,
+        statusCounts,
+        overdueTasks,
+        completionRate: completionRate.toFixed(2) + "%",
+        subTaskStats: {
+          totalSubTasks,
+          completedSubTasks,
+          subTaskCompletionRate: subTaskCompletionRate.toFixed(2) + "%",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching task analytics:", error);
+    res.status(500).json({
+      message: "Error fetching task analytics",
+      error: error.message,
+    });
+  }
+};

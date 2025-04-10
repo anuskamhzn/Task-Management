@@ -10,6 +10,7 @@ const messageRoute = require('./routes/messageRoute');
 const chatRoute = require('./routes/chatRoute');
 const groupChatRoute = require('./routes/groupChatRoute');
 const socketController = require('./controllers/socketController');
+const googleRoutes = require('./routes/googleRoutes');
 const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -51,6 +52,7 @@ app.use('/api/task', taskRoute);
 app.use('/api/message', messageRoute);
 app.use('/api/chat', chatRoute);
 app.use('/api/group-chat', groupChatRoute);
+app.use('/api/google', googleRoutes);
 
 // Catch-all route for unmatched routes
 app.use('*', (req, res) => {

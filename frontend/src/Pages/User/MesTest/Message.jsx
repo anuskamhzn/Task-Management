@@ -79,6 +79,10 @@ const Message = () => {
   };
 
   const fetchMessages = async (chatId, type) => {
+    if (!chatId || chatId === 'undefined') {
+      setMessages([]);
+      return;
+    }
     try {
       const endpoint =
         type === 'group'
@@ -393,6 +397,14 @@ const Message = () => {
   };
 
   const handleChatClick = (chat, type) => {
+    if (!chat || !chat.id) {
+      setCurrentChat(null);
+      setChatType(null);
+      setMessages([]);
+      setShowUserInfoSidebar(false);
+      setShowGroupInfoSidebar(false);
+      return;
+    }
     if (currentChat && currentChat?.id === chat?.id) {
       setMessages([]);
       setCurrentChat(null);

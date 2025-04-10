@@ -348,7 +348,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
         <p className="text-xs text-gray-500">
           Due Date: {new Date(task.dueDate).toLocaleDateString()}
         </p>
-        <div className="flex gap-2 mt-2">{renderUsers(task.owner)}</div>
+        {/* <div className="flex gap-2 mt-2">{renderUsers(task.owner)}</div> */}
       </div>
     ));
   };

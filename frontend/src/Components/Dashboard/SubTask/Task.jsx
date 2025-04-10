@@ -5,6 +5,7 @@ import { useAuth } from "../../../context/auth";
 import Navbar from "../../Navigation/Navbar";
 import Sidebar from "../../Navigation/Sidebar";
 import TaskKanban from './TaskKanban';
+import TaskTableView from './TaskListView';
 import { FaTrash } from "react-icons/fa";
 import CreateSubtask from "../../../Pages/User/Create/CreateSubtask";
 
@@ -86,7 +87,7 @@ const Task = () => {
 
   const handleSubtaskCreated = (subTask) => {
     setTasks((prevTasks) => [...prevTasks, subTask.subTask,]); // Add to the top
-  };  
+  };
 
   return (
     <div className="flex bg-gray-100 min-h-screen">
@@ -116,7 +117,15 @@ const Task = () => {
 
           {/* {error && <p className="text-red-500 text-center">{error}</p>} */}
           {tasks && tasks.length > 0 ? (
-            <TaskKanban
+            // <TaskKanban
+            //   toDoTasks={tasks.filter(task => task?.status === "To Do")}
+            //   inProgressTasks={tasks.filter(task => task?.status === "In Progress")}
+            //   completedTasks={tasks.filter(task => task?.status === "Completed")}
+            //   tasks={tasks}
+            //   setTasks={setTasks}
+            //   auth={auth}
+            // />
+            <TaskTableView
               toDoTasks={tasks.filter(task => task?.status === "To Do")}
               inProgressTasks={tasks.filter(task => task?.status === "In Progress")}
               completedTasks={tasks.filter(task => task?.status === "Completed")}

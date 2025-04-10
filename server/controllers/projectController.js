@@ -501,7 +501,7 @@ exports.getSubProjectsByMainProject = async (req, res) => {
 
     // Validate the project ID format
     if (!mongoose.Types.ObjectId.isValid(mainProjectId)) {
-      return res.status(400).json({ message: "Invalid project ID format." });
+      return res.status(400).json({ message: "Invalid project ID ." });
     }
 
     // Find the main project to ensure the user is either the owner or a member
@@ -839,31 +839,191 @@ exports.getProjectById = async (req, res) => {
   }
 };
 
-// Get sub-projects by parent project ID
-// exports.getSubProjectById = async (req, res) => {
-//   const { mainProjectId, subProjectId } = req.params;
+// Get project status counts for the logged-in user (owner or member)
+exports.getProjectStatusCountsWithAggregation = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-//   try {
-//     // Verify the main project exists
-//     const mainTask = await Project.findById(mainProjectId);
-//     if (!mainTask) {
-//       return res.status(404).json({ message: "Main task not found" });
-//     }
+    const statusCounts = await Project.aggregate([
+      {
+        $match: {
+          $or: [{ owner: new mongoose.Types.ObjectId(userId) }, { members: new mongoose.Types.ObjectId(userId) }],
+          deletedAt: null,
+        },
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
 
-//     // Fetch the sub-project and populate the referenced fields
-//     const subproject = await SubProject.findById(subProjectId)
-//       .populate('mainProject')  // Populating the mainProject reference (Project model)
-//       .populate('owner')        // Populating the owner reference (User model)
-//       .populate('members');     // Populating the members array (User model)
+    let totalProjects = 0;
+    let counts = { toDo: 0, inProgress: 0, completed: 0 };
 
-//     if (!subproject) {
-//       return res.status(404).json({ message: "Subproject not found" });
-//     }
+    statusCounts.forEach((group) => {
+      totalProjects += group.count;
+      switch (group._id) {
+        case "To Do":
+          counts.toDo = group.count;
+          break;
+        case "In Progress":
+          counts.inProgress = group.count;
+          break;
+        case "Completed":
+          counts.completed = group.count;
+          break;
+      }
+    });
 
-//     // Return the populated sub-project
-//     res.json(subproject);
-//   } catch (error) {
-//     console.error("Error fetching subproject:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    res.status(200).json({
+      message: "Project status counts retrieved successfully",
+      statusCounts: { totalProjects, ...counts },
+    });
+  } catch (error) {
+    console.error("Error fetching project status counts:", error);
+    res.status(500).json({
+      message: "Error fetching project status counts",
+      error: error.message,
+    });
+  }
+};
+
+// Get detailed project analytics for the logged-in user
+exports.getProjectAnalytics = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const currentDate = new Date();
+
+    // Aggregation for project statistics
+    const projectStats = await Project.aggregate([
+      {
+        $match: {
+          $or: [
+            { owner: new mongoose.Types.ObjectId(userId) },
+            { members: new mongoose.Types.ObjectId(userId) },
+          ],
+          deletedAt: null,
+        },
+      },
+      {
+        $facet: {
+          // Status counts
+          statusCounts: [
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+          // Overdue projects
+          overdueProjects: [
+            {
+              $match: {
+                dueDate: { $lt: currentDate },
+                status: { $ne: "Completed" },
+              },
+            },
+            { $count: "overdueCount" },
+          ],
+          // Total projects
+          totalProjects: [
+            { $count: "totalCount" },
+          ],
+          // Subproject completion stats
+          subProjectStats: [
+            {
+              $lookup: {
+                from: "subprojects",
+                localField: "_id",
+                foreignField: "mainProject",
+                as: "subProjects",
+              },
+            },
+            { $unwind: { path: "$subProjects", preserveNullAndEmptyArrays: true } },
+            {
+              $group: {
+                _id: null,
+                totalSubProjects: { $sum: 1 },
+                completedSubProjects: {
+                  $sum: {
+                    $cond: [{ $eq: ["$subProjects.status", "Completed"] }, 1, 0],
+                  },
+                },
+              },
+            },
+          ],
+          // Member workload
+          memberWorkload: [
+            { $unwind: "$members" },
+            {
+              $group: {
+                _id: "$members",
+                projectCount: { $sum: 1 },
+              },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "_id",
+                as: "userInfo",
+              },
+            },
+            { $unwind: "$userInfo" },
+            {
+              $project: {
+                email: "$userInfo.email",
+                projectCount: 1,
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    // Process the results
+    const statusCounts = { toDo: 0, inProgress: 0, completed: 0 };
+    projectStats[0].statusCounts.forEach((group) => {
+      switch (group._id) {
+        case "To Do":
+          statusCounts.toDo = group.count;
+          break;
+        case "In Progress":
+          statusCounts.inProgress = group.count;
+          break;
+        case "Completed":
+          statusCounts.completed = group.count;
+          break;
+      }
+    });
+
+    const totalProjects = projectStats[0].totalProjects[0]?.totalCount || 0;
+    const overdueProjects = projectStats[0].overdueProjects[0]?.overdueCount || 0;
+    const totalSubProjects = projectStats[0].subProjectStats[0]?.totalSubProjects || 0;
+    const completedSubProjects = projectStats[0].subProjectStats[0]?.completedSubProjects || 0;
+
+    const completionRate = totalProjects > 0 ? (statusCounts.completed / totalProjects) * 100 : 0;
+    const subProjectCompletionRate = totalSubProjects > 0 ? (completedSubProjects / totalSubProjects) * 100 : 0;
+
+    // Response
+    res.status(200).json({
+      message: "Project analytics retrieved successfully",
+      analytics: {
+        totalProjects,
+        statusCounts,
+        overdueProjects,
+        completionRate: completionRate.toFixed(2) + "%",
+        subProjectStats: {
+          totalSubProjects,
+          completedSubProjects,
+          subProjectCompletionRate: subProjectCompletionRate.toFixed(2) + "%",
+        },
+        memberWorkload: projectStats[0].memberWorkload,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching project analytics:", error);
+    res.status(500).json({
+      message: "Error fetching project analytics",
+      error: error.message,
+    });
+  }
+};

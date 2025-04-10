@@ -67,7 +67,7 @@ export default function Dashboard() {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="shadow-lg rounded-lg border bg-white">
                 <div className="border-b p-4">
-                  <h2 className="text-lg font-semibold">Project Statistics</h2>
+                  <h2 className="text-lg font-semibold">Statistics</h2>
                 </div>
                 <div className="p-4">
                   <div className="h-[300px]" />
@@ -85,8 +85,8 @@ export default function Dashboard() {
                       plugins={[dayGridPlugin, interactionPlugin]}
                       initialView="dayGridMonth"
                     // events={[
-                    //   { title: "Project Deadline", date: "2025-02-14" },
-                    //   { title: "Team Meeting", date: "2025-02-18" },
+                    //   { title: "Project Deadline", date: "2025-04-14" },
+                    //   { title: "Team Meeting", date: "2025-04-18" },
                     // ]}
                     // eventClick={(info) => {
                     //   alert(`Event: ${info.event.title}`);

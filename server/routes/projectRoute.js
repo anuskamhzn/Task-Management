@@ -16,6 +16,9 @@ router.put('/restore/:projectId', authenticate, projectController.restoreProject
 router.put('/update-project/:projectId', authenticate, projectController.updateProject);
 router.get('/:projectId', authenticate, projectController.getProjectById);
 
+router.get('/pro/total-counts', authenticate, projectController.getProjectStatusCountsWithAggregation);
+router.get('/pro/analytics', authenticate, projectController.getProjectAnalytics);
+
 //sub project
 router.post('/create-project/:mainProjectId', authenticate, projectController.createSubProject);
 router.get('/subproject/:mainProjectId', authenticate, projectController.getSubProjectsByMainProject);

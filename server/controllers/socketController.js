@@ -4,6 +4,7 @@ const Project = require('../models/Project');
 const Group = require('../models/GroupChat');
 const User = require('../models/User');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 exports.setupSocket = (io) => {
   io.on('connection', (socket) => {
@@ -908,9 +909,14 @@ exports.setupSocket = (io) => {
 
     socket.on('markMessagesAsRead', async ({ conversationId, type }) => {
       try {
-        const userId = socket.user.id;
-        if (!userId) throw new Error('No user ID');
-
+        const userId = socket.user?.id;
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+          throw new Error('Invalid or missing user ID');
+        }
+        if (!conversationId || conversationId === 'undefined' || !mongoose.Types.ObjectId.isValid(conversationId)) {
+          throw new Error('Invalid or missing conversation ID');
+        }
+    
         if (type === 'private') {
           const updated = await Message.updateMany(
             {
@@ -921,92 +927,115 @@ exports.setupSocket = (io) => {
             },
             { $set: { isRead: true } }
           );
-          // console.log(`Marked ${updated.modifiedCount} messages as read for user ${userId} from ${conversationId}`);
-
-          io.to(conversationId).emit('messagesRead', { recipientId: userId, updatedCount: updated.modifiedCount });
-
-          const recentSender = await Message.aggregate([
-            {
-              $match: {
-                recipient: userId,
-                sender: conversationId,
-                deletedAt: null,
-              },
-            },
-            {
-              $group: {
-                _id: '$sender',
-                latestTimestamp: { $max: '$timestamp' }, // Use last message timestamp
-                unreadCount: { $sum: { $cond: [{ $eq: ['$isRead', false] }, 1, 0] } },
-                totalCount: { $sum: 1 },
-              },
-            },
-            {
-              $lookup: {
-                from: 'users',
-                localField: '_id',
-                foreignField: '_id',
-                as: 'senderInfo',
-              },
-            },
-            { $unwind: '$senderInfo' },
-            {
-              $project: {
-                senderId: '$_id',
-                username: '$senderInfo.username',
-                email: '$senderInfo.email',
-                latestTimestamp: 1,
-                unreadCount: 1,
-                totalCount: 1,
-              },
-            },
-          ]);
-
-          if (recentSender.length > 0) {
-            // console.log(`Emitting recentSenderUpdate to ${userId}:`, recentSender[0]);
-            io.to(userId).emit('recentSenderUpdate', recentSender[0]);
-          } else {
-            // Fetch last known timestamp or keep it stable
-            const lastMessage = await Message.findOne(
-              { recipient: userId, sender: conversationId, deletedAt: null },
-              { timestamp: 1 },
-              { sort: { timestamp: -1 } }
-            );
-            const senderInfo = await User.findById(conversationId, 'username email');
-            if (senderInfo) {
-              const update = {
-                senderId: conversationId,
-                username: senderInfo.username,
-                email: senderInfo.email,
-                latestTimestamp: lastMessage ? lastMessage.timestamp : new Date(0), // Use last message or epoch
-                unreadCount: 0,
-                totalCount: 0,
-              };
-              // console.log(`Emitting recentSenderUpdate (no messages) to ${userId}:`, update);
-              io.to(userId).emit('recentSenderUpdate', update);
-            }
-          }
+          // ...
         }
-        else if (type === 'group') {
-          // Mark group messages as read
-          await GrpMsg.updateMany(
-            {
-              group: conversationId,
-              sender: { $ne: userId },
-              isRead: false,
-              deletedAt: null,
-            },
-            { $set: { isRead: true } }
-          );
-          io.to(`group_${conversationId}`).emit('groupMessagesRead', { userId });
-        }
-
-        socket.emit('markAsReadSuccess', { conversationId, type });
       } catch (error) {
         console.error('Error marking messages as read:', error);
         socket.emit('error', { message: 'Error marking messages as read', error: error.message });
       }
     });
+
+    // socket.on('markMessagesAsRead', async ({ conversationId, type }) => {
+    //   try {
+    //     const userId = socket.user.id;
+    //     if (!userId) throw new Error('No user ID');
+
+    //     if (type === 'private') {
+    //       const updated = await Message.updateMany(
+    //         {
+    //           recipient: userId,
+    //           sender: conversationId,
+    //           isRead: false,
+    //           deletedAt: null,
+    //         },
+    //         { $set: { isRead: true } }
+    //       );
+    //       // console.log(`Marked ${updated.modifiedCount} messages as read for user ${userId} from ${conversationId}`);
+
+    //       io.to(conversationId).emit('messagesRead', { recipientId: userId, updatedCount: updated.modifiedCount });
+
+    //       const recentSender = await Message.aggregate([
+    //         {
+    //           $match: {
+    //             recipient: userId,
+    //             sender: conversationId,
+    //             deletedAt: null,
+    //           },
+    //         },
+    //         {
+    //           $group: {
+    //             _id: '$sender',
+    //             latestTimestamp: { $max: '$timestamp' }, // Use last message timestamp
+    //             unreadCount: { $sum: { $cond: [{ $eq: ['$isRead', false] }, 1, 0] } },
+    //             totalCount: { $sum: 1 },
+    //           },
+    //         },
+    //         {
+    //           $lookup: {
+    //             from: 'users',
+    //             localField: '_id',
+    //             foreignField: '_id',
+    //             as: 'senderInfo',
+    //           },
+    //         },
+    //         { $unwind: '$senderInfo' },
+    //         {
+    //           $project: {
+    //             senderId: '$_id',
+    //             username: '$senderInfo.username',
+    //             email: '$senderInfo.email',
+    //             latestTimestamp: 1,
+    //             unreadCount: 1,
+    //             totalCount: 1,
+    //           },
+    //         },
+    //       ]);
+
+    //       if (recentSender.length > 0) {
+    //         // console.log(`Emitting recentSenderUpdate to ${userId}:`, recentSender[0]);
+    //         io.to(userId).emit('recentSenderUpdate', recentSender[0]);
+    //       } else {
+    //         // Fetch last known timestamp or keep it stable
+    //         const lastMessage = await Message.findOne(
+    //           { recipient: userId, sender: conversationId, deletedAt: null },
+    //           { timestamp: 1 },
+    //           { sort: { timestamp: -1 } }
+    //         );
+    //         const senderInfo = await User.findById(conversationId, 'username email');
+    //         if (senderInfo) {
+    //           const update = {
+    //             senderId: conversationId,
+    //             username: senderInfo.username,
+    //             email: senderInfo.email,
+    //             latestTimestamp: lastMessage ? lastMessage.timestamp : new Date(0), // Use last message or epoch
+    //             unreadCount: 0,
+    //             totalCount: 0,
+    //           };
+    //           // console.log(`Emitting recentSenderUpdate (no messages) to ${userId}:`, update);
+    //           io.to(userId).emit('recentSenderUpdate', update);
+    //         }
+    //       }
+    //     }
+    //     else if (type === 'group') {
+    //       // Mark group messages as read
+    //       await GrpMsg.updateMany(
+    //         {
+    //           group: conversationId,
+    //           sender: { $ne: userId },
+    //           isRead: false,
+    //           deletedAt: null,
+    //         },
+    //         { $set: { isRead: true } }
+    //       );
+    //       io.to(`group_${conversationId}`).emit('groupMessagesRead', { userId });
+    //     }
+
+    //     socket.emit('markAsReadSuccess', { conversationId, type });
+    //   } catch (error) {
+    //     console.error('Error marking messages as read:', error);
+    //     socket.emit('error', { message: 'Error marking messages as read', error: error.message });
+    //   }
+    // });
   });
 };
 

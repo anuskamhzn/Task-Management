@@ -15,6 +15,9 @@ router.put('/restore/:mainTaskId', authenticate, taskController.restoreTask); //
 router.put('/update-task/:taskId', authenticate, taskController.updateTask);
 router.get('/tasks/:taskId', authenticate, taskController.getTaskById);
 
+router.get('/ts/status-counts', authenticate, taskController.getTaskStatusCountsWithAggregation);
+router.get('/ts/analytics', authenticate, taskController.getTaskAnalytics);
+
 //sub task
 router.post('/create-task/:mainTaskId', authenticate, taskController.createSubTask);
 router.get('/subtask/:mainTaskId', authenticate, taskController.getSubTasksByMainTask);

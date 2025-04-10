@@ -15,7 +15,9 @@ const KanbanUser = () => {
 
     return (
         <div className="flex">
-            <Sidebar />
+            <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
+                <Sidebar />
+            </aside>
             <div className="flex-1">
                 <Navbar />
                 <h1 className="text-2xl p-6 font-bold text-gray-800">Kanban Board</h1>
