@@ -12,25 +12,18 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
     dueDate: "",
     status: "",
     members: [],
-    newMember: "", // Consolidated into subproject state
+    newMember: "",
   });
   const [initialSubproject, setInitialSubproject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  // Sample email suggestions (replace with your API if available)
-  const emailSuggestions = [
-    "john.doe@example.com",
-    "jane.smith@example.com",
-    "bob.johnson@example.com",
-    "alice.wilson@example.com",
-    "mike.brown@example.com",
-  ];
+  const [availableMembers, setAvailableMembers] = useState([]);
 
   useEffect(() => {
     if (auth && auth.user && projectId && subProjectId) {
       fetchSubProject();
+      fetchMainProjectMembers();
     }
   }, [auth, projectId, subProjectId]);
 
@@ -59,17 +52,33 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
       }
     } catch (err) {
       setError("Failed to fetch subproject.");
+      console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMainProjectMembers = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/api/project", {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const mainProject = response.data.find((p) => p._id === projectId);
+      if (mainProject && mainProject.members) {
+        const memberEmails = mainProject.members.map((member) => member.email);
+        setAvailableMembers([...new Set(memberEmails)]);
+      } else {
+        toast.error("Main project not found.");
+      }
+    } catch (err) {
+      console.error("Error fetching main project members:", err);
+      toast.error("Failed to fetch project members.");
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSubproject({ ...subproject, [name]: value });
-    if (name === "newMember") {
-      setShowDropdown(value.length > 0);
-    }
   };
 
   const handleAddMember = () => {
@@ -148,10 +157,9 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
     }
   };
 
-  const filteredSuggestions = emailSuggestions.filter(
-    (email) =>
-      email.toLowerCase().includes(subproject.newMember.toLowerCase()) &&
-      !subproject.members.includes(email)
+  // List available members (not already added)
+  const membersToShow = availableMembers.filter(
+    (email) => !subproject.members.includes(email)
   );
 
   return (
@@ -231,9 +239,9 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
                 value={subproject.newMember}
                 onChange={handleChange}
                 className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                placeholder="Enter email"
+                placeholder="Select or enter member email"
+                onFocus={() => setShowDropdown(true)}
                 onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                onFocus={() => setShowDropdown(subproject.newMember.length > 0)}
               />
               <button
                 type="button"
@@ -244,9 +252,9 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
               </button>
             </div>
 
-            {showDropdown && filteredSuggestions.length > 0 && (
+            {showDropdown && membersToShow.length > 0 && (
               <div className="absolute z-10 w-full max-w-[calc(100%-80px)] bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                {filteredSuggestions.map((email, index) => (
+                {membersToShow.map((email, index) => (
                   <div
                     key={index}
                     className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm text-gray-700"

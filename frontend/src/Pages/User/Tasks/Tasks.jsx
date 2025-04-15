@@ -5,7 +5,7 @@ import { useAuth } from "../../../context/auth";
 import Navbar from "../../../Components/Navigation/Navbar";
 import Sidebar from "../../../Components/Navigation/Sidebar";
 import { NavLink } from "react-router-dom";
-import { FaTrash,  FaEdit, FaTrashAlt } from "react-icons/fa";
+import { FaTrash, FaEdit, FaTrashAlt } from "react-icons/fa";
 import { toast } from 'react-hot-toast';
 import ModifyTask from "../Modify/ModifyTask";
 import CreateTask from "../Create/CreateTask";
@@ -180,6 +180,7 @@ const Tasks = () => {
 
                   <NavLink
                     to={`/dashboard/task/subtask/${task._id}`}
+                    onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
                     className="inline-block bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-md transition"
                   >
                     View Task
@@ -198,18 +199,18 @@ const Tasks = () => {
                   {/* Dropdown Menu */}
                   {openMenu === task._id && (
                     <div className="absolute right-3 top-8 w-32 bg-white shadow-lg border border-gray-200 rounded-md z-10"
-                    onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with dropdown
+                      onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with dropdown
                     >
                       <button
                         onClick={() => handleModify(task._id)}
-                         className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
                       >
-                        <FaEdit/> Modify 
+                        <FaEdit /> Modify
                       </button>
                       <button
                         onClick={() => openConfirmDialog(task._id, task.title)}
                         className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                        >
+                      >
                         <FaTrashAlt />Delete
                       </button>
                     </div>

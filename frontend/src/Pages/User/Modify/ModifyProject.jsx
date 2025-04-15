@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { useParams } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
 
 const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
@@ -16,16 +15,9 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  
-  // Sample email suggestions (replace with your own list or API call)
-  const emailSuggestions = [
-    "john.doe@example.com",
-    "jane.smith@example.com",
-    "bob.johnson@example.com",
-    "alice.wilson@example.com",
-    "mike.brown@example.com",
-  ];
+  const [availableMembers, setAvailableMembers] = useState([]); // Store fetched members
 
+  // Fetch project details and available members
   useEffect(() => {
     if (auth && auth.user && projectId) {
       fetchProjects();
@@ -35,21 +27,27 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API}/api/project`, {
+      const response = await axios.get(`http://localhost:5000/api/project`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
-      const ProjectData = response.data.find((p) => p._id === projectId);
-      if (ProjectData) {
+      const projectData = response.data.find((p) => p._id === projectId);
+      if (projectData) {
         setProject({
-          ...ProjectData,
-          members: ProjectData.members.map(member => member.email || member),
+          ...projectData,
+          members: projectData.members.map((member) => member.email || member),
           newMember: "",
         });
+        // Set available members (all members from response, to allow re-adding removed ones)
+        const memberEmails = response.data
+          .filter((p) => p._id === projectId)
+          .flatMap((p) => p.members.map((m) => m.email));
+        setAvailableMembers([...new Set(memberEmails)]);
       } else {
         setError("Project not found.");
       }
     } catch (err) {
       setError("Error fetching projects");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -58,9 +56,6 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProject({ ...project, [name]: value });
-    if (name === "newMember") {
-      setShowDropdown(value.length > 0); // Show dropdown when typing
-    }
   };
 
   const handleAddMember = () => {
@@ -70,7 +65,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
         members: [...project.members, project.newMember],
         newMember: "",
       });
-      setShowDropdown(false); // Hide dropdown after adding
+      setShowDropdown(false);
     }
   };
 
@@ -79,7 +74,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
       ...project,
       newMember: email,
     });
-    setShowDropdown(false); // Hide dropdown after selection
+    setShowDropdown(false);
   };
 
   const handleRemoveMember = (email) => {
@@ -100,8 +95,8 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
 
       if (response.data && response.data.project) {
         setProjects((prevProjects) =>
-          prevProjects.map((project) =>
-            project._id === projectId ? { ...project, ...response.data.project } : project
+          prevProjects.map((p) =>
+            p._id === projectId ? { ...p, ...response.data.project } : p
           )
         );
       }
@@ -115,10 +110,9 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
     }
   };
 
-  // Filter suggestions based on input
-  const filteredSuggestions = emailSuggestions.filter((email) =>
-    email.toLowerCase().includes(project.newMember.toLowerCase()) &&
-    !project.members.includes(email)
+  // List available members (not already added)
+  const membersToShow = availableMembers.filter(
+    (email) => !project.members.includes(email)
   );
 
   return (
@@ -198,9 +192,9 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
                 value={project.newMember}
                 onChange={handleChange}
                 className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                placeholder="Enter email"
-                onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Hide dropdown when clicking outside
-                onFocus={() => setShowDropdown(project.newMember.length > 0)}
+                placeholder="Select or enter member email"
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
               />
               <button
                 type="button"
@@ -212,13 +206,13 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
             </div>
 
             {/* Dropdown for email suggestions */}
-            {showDropdown && filteredSuggestions.length > 0 && (
+            {showDropdown && membersToShow.length > 0 && (
               <div className="absolute z-10 w-full max-w-[calc(100%-80px)] bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                {filteredSuggestions.map((email, index) => (
+                {membersToShow.map((email, index) => (
                   <div
                     key={index}
                     className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm text-gray-700"
-                    onMouseDown={() => handleSelectSuggestion(email)} // Use onMouseDown to handle before blur
+                    onMouseDown={() => handleSelectSuggestion(email)}
                   >
                     {email}
                   </div>
