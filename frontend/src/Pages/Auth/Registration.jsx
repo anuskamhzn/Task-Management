@@ -1,59 +1,82 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AiOutlineUser, AiOutlineMail, AiOutlinePhone, AiOutlineLock } from 'react-icons/ai';
 
 const Register = () => {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Extract query parameters
+  const query = new URLSearchParams(location.search);
+  const invitedEmail = query.get('email') || '';
+  const redirect = query.get('redirect') || '';
+  const token = query.get('token') || '';
+
+  // Set email state based on query parameter for invitation-based registration
+  useEffect(() => {
+    if (redirect === 'approve-invite' && invitedEmail) {
+      setEmail(invitedEmail);
+    }
+  }, [invitedEmail, redirect]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Check if password and confirmPass are the same
+    // Check if password and confirmPassword are the same
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error('Passwords do not match');
       return;
     }
 
     // Check if password is at least 6 characters long
     if (password.length < 6) {
-      toast.error("Password should be at least 6 characters long");
+      toast.error('Password should be at least 6 characters long');
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error("Please enter a valid email address");
+      toast.error('Please enter a valid email address');
       return;
     }
 
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API}/api/auth/register`, { 
-        username,
+      // Construct the registration URL with query parameters for invitation-based registration
+      const registerUrl =
+        redirect === 'approve-invite' && token
+          ? `${process.env.REACT_APP_API}/api/auth/register?redirect=approve-invite&token=${encodeURIComponent(token)}`
+          : `${process.env.REACT_APP_API}/api/auth/register`;
+
+      const res = await axios.post(registerUrl, {
+        name,
         email,
         password,
         confirmPassword,
-        phone
+        phone,
       });
-      
+
       if (res.data.success) {
-        toast.success("Registration successful!");
-        navigate("/login");
+        toast.success('Registration successful!');
+        // Check if the response includes a redirect (for invitation-based registration)
+        if (res.data.redirect) {
+          navigate('/login', { state: { fromInvitation: true } });
+        } else {
+          navigate('/login');
+        }
       } else {
         toast.error(res.data.message);
       }
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong");
+      toast.error(error.response?.data?.message || 'Something went wrong');
     }
   };
 
@@ -63,8 +86,7 @@ const Register = () => {
       <div
         className="hidden lg:flex w-1/2 bg-cover bg-center relative"
         style={{
-          backgroundImage:
-            `url(${require('../../img/register.png')})`,
+          backgroundImage: `url(${require('../../img/register.png')})`,
         }}
       >
         <div className="absolute inset-0 bg-blue-900 bg-opacity-50"></div>
@@ -79,16 +101,18 @@ const Register = () => {
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Signup</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Username Field */}
+            {/* name Field */}
             <div className="input-group">
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
               <div className="relative mt-2">
                 <input
                   type="text"
-                  id="username"
-                  placeholder="John"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="name"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -100,7 +124,9 @@ const Register = () => {
 
             {/* Email Field */}
             <div className="input-group">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
               <div className="relative mt-2">
                 <input
                   type="email"
@@ -108,7 +134,10 @@ const Register = () => {
                   placeholder="john@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  readOnly={redirect === 'approve-invite' && invitedEmail !== ''}
+                  className={`p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    redirect === 'approve-invite' && invitedEmail !== '' ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
                   required
                 />
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -119,7 +148,9 @@ const Register = () => {
 
             {/* Phone Field */}
             <div className="input-group">
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone
+              </label>
               <div className="relative mt-2">
                 <input
                   type="text"
@@ -138,7 +169,9 @@ const Register = () => {
 
             {/* Password Field */}
             <div className="input-group">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
               <div className="relative mt-2">
                 <input
                   type="password"
@@ -157,7 +190,9 @@ const Register = () => {
 
             {/* Confirm Password Field */}
             <div className="input-group">
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
               <div className="relative mt-2">
                 <input
                   type="password"

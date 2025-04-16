@@ -6,6 +6,7 @@ const projectSchema = new mongoose.Schema({
   description: { type: String, required: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  initials:{ type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   dueDate: { type: Date },
   pendingInvites: [{ type: String }],
   subProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubProject' }],

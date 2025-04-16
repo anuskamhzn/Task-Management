@@ -187,7 +187,7 @@ const Projects = () => {
                   <NavLink
                     to={`/dashboard/project/subproject/${project._id}`}
                     onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
-                    className="inline-block bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-md transition"
+                    className="inline-block bg-violet-600 hover:bg-violet-700 text-white text-sm px-4 py-2 rounded-md transition"
                   >
                     View Project
                   </NavLink>

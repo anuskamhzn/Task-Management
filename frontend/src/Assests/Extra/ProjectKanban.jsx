@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react'; // Added useMemo
 import { FaEllipsisV, FaPlusCircle, FaEdit, FaTrashAlt, FaEye } from "react-icons/fa";
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -81,23 +81,13 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   const renderUsers = (users) => {
     const userArray = Array.isArray(users) ? users : [users];
     return userArray.map((user) => (
-      <div
+      <img
         key={user._id}
+        src={user.photo || "default-avatar.png"}
+        alt={user.username}
         title={user.username}
-        className="w-9 h-9 rounded-full border-2 border-white shadow-md flex items-center justify-center"
-      >
-        {user.photo ? (
-          <img
-            src={`data:${user.photo.contentType};base64,${user.photo.data}`}
-            alt={user.username}
-            className="w-9 h-9 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-9 h-9 bg-gray-200 text-purple-800 rounded-full flex items-center justify-center text-sm font-medium">
-            {user.initials || 'U'}
-          </div>
-        )}
-      </div>
+        className="w-9 h-9 rounded-full border-2 border-white shadow-md"
+      />
     ));
   };
 

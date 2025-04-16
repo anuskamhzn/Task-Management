@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const PrivateChat = ({
@@ -14,7 +14,7 @@ const PrivateChat = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [showAllUsers, setShowAllUsers] = useState(false);
-  const initialLimit = 2;
+  const initialLimit = 5;
 
   useEffect(() => {
     if (currentChat && chatType === 'private') {
@@ -25,13 +25,6 @@ const PrivateChat = ({
             headers: { Authorization: `Bearer ${token}` },
           });
           setMessages(response.data.messages || []);
-
-          if (socket) {
-            socket.emit('markMessagesAsRead', { 
-              conversationId: currentChat.id, 
-              type: 'private' 
-            });
-          }
         } catch (error) {
           console.error('Error fetching private messages:', error);
         } finally {
@@ -40,63 +33,71 @@ const PrivateChat = ({
       };
       fetchMessages();
     }
-  }, [currentChat, chatType, token, setMessages, socket]);
+  }, [currentChat, chatType, token, setMessages]);
 
-  const sortedUsers = useMemo(() => {
-    // console.log('Recomputing sortedUsers with recentSenders:', recentSenders);
-    const recentSenderIds = recentSenders.map(sender => sender.senderId);
+  const mergedUsers = recentSenders
+    .map((sender) => {
+      const user = users.find((u) => u.id === sender.senderId) || {
+        id: sender.senderId,
+        username: sender.username,
+        email: sender.email,
+        avatar: 'https://example.com/default-avatar.jpg',
+      };
+      return {
+        ...user,
+        latestTimestamp: sender.latestTimestamp,
+        unreadCount: sender.unreadCount,
+      };
+    })
+    .sort((a, b) => new Date(b.latestTimestamp || 0) - new Date(a.latestTimestamp || 0));
 
-    // Sort only users with recent activity, preserve others' order
-    const recentUsers = users.filter(user => recentSenderIds.includes(user.id))
-      .sort((a, b) => {
-        const aTimestamp = recentSenders.find(s => s.senderId === a.id)?.latestTimestamp || 0;
-        const bTimestamp = recentSenders.find(s => s.senderId === b.id)?.latestTimestamp || 0;
-        return new Date(bTimestamp) - new Date(aTimestamp); // Most recent first
-      });
-    const otherUsers = users.filter(user => !recentSenderIds.includes(user.id)); // Keep original order
-    return [...recentUsers, ...otherUsers];
-  }, [users, recentSenders]);
+  const allUsers = [
+    ...mergedUsers,
+    ...users
+      .filter((u) => !mergedUsers.some((mu) => mu.id === u.id))
+      .map((u) => ({
+        ...u,
+        latestTimestamp: '1970-01-01T00:00:00Z',
+        unreadCount: 0,
+      })),
+  ];
 
-  const displayedUsers = showAllUsers ? sortedUsers : sortedUsers.slice(0, initialLimit);
+  const displayedUsers = showAllUsers ? allUsers : allUsers.slice(0, initialLimit);
 
   return (
     <div className="space-y-2">
       <h3 className="text-md font-semibold text-gray-600 px-2">Private Chats</h3>
-      {displayedUsers.map((user) => {
-        const recentSender = recentSenders.find(s => s.senderId === user.id);
-        const unreadCount = recentSender ? recentSender.unreadCount : 0;
-        const isUnread = unreadCount > 0;
-
-        // console.log(`Rendering ${user.username}: unreadCount=${unreadCount}, isUnread=${isUnread}`);
-
-        return (
+      {displayedUsers.length === 0 ? (
+        <p className="text-sm text-gray-500 italic">No recent chats</p>
+      ) : (
+        displayedUsers.map((user) => (
           <div
             key={`user-${user.id}`}
             onClick={() => handleChatClick(user, 'private')}
-            className={`cursor-pointer hover:bg-gray-300 p-2 rounded-md flex items-center justify-between ${
+            className={`cursor-pointer hover:bg-gray-300 p-2 rounded-md flex items-center space-x-2 ${
               currentChat?.id === user.id && chatType === 'private' ? 'bg-gray-300' : ''
             }`}
           >
-            <div className="flex items-center space-x-2">
-              <img src={user.avatar} alt={user.username} className="w-6 h-6 rounded-full" />
-              <span className={`text-sm ${isUnread ? 'font-bold text-gray-900' : 'font-normal text-gray-700'}`}>
+            <img src={user.avatar} alt={user.username} className="w-6 h-6 rounded-full" />
+            <div className="flex-1 flex justify-between items-center">
+              <span className={`text-sm ${user.unreadCount > 0 && currentChat?.id !== user.id ? 'font-bold' : ''}`}>
                 {user.username}
               </span>
+              {user.unreadCount > 0 && currentChat?.id !== user.id && (
+                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                  {user.unreadCount}
+                </span>
+              )}
             </div>
-            {unreadCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
           </div>
-        );
-      })}
-      {users.length > initialLimit && (
+        ))
+      )}
+      {allUsers.length > initialLimit && (
         <button
           onClick={() => setShowAllUsers(!showAllUsers)}
           className="text-blue-600 text-sm font-medium hover:underline focus:outline-none"
         >
-          {showAllUsers ? 'Show Less' : `Show More (${users.length - initialLimit} more)`}
+          {showAllUsers ? 'Show Less' : `Show More (${allUsers.length - initialLimit} more)`}
         </button>
       )}
       {loading && <p className="text-sm text-gray-500">Loading messages...</p>}

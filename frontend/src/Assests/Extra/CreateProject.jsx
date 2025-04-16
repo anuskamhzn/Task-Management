@@ -2,13 +2,13 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import ReactQuill from "react-quill"; // Import React Quill
+import "react-quill/dist/quill.snow.css"; // Import Quill styles
 
 const CreateProjectForm = ({ onClose, onProjectCreated }) => {
   const [projectData, setProjectData] = useState({
     title: "",
-    description: "",
+    description: "", // This will now store HTML from React Quill
     members: [],
     dueDate: "",
     status: "To Do",
@@ -33,6 +33,7 @@ const CreateProjectForm = ({ onClose, onProjectCreated }) => {
     setProjectData({ ...projectData, [name]: value });
   };
 
+  // Handle rich text editor change
   const handleDescriptionChange = (value) => {
     setProjectData({ ...projectData, description: value });
   };
@@ -73,9 +74,7 @@ const CreateProjectForm = ({ onClose, onProjectCreated }) => {
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       toast.success("Project created successfully!");
-      if (onProjectCreated) {
-        onProjectCreated(response.data.project);
-      }
+      if (onProjectCreated) onProjectCreated(response.data.project);
       onClose();
       setProjectData({
         title: "",

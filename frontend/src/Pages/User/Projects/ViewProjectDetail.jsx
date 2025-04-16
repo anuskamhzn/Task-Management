@@ -102,7 +102,7 @@ const ViewProjectDetail = ({ projectId, onClose }) => {
             <ul className="list-disc pl-5 text-gray-600">
               {project.members.map((member) => (
                 <li key={member._id}>
-                  {member.username} ({member.email})
+                  {member.name} ({member.email})
                 </li>
               ))}
             </ul>

@@ -65,6 +65,23 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
     setProjects((prevProjects) => [...prevProjects, newProject]);  // Add the new task to the start of the task list
   };
 
+  // Function to generate a random pastel color
+  const getRandomColor = (id) => {
+    const colors = [
+      'bg-blue-50 border-blue-100',
+      'bg-green-50 border-green-100',
+      'bg-yellow-50 border-yellow-100',
+      'bg-purple-50 border-purple-100',
+      'bg-pink-50 border-pink-100',
+      'bg-indigo-50 border-indigo-100',
+      'bg-teal-50 border-teal-100',
+      'bg-orange-50 border-orange-100',
+    ];
+    // Use the id to get a consistent color for the same card
+    const index = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
   useEffect(() => {
     if (auth && auth.user) {
       fetchProjects();
@@ -223,16 +240,16 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
-
+  
   const renderUsers = (users) => {
     const userArray = Array.isArray(users) ? users : [users];
     return userArray.map((user) => (
       <img
         key={user._id}
-        src={user.avatar || "default-avatar.png"}
+        src={user.photo || "default-avatar.png"}
         alt={user.username}
         title={user.username}
-        className="w-8 h-8 rounded-full border border-gray-300"
+        className="w-9 h-9 rounded-full border-2 border-white shadow-md"
       />
     ));
   };
@@ -241,7 +258,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
     return projects.map((project) => (
       <div
         key={project._id}
-        className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 cursor-grab relative group"
+        className={`p-4 rounded-lg shadow-sm border hover:shadow-md transition-all duration-200 cursor-grab relative group ${getRandomColor(project._id)}`}
         draggable
         onDragStart={(e) => handleDragStart(e, project._id, "project")}
         onMouseEnter={() => setHoveredProject(project._id)}
@@ -302,7 +319,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
     return tasks.map((task) => (
       <div
         key={task._id}
-        className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 cursor-grab relative group"
+        className={`p-4 rounded-lg shadow-sm border hover:shadow-md transition-all duration-200 cursor-grab relative group ${getRandomColor(task._id)}`}
         draggable
         onDragStart={(e) => handleDragStart(e, task._id, "task")}
         onMouseEnter={() => setHoveredTask(task._id)}

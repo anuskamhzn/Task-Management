@@ -4,6 +4,7 @@ const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // User creating the task (owner)
+  initials: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   dueDate: { type: Date },
   subTasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubTask' }],
   status: {

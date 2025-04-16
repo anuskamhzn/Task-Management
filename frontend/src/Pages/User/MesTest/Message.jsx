@@ -11,12 +11,12 @@ import { NavLink } from 'react-router-dom';
 import UserInfom from '../../User/MesTest/UserInfo/UserInfo';
 import Manage from '../../User/MesTest/GroupManage/Manage';
 import ChatList from '../../User/MesTest/ChatList';
-import toast from 'react-hot-toast'; // Import react-hot-toast
+import toast from 'react-hot-toast';
 
-let socket;
+let socket = null;
 
 const Message = () => {
-  const [auth] = useAuth();
+  const [auth, setAuth] = useAuth();
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -37,9 +37,10 @@ const Message = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [replyToMessageId, setReplyToMessageId] = useState(null);
-  const [showUserInfoSidebar, setShowUserInfoSidebar] = useState(false); // Toggle for sidebar
-  const [showGroupInfoSidebar, setShowGroupInfoSidebar] = useState(false); // New state for group sidebar
-  const [recentSenders, setRecentSenders] = useState([]); // New state for recent senders
+  const [showUserInfoSidebar, setShowUserInfoSidebar] = useState(false);
+  const [showGroupInfoSidebar, setShowGroupInfoSidebar] = useState(false);
+  const [recentSenders, setRecentSenders] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const arrayBufferToBase64 = (buffer) => {
     const bytes = new Uint8Array(buffer);
@@ -79,10 +80,6 @@ const Message = () => {
   };
 
   const fetchMessages = async (chatId, type) => {
-    if (!chatId || chatId === 'undefined') {
-      setMessages([]);
-      return;
-    }
     try {
       const endpoint =
         type === 'group'
@@ -100,129 +97,170 @@ const Message = () => {
     }
   };
 
-  useEffect(() => {
-    if (!socket && auth.token) {
+  const fetchRecentSenders = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API}/api/message/recent-private-senders`, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const sortedSenders = (response.data.recentSenders || []).sort(
+        (a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp)
+      );
+      console.log('Fetched recentSenders:', sortedSenders);
+      setRecentSenders(sortedSenders);
+      return sortedSenders;
+    } catch (error) {
+      console.error('Error fetching recent senders:', error);
+      setRecentSenders([]);
+      return [];
+    }
+  };
+
+  const initializeSocket = () => {
+    if (socket) {
+      socket.emit('logout');
+      socket.disconnect();
+      console.log('Previous socket disconnected');
+    }
+    if (auth.token) {
       socket = io(process.env.REACT_APP_API || 'http://localhost:5000', {
         auth: { token: auth.token },
         transports: ['websocket', 'polling'],
       });
 
       socket.on('connect', () => {
-        // console.log('Socket connected:', socket.id);
+        console.log('Socket connected with user:', currentUser?._id, currentUser?.username);
       });
+
       socket.on('connect_error', (error) => {
-        // console.error('Socket connection error:', error);
+        console.error('Socket connection error:', error);
+        toast.error('Failed to connect to chat server');
+      });
+
+      socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        toast.error(`Chat error: ${error.message}`);
       });
     }
+  };
 
-    // Handle recent sender updates globally
-    socket.on('recentSenderUpdate', (senderData) => {
-      // console.log('Received recentSenderUpdate:', senderData);
-      setRecentSenders((prev) => {
-        const existingIndex = prev.findIndex(s => s.senderId === senderData.senderId);
-        let updated = [...prev];
-        if (existingIndex !== -1) {
-          updated[existingIndex] = { ...updated[existingIndex], ...senderData };
-        } else {
-          updated.push(senderData);
-        }
-        updated = updated.sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp));
-        // console.log('Updated recentSenders:', updated);
-        return updated;
-      });
-    });
+  const handleLogout = () => {
+    if (socket) {
+      socket.emit('logout');
+      socket.disconnect();
+      socket = null;
+      console.log('Socket disconnected on logout');
+    }
+    setAuth({ token: null, user: null });
+    setMessages([]);
+    setCurrentChat(null);
+    setChatType(null);
+    setCurrentUser(null);
+    setRecentSenders([]);
+    setUsers([]);
+    setGroups([]);
+    setIsDataLoaded(false);
+  };
 
-    const fetchCurrentUser = async () => {
+  useEffect(() => {
+    initializeSocket();
+
+    const fetchInitialData = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API}/api/auth/user-info`, {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        });
-        setCurrentUser(response.data);
+        const [currentUserRes, usersRes, groupsRes, recentSendersRes] = await Promise.all([
+          axios.get(`${process.env.REACT_APP_API}/api/auth/user-info`, {
+            headers: { Authorization: `Bearer ${auth.token}` },
+          }),
+          axios.get(`${process.env.REACT_APP_API}/api/chat/added-users`, {
+            headers: { Authorization: `Bearer ${auth.token}` },
+          }),
+          axios.get(`${process.env.REACT_APP_API}/api/group-chat/my-groups`, {
+            headers: { Authorization: `Bearer ${auth.token}` },
+          }),
+          fetchRecentSenders(),
+        ]);
+
+        setCurrentUser(currentUserRes.data);
+        setUsers(
+          usersRes.data.map((user) => ({
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            avatar: user.avatar || 'https://example.com/default-avatar.jpg',
+          }))
+        );
+        setGroups(
+          groupsRes.data.groups.map((group) => ({
+            id: group._id,
+            name: group.name,
+            avatar: 'https://example.com/default-group-avatar.jpg',
+            members: group.members || [],
+          }))
+        );
+        setRecentSenders(recentSendersRes);
+        setIsDataLoaded(true);
       } catch (error) {
-        console.error('Error fetching current user:', error);
+        console.error('Error fetching initial data:', error);
+        setIsDataLoaded(true);
       }
     };
 
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API}/api/chat/added-users`, {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        });
-        const mappedUsers = response.data.map(user => ({
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          avatar: user.avatar || 'https://example.com/default-avatar.jpg',
-        }));
-        setUsers(mappedUsers);
-        // Simulate a large number of users
-        // const mockUsers = Array.from({ length: 20 }, (_, i) => ({
-        //   id: i.toString(),
-        //   username: `User ${i + 1}`,
-        //   email: `user${i + 1}@example.com`,
-        //   avatar: 'https://example.com/default-avatar.jpg',
-        // }));
-        // setUsers(mockUsers);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
-
-    const fetchGroups = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API}/api/group-chat/my-groups`, {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        });
-        const mappedGroups = response.data.groups.map(group => ({
-          id: group._id,
-          name: group.name,
-          avatar: 'https://example.com/default-group-avatar.jpg',
-          members: group.members || [], // Include members initially
-        }));
-        setGroups(mappedGroups);
-      } catch (error) {
-        console.error('Error fetching groups:', error);
-      }
-    };
-
-    // Fetch recent private senders
-    const fetchRecentSenders = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API}/api/message/recent-private-senders`, {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        });
-        setRecentSenders(response.data.recentSenders || []);
-      } catch (error) {
-        console.error('Error fetching recent senders:', error);
-      }
-    };
-
-    fetchCurrentUser();
-    fetchUsers();
-    fetchGroups();
-    fetchRecentSenders();
+    if (auth.token) {
+      fetchInitialData();
+    }
 
     return () => {
       if (socket) {
         socket.off('connect');
         socket.off('connect_error');
         socket.off('newMessage');
+        socket.off('newMessageReply');
+        socket.off('recentSenderUpdate');
         socket.off('error');
       }
     };
-  }, [auth.token]);
+  }, [auth.token, setAuth]);
 
   useEffect(() => {
-    if (socket && currentUser?._id && currentChat) {
-      if (chatType === 'group') {
+    if (socket && currentUser?._id && isDataLoaded) {
+      if (currentChat && chatType === 'group') {
         socket.emit('joinGroupRoom', currentChat.id);
         socket.on('joinedRoom', ({ groupId }) => {
-          // console.log(`Joined group room: ${groupId}`);
+          console.log('Joined group room:', groupId);
         });
       }
 
+      const handleRecentSenderUpdate = (update) => {
+        console.log('Received recentSenderUpdate:', update);
+        setRecentSenders((prev) => {
+          const existing = prev.find((sender) => sender.senderId === update.senderId);
+          const newSender = {
+            senderId: update.senderId,
+            username: update.username,
+            email: update.email,
+            latestTimestamp: update.latestTimestamp,
+            unreadCount: update.unreadCount,
+            totalCount: update.totalCount,
+          };
+
+          if (update.totalCount === 0) {
+            return prev.filter((sender) => sender.senderId !== update.senderId);
+          }
+
+          if (existing) {
+            return [
+              newSender,
+              ...prev.filter((sender) => sender.senderId !== update.senderId),
+            ].sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp));
+          }
+
+          return [newSender, ...prev].sort((a, b) =>
+            new Date(b.latestTimestamp) - new Date(a.latestTimestamp)
+          );
+        });
+      };
+
       const handleNewMessage = (message) => {
-        // console.log('Received new message on frontend:', message);
+        console.log('Received new message:', message);
         const senderId = message.sender?._id || (message.sender && message.sender.toString());
         const groupId = message.group?._id || (message.group && message.group.toString());
         const recipientId = message.recipient?._id || (message.recipient && message.recipient.toString());
@@ -233,7 +271,6 @@ const Message = () => {
 
           let updatedMessages = [...prev];
 
-          // Add the new message (reply or regular)
           if (chatType === 'private') {
             if (
               (senderId === currentUser?._id && recipientId === currentChat?.id) ||
@@ -245,17 +282,11 @@ const Message = () => {
             updatedMessages.push(message);
           }
 
-          // Sort messages by timestamp ascending
           return updatedMessages.sort((a, b) =>
             new Date(a.timestamp) - new Date(b.timestamp)
           );
         });
       };
-
-      // Handle message deletion
-      // const handleMessageDeleted = ({ messageId }) => {
-      //   setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
-      // };
 
       const handleMessageDeleted = (updatedMessage) => {
         setMessages((prev) =>
@@ -265,7 +296,6 @@ const Message = () => {
         );
       };
 
-      // Handle message edited
       const handleMessageEdited = (updatedMessage) => {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -274,9 +304,7 @@ const Message = () => {
         );
       };
 
-      // Handle group-specific Socket.IO events
       socket.on('memberAdded', (data) => {
-        // console.log('Member added event:', data); // Debug log
         setGroups((prev) =>
           prev.map((group) =>
             group.id === data.groupId
@@ -284,10 +312,9 @@ const Message = () => {
               : group
           )
         );
-        // Force re-render of Manage component by triggering a re-fetch
         if (showGroupInfoSidebar && currentChat.id === data.groupId) {
           setShowGroupInfoSidebar(false);
-          setTimeout(() => setShowGroupInfoSidebar(true), 0); // Toggle to force re-render
+          setTimeout(() => setShowGroupInfoSidebar(true), 0);
         }
       });
 
@@ -296,36 +323,32 @@ const Message = () => {
           prev.map((group) =>
             group.id === data.groupId
               ? {
-                ...group,
-                members: (group.members || []).filter((m) => m._id !== data.memberId),
-              }
+                  ...group,
+                  members: (group.members || []).filter((m) => m._id !== data.memberId),
+                }
               : group
           )
         );
       });
 
       socket.on('memberQuit', (data) => {
-        // console.log('Member quit event:', data); // Debug log
         if (data.memberId === currentUser._id) {
-          // If the current user quit, remove the group from their list
           setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
           setCurrentChat(null);
           setChatType(null);
           setMessages([]);
           setShowGroupInfoSidebar(false);
         } else {
-          // If another member quit, update the member list
           setGroups((prev) =>
             prev.map((group) =>
               group.id === data.groupId
                 ? {
-                  ...group,
-                  members: (group.members || []).filter((m) => m._id !== data.memberId),
-                }
+                    ...group,
+                    members: (group.members || []).filter((m) => m._id !== data.memberId),
+                  }
                 : group
             )
           );
-          // Force re-render of Manage.jsx if sidebar is open
           if (showGroupInfoSidebar && currentChat.id === data.groupId) {
             setShowGroupInfoSidebar(false);
             setTimeout(() => setShowGroupInfoSidebar(true), 0);
@@ -334,7 +357,6 @@ const Message = () => {
       });
 
       socket.on('groupDeleted', (data) => {
-        // console.log('Group deleted event:', data); // Debug log
         setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
         if (currentChat?.id === data.groupId) {
           setCurrentChat(null);
@@ -344,6 +366,7 @@ const Message = () => {
         }
       });
 
+      socket.on('recentSenderUpdate', handleRecentSenderUpdate);
       socket.on('newMessage', handleNewMessage);
       socket.on('newMessageReply', handleNewMessage);
       socket.on('newGroupMessageReply', handleNewMessage);
@@ -351,12 +374,9 @@ const Message = () => {
       socket.on('groupMessageDeleted', handleMessageDeleted);
       socket.on('messageEdited', handleMessageEdited);
       socket.on('groupMessageEdited', handleMessageEdited);
-      socket.on('error', (error) => {
-        console.error('Socket error:', error);
-        alert(`Error: ${error.message}`);
-      });
 
       return () => {
+        socket.off('recentSenderUpdate', handleRecentSenderUpdate);
         socket.off('newMessage', handleNewMessage);
         socket.off('newMessageReply', handleNewMessage);
         socket.off('newGroupMessageReply', handleNewMessage);
@@ -364,7 +384,6 @@ const Message = () => {
         socket.off('groupMessageDeleted', handleMessageDeleted);
         socket.off('messageEdited', handleMessageEdited);
         socket.off('groupMessageEdited', handleMessageEdited);
-        socket.off('error');
         socket.off('joinedRoom');
         socket.off('memberAdded');
         socket.off('memberRemoved');
@@ -372,7 +391,7 @@ const Message = () => {
         socket.off('groupDeleted');
       };
     }
-  }, [currentUser, currentChat, chatType]);
+  }, [currentUser, currentChat, chatType, isDataLoaded]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -380,63 +399,66 @@ const Message = () => {
 
   const handleUserInfoClick = (e) => {
     e.preventDefault();
-    setShowUserInfoSidebar(!showUserInfoSidebar); // Toggle the sidebar visibility
+    setShowUserInfoSidebar(!showUserInfoSidebar);
   };
 
   const handleCloseUserInfo = () => {
-    setShowUserInfoSidebar(false); // Close the sidebar
+    setShowUserInfoSidebar(false);
   };
 
   const handleGroupInfoClick = (e) => {
     e.preventDefault();
-    setShowGroupInfoSidebar(!showGroupInfoSidebar); // Toggle group sidebar
+    setShowGroupInfoSidebar(!showGroupInfoSidebar);
   };
 
   const handleCloseGroupInfo = () => {
-    setShowGroupInfoSidebar(false); // Close group sidebar
+    setShowGroupInfoSidebar(false);
   };
 
   const handleChatClick = (chat, type) => {
-    if (!chat || !chat.id) {
-      setCurrentChat(null);
-      setChatType(null);
-      setMessages([]);
-      setShowUserInfoSidebar(false);
-      setShowGroupInfoSidebar(false);
-      return;
-    }
+    console.log('handleChatClick:', { chatId: chat?.id, type, currentChatId: currentChat?.id });
     if (currentChat && currentChat?.id === chat?.id) {
       setMessages([]);
       setCurrentChat(null);
-      setShowUserInfoSidebar(false); // Close sidebar when switching chats
+      setShowUserInfoSidebar(false);
       setTimeout(() => {
         setCurrentChat(chat);
         setChatType(type);
         fetchMessages(chat?.id, type);
+        if (type === 'private' && socket) {
+          socket.emit('markMessagesAsRead', { conversationId: chat.id, type: 'private' });
+          setRecentSenders((prev) =>
+            prev.map((sender) =>
+              sender.senderId === chat.id
+                ? { ...sender, unreadCount: 0 }
+                : sender
+            ).sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp))
+          );
+          console.log('Updated recentSenders locally for read:', chat.id);
+        }
       }, 0);
     } else {
       setCurrentChat(chat);
       setChatType(type);
       setMessages([]);
-      if (type === 'private') {
-        setRecentSenders((prev) => {
-          const existingIndex = prev.findIndex(s => s.senderId === chat.id);
-          if (existingIndex !== -1) {
-            const updated = [...prev];
-            updated[existingIndex] = { ...updated[existingIndex], unreadCount: 0 };
-            // console.log('Manually updated recentSenders on chat click:', updated);
-            return updated;
-          }
-          return prev; // No change if user not in recentSenders
-        });
-      }
-      setShowUserInfoSidebar(false); // Close sidebar when switching chats
+      setShowUserInfoSidebar(false);
       fetchMessages(chat?.id, type);
+      if (type === 'private' && socket) {
+        socket.emit('markMessagesAsRead', { conversationId: chat.id, type: 'private' });
+        setRecentSenders((prev) =>
+          prev.map((sender) =>
+            sender.senderId === chat.id
+              ? { ...sender, unreadCount: 0 }
+              : sender
+          ).sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp))
+        );
+        console.log('Updated recentSenders locally for read:', chat.id);
+      }
     }
   };
 
   const handleSendMessage = async () => {
-    if ((!messageInput.trim() && !photo && !file) || !currentChat || !socket) return;
+    if ((!messageInput.trim() && !photo && !file) || !currentChat || !socket || !currentUser) return;
 
     try {
       const payload = chatType === 'group' ? { groupId: currentChat.id } : { recipientId: currentChat.id };
@@ -456,36 +478,47 @@ const Message = () => {
       }
 
       if (replyToMessageId) {
+        const parentMessage = messages.find((msg) => msg._id === replyToMessageId);
+        if (!parentMessage) {
+          toast.error('Cannot reply: Parent message not found');
+          setReplyToMessageId(null);
+          return;
+        }
+        if (
+          (chatType === 'private' &&
+            parentMessage.sender?._id !== currentChat.id &&
+            parentMessage.recipient?._id !== currentChat.id &&
+            parentMessage.sender?._id !== currentUser._id &&
+            parentMessage.recipient?._id !== currentUser._id) ||
+          (chatType === 'group' && parentMessage.group?._id !== currentChat.id)
+        ) {
+          toast.error('Cannot reply: Parent message is not part of this conversation');
+          setReplyToMessageId(null);
+          return;
+        }
         payload.parentMessageId = replyToMessageId;
       }
-      const MAX_SIZE = 7.5 * 1024 * 1024; // 7.5MB to account for Base64 overhead
+
+      const MAX_SIZE = 7.5 * 1024 * 1024;
 
       if (photo && photo.size > MAX_SIZE) {
-        // console.log('Photo exceeds limit:', photo.size, '>', MAX_SIZE);
         toast.error('Photo exceeds 7.5MB limit');
         return;
       }
       if (file && file.size > MAX_SIZE) {
-        // console.log('File exceeds limit:', file.size, '>', MAX_SIZE);
         toast.error('File exceeds 7.5MB limit');
         return;
       }
 
-      // if (chatType === 'private') {
-      //   socket.emit(replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage', payload);
-      // } else if (chatType === 'group') {
-      //   socket.emit(replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage', payload);
-      // }
-
-      // Emit the message via socket and listen for response
       const event = chatType === 'private'
         ? (replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage')
         : (replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage');
 
       socket.emit(event, payload, (response) => {
         if (response && !response.success) {
-          // Display error from backend using toast
           toast.error(response.message || 'Failed to send message');
+        } else {
+          console.log('Message sent:', response.message);
         }
       });
 
@@ -505,7 +538,6 @@ const Message = () => {
     setReplyToMessageId(messageId);
   };
 
-  // Add handler functions for edit and delete
   const handleDeleteMessage = (messageId) => {
     if (!socket || !currentChat) return;
 
@@ -520,61 +552,37 @@ const Message = () => {
     socket.emit(event, { messageId, content: newContent });
   };
 
-  // Callback to update recentSenders when messages are marked as read
-  const handleMarkAsRead = (conversationId) => {
-    setRecentSenders((prev) => {
-      const updated = prev.map((sender) =>
-        sender.senderId === conversationId ? { ...sender, unreadCount: 0 } : sender
-      );
-      // console.log('Updated recentSenders after mark as read:', updated);
-      return updated;
-    });
-  };
-
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 bg-gray-800 text-white shrink-0">
-          <Sidebar />
+          <Sidebar onLogout={handleLogout} />
         </aside>
         <div className="flex-1 flex flex-col">
           <Navbar />
           <div className="flex flex-1 overflow-hidden">
-            <ChatList
-              users={users}
-              groups={groups}
-              currentChat={currentChat}
-              chatType={chatType}
-              handleChatClick={handleChatClick}
-              setMessages={setMessages}
-              socket={socket}
-              token={auth.token}
-              currentUser={currentUser}
-              setShowAddUserModal={setShowAddUserModal}
-              setShowAddGroupModal={setShowAddGroupModal}
-              recentSenders={recentSenders} // Pass recentSenders to ChatList
-            />
-
+            {isDataLoaded ? (
+              <ChatList
+                users={users}
+                groups={groups}
+                currentChat={currentChat}
+                chatType={chatType}
+                handleChatClick={handleChatClick}
+                setMessages={setMessages}
+                socket={socket}
+                token={auth.token}
+                currentUser={currentUser}
+                setShowAddUserModal={setShowAddUserModal}
+                setShowAddGroupModal={setShowAddGroupModal}
+                recentSenders={recentSenders}
+              />
+            ) : (
+              <div className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
+                <p className="text-sm text-gray-500">Loading chats...</p>
+              </div>
+            )}
             <div className="flex-1 flex flex-col p-6">
               <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
-                {/* <h2 className="text-xl font-semibold text-gray-800">
-                  {currentChat
-                    ? `Chat with ${currentChat.name || currentChat.username}${chatType === 'group' ? ' (Group)' : ''}`
-                    : 'Select a Chat'}
-                </h2> */}
-                {/* <h2 className="text-xl font-semibold text-gray-800">
-                  {currentChat ? (
-                    <>
-                      Chat with{' '}
-                      <NavLink to="" className="text-blue-600 hover:text-blue-800">
-                        {currentChat.name || currentChat.username}
-                      </NavLink>
-                      {chatType === 'group' ? ' (Group)' : ''}
-                    </>
-                  ) : (
-                    'Select a Chat'
-                  )}
-                </h2> */}
                 <h2 className="text-xl font-semibold text-gray-800">
                   {currentChat ? (
                     <>
@@ -595,19 +603,14 @@ const Message = () => {
                   )}
                 </h2>
                 <h2 className="text-xl font-semibold text-gray-800">
-                  {currentChat ? (
-                    chatType === 'group' ? (
-                      <NavLink to="" className="inline-flex items-center text-blue-600 hover:text-blue-800">
-                        <button onClick={handleGroupInfoClick} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                          Manage
-                        </button>
-                      </NavLink>
-                    ) : null
-                  ) : (
-                    'Select a Chat'
-                  )}
+                  {currentChat && chatType === 'group' ? (
+                    <NavLink to="" className="inline-flex items-center text-blue-600 hover:text-blue-800">
+                      <button onClick={handleGroupInfoClick} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Manage
+                      </button>
+                    </NavLink>
+                  ) : null}
                 </h2>
-
               </div>
               <MessageDisplay
                 currentChat={currentChat}
@@ -619,8 +622,6 @@ const Message = () => {
                 onReply={handleReply}
                 onDelete={handleDeleteMessage}
                 onEdit={handleEditMessage}
-                socket={socket}              // Pass socket
-                onMarkAsRead={handleMarkAsRead}  // Pass callback
               />
               {currentChat && (
                 <MessageInput
@@ -639,7 +640,6 @@ const Message = () => {
                 />
               )}
             </div>
-            {/* User info sidebar */}
             {showUserInfoSidebar && currentChat && chatType !== 'group' && (
               <div className="w-1/4 bg-gray-800 text-white p-4 overflow-y-auto border-l border-gray-700 transition-all duration-300">
                 <button
@@ -651,7 +651,6 @@ const Message = () => {
                 <UserInfom userId={currentChat.id} />
               </div>
             )}
-            {/* Group info sidebar */}
             {showGroupInfoSidebar && currentChat && chatType === 'group' && (
               <div className="w-1/4 bg-gray-800 text-white p-4 overflow-y-auto border-l border-gray-700 transition-all duration-300">
                 <button
@@ -666,7 +665,6 @@ const Message = () => {
                   token={auth.token}
                   socket={socket}
                   onGroupUpdate={(updatedGroup) => {
-                    // console.log('Updated group in Message.jsx:', updatedGroup);
                     setGroups((prev) =>
                       prev.map((group) =>
                         group.id === updatedGroup._id
@@ -735,7 +733,7 @@ const Message = () => {
             <button
               onClick={async () => {
                 if (!emailInput.trim()) {
-                  alert("Please enter a valid email.");
+                  toast.error("Please enter a valid email.");
                   return;
                 }
                 try {
@@ -749,11 +747,10 @@ const Message = () => {
                     setShowAddUserModal(false);
                     setEmailInput('');
                   } else {
-                    alert(response.data.message);
+                    toast.error(response.data.message);
                   }
                 } catch (error) {
-                  // console.error("Error adding user:", error);
-                  alert("Failed to add user.");
+                  toast.error("Failed to add user.");
                 }
               }}
               className="w-full mt-4 bg-blue-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
@@ -786,7 +783,7 @@ const Message = () => {
             <button
               onClick={async () => {
                 if (!groupNameInput.trim()) {
-                  alert("Please enter a group name.");
+                  toast.error("Please enter a group name.");
                   return;
                 }
                 try {
@@ -808,11 +805,10 @@ const Message = () => {
                     setGroupNameInput('');
                   }
                 } catch (error) {
-                  // console.error("Error creating group:", error);
-                  alert("Failed to create group.");
+                  toast.error("Failed to create group.");
                 }
               }}
-              className="w-full mt-4 bg-green-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition"
+              className="w-full mt-4 bg-green-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
             >
               Create
             </button>

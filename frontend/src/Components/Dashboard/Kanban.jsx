@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FaEllipsisV, FaPlusCircle, FaTasks } from "react-icons/fa";
+import { FaEllipsisV, FaPlusCircle, FaTasks, FaEdit, FaTrashAlt } from "react-icons/fa";
 import { GrProjects } from "react-icons/gr";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/auth";
 import { toast } from 'react-hot-toast';
 import ModifyTask from "../../Pages/User/Modify/ModifyTask";
@@ -243,14 +244,24 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
 
   const renderUsers = (users) => {
     const userArray = Array.isArray(users) ? users : [users];
-    return userArray.map((user) => (
-      <img
-        key={user._id}
-        src={user.avatar || "default-avatar.png"}
-        alt={user.username}
-        title={user.username}
-        className="w-8 h-8 rounded-full border border-gray-300"
-      />
+    return userArray.map((user, index) => (
+      <div
+        key={user._id || index}
+        title={user.username || user.email}
+        className="w-9 h-9 rounded-full border-2 border-white shadow-md flex items-center justify-center"
+      >
+        {user.photo ? (
+          <img
+            src={`data:${user.photo.contentType};base64,${user.photo.data}`}
+            alt={user.username || user.email}
+            className="w-9 h-9 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-9 h-9 bg-gray-200 text-purple-800 rounded-full flex items-center justify-center text-sm font-medium">
+            {user.initials || user.username?.slice(0, 2).toUpperCase() || 'U'}
+          </div>
+        )}
+      </div>
     ));
   };
 
@@ -269,7 +280,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
         onClick={() => handleViewProjectDetail(project._id)}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors duration-200">{project.title}</h3>
+          <h3 className="text-lg font-semibold text-gray-800 group-hover:text-violet-900 transition-colors duration-200">{project.title}</h3>
           {hoveredProject === project._id && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <FaEllipsisV
@@ -288,16 +299,16 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
                   }}
                 >
                   <button
-                    className="block w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors duration-200"
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
                     onClick={() => handleProjectModify(project._id)}
                   >
-                    Modify
+                    <FaEdit />Modify
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 transition-colors duration-200"
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     onClick={() => openConfirmDialog(project._id, project.title, 'project')}
                   >
-                    Delete
+                    <FaTrashAlt />Delete
                   </button>
                 </div>
               )}
@@ -311,6 +322,14 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
           </p>
           <div className="flex gap-2">{renderUsers(project.members || [])}</div>
         </div>
+        {/* View Project Button (NavLink to Kanban) */}
+        <NavLink
+          to={`/dashboard/project/subproject/${project._id}`}
+          onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
+          className="inline-block bg-violet-700 hover:bg-violet-800 text-white text-sm px-4 py-2 rounded-md transition"
+        >
+          View Project
+        </NavLink>
       </div>
     ));
   };
@@ -330,7 +349,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
         onClick={() => handleViewTaskDetail(task._id)}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors duration-200">{task.title}</h3>
+          <h3 className="text-lg font-semibold text-gray-800 group-hover:text-purple-800 transition-colors duration-200">{task.title}</h3>
           {hoveredTask === task._id && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <FaEllipsisV
@@ -347,16 +366,16 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
                   }}
                 >
                   <button
-                    className="block w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors duration-200"
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
                     onClick={() => handleTaskModify(task._id)}
                   >
-                    Modify
+                    <FaEdit /> Modify
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 transition-colors duration-200"
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     onClick={() => openConfirmDialog(task._id, task.title, 'task')}
                   >
-                    Delete
+                    <FaTrashAlt />Delete
                   </button>
                 </div>
               )}
@@ -368,8 +387,15 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
           <p className="text-xs text-gray-500">
             Due: {new Date(task.dueDate).toLocaleDateString()}
           </p>
-          <div className="flex gap-2">{renderUsers(task.owner)}</div>
+          {/* <div className="flex gap-2">{renderUsers(task.owner)}</div> */}
         </div>
+        <NavLink
+          to={`/dashboard/task/subtask/${task._id}`}
+          onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
+          className="inline-block bg-purple-700 hover:bg-purple-800 text-white text-sm px-4 py-2 mt-2 rounded-md transition"
+        >
+          View Task
+        </NavLink>
       </div>
     ));
   };
@@ -473,7 +499,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
       </div>
 
       <div
-        className="flex-1 p-6 bg-white rounded-xl shadow-lg border border-gray-100 transition-all duration-300 hover:shadow-xl"
+        className="flex-1 p-6 bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-xl"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, "Completed")}
       >
@@ -563,13 +589,13 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
 
       {isTaskDetailOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-        <ViewTaskDetail taskId={viewTaskId} onClose={handleCloseDetailModal} />
-      </div>
+          <ViewTaskDetail taskId={viewTaskId} onClose={handleCloseDetailModal} />
+        </div>
       )}
       {isProjectDetailOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-        <ViewProjectDetail projectId={viewProjectId} onClose={handleCloseDetailModal} />
-      </div>
+          <ViewProjectDetail projectId={viewProjectId} onClose={handleCloseDetailModal} />
+        </div>
       )}
 
     </div>

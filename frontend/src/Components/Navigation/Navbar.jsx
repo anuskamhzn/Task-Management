@@ -1,8 +1,8 @@
-
 import { useState, useRef, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from '../../context/auth';
-import { FaBell, FaCalendarAlt, FaUserCircle } from 'react-icons/fa';
+import { FaBell, FaCalendarAlt } from 'react-icons/fa';
+import { FiUser, FiLogOut } from "react-icons/fi";
 
 export default function Navbar() {
   const [auth, setAuth] = useAuth();
@@ -10,8 +10,8 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
 
   const handleSignOut = () => {
-    localStorage.removeItem('auth'); // Remove 'auth' from localStorage
-    setAuth({ user: null, token: '' }); // Clear auth state
+    localStorage.removeItem('auth');
+    setAuth({ user: null, token: '' });
   };
 
   const toggleDropdown = () => {
@@ -52,10 +52,20 @@ export default function Navbar() {
 
         {/* Profile Icon with Dropdown */}
         <div
-          className="w-10 h-10 bg-gray-200 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-indigo-200 transition duration-300 ease-in-out"
+          className="w-10 h-10 rounded-full border-2 border-purple-400 flex items-center justify-center cursor-pointer hover:bg-indigo-200 transition duration-300 ease-in-out"
           onClick={toggleDropdown}
         >
-          <FaUserCircle className="text-2xl text-purple-800" />
+          {auth?.user?.photo ? (
+            <img
+              src={`data:${auth.user.photo.contentType};base64,${auth.user.photo.data}`}
+              alt="User Profile"
+              className="w-10 h-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gray-200 text-purple-800 rounded-full flex items-center justify-center text-lg font-medium">
+              {auth?.user?.initials || 'U'}
+            </div>
+          )}
         </div>
 
         {/* Profile Dropdown */}
@@ -66,20 +76,20 @@ export default function Navbar() {
           >
             <NavLink
               to="/dashboard/userInfo"
-              className="block px-4 py-2 hover:bg-indigo-100 text-gray-700 transition duration-200 ease-in-out"
+              className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-200 rounded-lg"
               onClick={() => setDropdownOpen(false)}
             >
-              Profile
+              <FiUser className="text-lg" /> Profile
             </NavLink>
             <NavLink
               to="/"
-              className="block px-4 py-2 hover:bg-indigo-100 text-gray-700 transition duration-200 ease-in-out"
+              className="flex items-center gap-2 w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-200 rounded-lg"
               onClick={() => {
                 setDropdownOpen(false);
                 handleSignOut();
               }}
             >
-              Logout
+              <FiLogOut className="text-lg" /> Logout
             </NavLink>
           </div>
         )}

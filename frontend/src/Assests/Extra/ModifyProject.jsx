@@ -15,34 +15,38 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [availableMembers, setAvailableMembers] = useState([]);
+  const [availableMembers, setAvailableMembers] = useState([]); // Store fetched members
 
+  // Fetch project details and available members
   useEffect(() => {
     if (auth && auth.user && projectId) {
-      fetchProject();
+      fetchProjects();
     }
   }, [auth, projectId]);
 
-  const fetchProject = async () => {
+  const fetchProjects = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API}/api/project`, {
+      const response = await axios.get(`http://localhost:5000/api/project`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
       const projectData = response.data.find((p) => p._id === projectId);
       if (projectData) {
         setProject({
           ...projectData,
-          members: projectData.members.map((m) => m.email),
-          dueDate: projectData.dueDate ? projectData.dueDate.split("T")[0] : "",
+          members: projectData.members.map((member) => member.email || member),
           newMember: "",
         });
-        setAvailableMembers([...new Set(projectData.members.map((m) => m.email))]);
+        // Set available members (all members from response, to allow re-adding removed ones)
+        const memberEmails = response.data
+          .filter((p) => p._id === projectId)
+          .flatMap((p) => p.members.map((m) => m.email));
+        setAvailableMembers([...new Set(memberEmails)]);
       } else {
         setError("Project not found.");
       }
     } catch (err) {
-      setError("Error fetching project");
+      setError("Error fetching projects");
       console.error(err);
     } finally {
       setLoading(false);
@@ -92,7 +96,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
       if (response.data && response.data.project) {
         setProjects((prevProjects) =>
           prevProjects.map((p) =>
-            p._id === projectId ? response.data.project : p
+            p._id === projectId ? { ...p, ...response.data.project } : p
           )
         );
       }
@@ -100,12 +104,13 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
       toast.success("Project updated successfully!");
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error updating project.");
+      toast.error("Error updating Project.");
     } finally {
       setLoading(false);
     }
   };
 
+  // List available members (not already added)
   const membersToShow = availableMembers.filter(
     (email) => !project.members.includes(email)
   );
@@ -158,7 +163,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
             <input
               type="date"
               name="dueDate"
-              value={project.dueDate}
+              value={project.dueDate ? project.dueDate.split("T")[0] : ""}
               onChange={handleChange}
               className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
@@ -200,6 +205,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
               </button>
             </div>
 
+            {/* Dropdown for email suggestions */}
             {showDropdown && membersToShow.length > 0 && (
               <div className="absolute z-10 w-full max-w-[calc(100%-80px)] bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
                 {membersToShow.map((email, index) => (
@@ -218,15 +224,17 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
               {project.members.length === 0 ? (
                 <p className="text-gray-500 text-sm">No members added</p>
               ) : (
-                project.members.map((email, index) => (
+                project.members.map((member, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between bg-blue-100 rounded-md p-1 mb-1"
                   >
-                    <span className="text-blue-700 text-sm truncate flex-1">{email}</span>
+                    <span className="text-blue-700 text-sm truncate flex-1">
+                      {typeof member === "string" ? member : member.email}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveMember(email)}
+                      onClick={() => handleRemoveMember(member.email || member)}
                       className="text-red-500 hover:text-red-700 ml-2"
                     >
                       ×

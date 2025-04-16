@@ -84,7 +84,7 @@ export default function Sidebar() {
   return (
     <div className="w-64 bg-gray-800 text-white h-full min-h-screen p-6 flex flex-col shadow-lg">
       {/* Logo */}
-      <div className="text-3xl font-bold mb-8 text-center text-indigo-500">
+      <div className="text-3xl font-bold mb-8 text-center text-violet-800">
         <img
           src={img}
           className="w-20 h-20 mx-auto object-contain"
@@ -125,7 +125,7 @@ export default function Sidebar() {
                 to={`/${item}`}
                 className={({ isActive }) =>
                   `flex items-center space-x-4 p-3 rounded-md cursor-pointer transition-all duration-300 
-            ${isActive ? 'bg-indigo-600 text-white' : 'hover:bg-indigo-600 hover:text-white'}`
+            ${isActive ? 'bg-violet-700 text-white' : 'hover:bg-violet-700 hover:text-white'}`
                 }
               >
                 {icons[item]}

@@ -6,14 +6,25 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const authenticate = require('../middleware/authMiddleware');
 
-// registration
+// Function to compute initials from full name
+const getInitials = (fullName) => {
+  if (!fullName) return '';
+  const nameParts = fullName.trim().split(/\s+/);
+  const initials = nameParts
+    .filter((part) => part.length > 0)
+    .map((part) => part[0].toUpperCase())
+    .join('');
+  return initials.slice(0, 2);
+};
+
+// authController.js
 exports.register = async (req, res) => {
   try {
-    const { username, email, password, confirmPassword, phone } = req.body;
-    const role = req.body.role; // Extract role from the request body
+    const { email, password, confirmPassword, phone, name } = req.body;
+    const role = req.body.role;
+    const { redirect, token } = req.query; // Get redirect and token from query parameters
 
-    // Validations
-    if (!username || !email || !password || !phone || !confirmPassword) {
+    if (!email || !password || !phone || !confirmPassword || !name) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -25,35 +36,60 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Password should be at least 6 characters long" });
     }
 
-    // Check if the user already exists
+    // Check if this is an invitation-based registration
+    if (redirect === 'approve-invite' && token) {
+      try {
+        const decoded = JWT.verify(token, process.env.JWT_SECRET);
+        const invitedEmail = decoded.email;
+
+        // Ensure the provided email matches the invited email
+        if (email !== invitedEmail) {
+          return res.status(400).json({
+            message: "Email does not match the invitation. Please use the invited email address.",
+          });
+        }
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid or expired invitation token" });
+      }
+    }
+
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists, please login instead" });
     }
 
-    // Hash the password using bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Register the user
+    const initials = getInitials(name);
+
     const user = new userModel({
-      username,
+      name,
       email,
       phone,
       password: hashedPassword,
       confirmPassword: hashedPassword,
       role,
+      initials,
     });
     await user.save();
 
-    // 🔍 Check if the user was invited to any project
+    // Handle pending project invitations
     const invitedProjects = await Project.find({ pendingInvites: email });
-
     if (invitedProjects.length > 0) {
       for (const project of invitedProjects) {
-        project.members.push(user._id); // Move the user to the members list
-        project.pendingInvites = project.pendingInvites.filter(e => e !== email); // Remove from pending
+        project.members.push(user._id);
+        project.pendingInvites = project.pendingInvites.filter((e) => e !== email);
         await project.save();
       }
+    }
+
+    // Redirect to login after successful registration for invitation-based flow
+    if (redirect === 'approve-invite') {
+      return res.status(201).json({
+        success: true,
+        message: "User registered successfully. Please log in to approve the invitation.",
+        redirect: `${process.env.FRONTEND_URL}/login`,
+      });
     }
 
     res.status(201).json({
@@ -66,50 +102,109 @@ exports.register = async (req, res) => {
     res.status(500).json({ success: false, message: "Error in registration", error });
   }
 };
+// Registration
+// exports.register = async (req, res) => {
+//   try {
+//     const { username, email, password, confirmPassword, phone, name } = req.body;
+//     const role = req.body.role;
 
+//     if (!username || !email || !password || !phone || !confirmPassword || !name) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
 
-// login
+//     if (password !== confirmPassword) {
+//       return res.status(400).json({ message: "Passwords do not match" });
+//     }
+
+//     if (password.length < 6) {
+//       return res.status(400).json({ message: "Password should be at least 6 characters long" });
+//     }
+
+//     const existingUser = await userModel.findOne({ email });
+//     if (existingUser) {
+//       return res.status(400).json({ message: "User already exists, please login instead" });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const initials = getInitials(name);
+
+//     const user = new userModel({
+//       username,
+//       name,
+//       email,
+//       phone,
+//       password: hashedPassword,
+//       confirmPassword: hashedPassword,
+//       role,
+//       initials,
+//     });
+//     await user.save();
+
+//     const invitedProjects = await Project.find({ pendingInvites: email });
+
+//     if (invitedProjects.length > 0) {
+//       for (const project of invitedProjects) {
+//         project.members.push(user._id);
+//         project.pendingInvites = project.pendingInvites.filter((e) => e !== email);
+//         await project.save();
+//       }
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: "User registered successfully",
+//       user,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: "Error in registration", error });
+//   }
+// };
+
+// Login
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Check if the user exists in the database
     const user = await userModel.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // Compare the entered password with the hashed password stored in the database
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // Create an Access Token (short-lived)
     const accessToken = JWT.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET, // Secret key for JWT
-      { expiresIn: '1d' } // Access token expires in 15 minutes
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
     );
 
-    // Return success response with the access token
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      accessToken,  // Send the Access Token in the response body
+      accessToken,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        initials: user.initials || getInitials(user.name),
+        photo: user.photo && user.photo.data
+          ? {
+              data: user.photo.data.toString('base64'),
+              contentType: user.photo.contentType,
+            }
+          : null,
       },
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error', error });
@@ -118,26 +213,31 @@ exports.login = async (req, res) => {
 
 // User info route
 exports.userInfo = async (req, res) => {
-    try {
-      // Assuming req.user.id contains the user ID
-      const user = await userModel.findById(req.user.id); 
-
-      if (!user) {
-        // Return a 404 if the user is not found
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Return the user data as JSON if found
-      res.json(user);  
-    } catch (error) {
-      // Handle specific errors (e.g., database connection issues)
-      console.error(error);  // Log error details for debugging purposes
-      res.status(500).json({ 
-        message: 'Server error, unable to fetch user data', 
-        error: error.message || 'Internal Server Error'
-      });
+  try {
+    const user = await userModel.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  };
+
+    res.json({
+      ...user.toObject(),
+      initials: user.initials || getInitials(user.name),
+      photo: user.photo && user.photo.data
+        ? {
+            data: user.photo.data.toString('base64'),
+            contentType: user.photo.contentType,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: 'Server error, unable to fetch user data',
+      error: error.message || 'Internal Server Error',
+    });
+  }
+};
+
 // User info by ID
 exports.userInfoById = async (req, res) => {
   try {
@@ -145,12 +245,22 @@ exports.userInfoById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user);
+
+    res.json({
+      ...user.toObject(),
+      initials: user.initials || getInitials(user.name),
+      photo: user.photo && user.photo.data
+        ? {
+            data: user.photo.data.toString('base64'),
+            contentType: user.photo.contentType,
+          }
+        : null,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
-  };
+};
 
 
 const transporter = nodemailer.createTransport({

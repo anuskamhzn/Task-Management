@@ -41,12 +41,21 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
       if (subProjectData) {
         const formattedSubproject = {
           ...subProjectData,
-          members: subProjectData.members.map((member) => member.email),
+          members: subProjectData.members.map((member) => ({
+            email: member.email,
+            initials: member.initials || member.username?.slice(0, 2).toUpperCase() || "U",
+          })),
           dueDate: subProjectData.dueDate ? subProjectData.dueDate.split("T")[0] : "",
           newMember: "",
         };
-        setSubproject(formattedSubproject);
-        setInitialSubproject(formattedSubproject);
+        setSubproject({
+          ...formattedSubproject,
+          members: formattedSubproject.members.map((m) => m.email),
+        });
+        setInitialSubproject({
+          ...formattedSubproject,
+          members: formattedSubproject.members.map((m) => m.email),
+        });
       } else {
         setError("Subproject not found.");
       }
@@ -65,8 +74,11 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
       });
       const mainProject = response.data.find((p) => p._id === projectId);
       if (mainProject && mainProject.members) {
-        const memberEmails = mainProject.members.map((member) => member.email);
-        setAvailableMembers([...new Set(memberEmails)]);
+        const members = mainProject.members.map((member) => ({
+          email: member.email,
+          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || "U",
+        }));
+        setAvailableMembers([...new Set(members.map((m) => m.email))]);
       } else {
         toast.error("Main project not found.");
       }
@@ -133,17 +145,25 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
       });
 
       const updatedSubproject = {
-        ...subproject,
         ...response.data.subProject,
-        members: response.data.subProject.members.map((member) => member.email),
-        newMember: "",
+        members: response.data.subProject.members.map((member) => ({
+          ...member,
+          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || "U",
+        })),
       };
-      setSubproject(updatedSubproject);
-      setInitialSubproject(updatedSubproject);
+      setSubproject({
+        ...updatedSubproject,
+        members: updatedSubproject.members.map((m) => m.email),
+        newMember: "",
+      });
+      setInitialSubproject({
+        ...updatedSubproject,
+        members: updatedSubproject.members.map((m) => m.email),
+      });
 
       setProjects((prev) =>
         prev.map((project) =>
-          project._id === subProjectId ? { ...project, ...response.data.subProject } : project
+          project._id === subProjectId ? updatedSubproject : project
         )
       );
 
@@ -157,7 +177,6 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
     }
   };
 
-  // List available members (not already added)
   const membersToShow = availableMembers.filter(
     (email) => !subproject.members.includes(email)
   );

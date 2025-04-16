@@ -14,7 +14,7 @@ const ChatList = ({
   currentUser,
   setShowAddUserModal,
   setShowAddGroupModal,
-  recentSenders, // Receive recentSenders prop
+  recentSenders,
 }) => {
   return (
     <aside className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
@@ -50,21 +50,17 @@ const ChatList = ({
         style={{ maxHeight: 'calc(100vh - 150px)' }}
       >
         <div className="space-y-2">
-          {users.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">No users available</p>
-          ) : (
-            <PrivateChat
-              users={users}
-              currentChat={currentChat}
-              chatType={chatType}
-              handleChatClick={handleChatClick}
-              setMessages={setMessages}
-              socket={socket}
-              token={token}
-              currentUser={currentUser}
-              recentSenders={recentSenders} // Pass recentSenders to PrivateChat
-            />
-          )}
+          <PrivateChat
+            users={users}
+            currentChat={currentChat}
+            chatType={chatType}
+            handleChatClick={handleChatClick}
+            setMessages={setMessages}
+            socket={socket}
+            token={token}
+            currentUser={currentUser}
+            recentSenders={recentSenders}
+          />
           <hr className="border-gray-300 my-4" />
           {groups.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No groups available</p>

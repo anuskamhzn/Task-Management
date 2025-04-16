@@ -22,6 +22,7 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
     newMember: "",
   });
 
+  // Fetch main project members
   useEffect(() => {
     if (auth && auth.token) {
       const fetchMainProjectMembers = async () => {
@@ -33,11 +34,8 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
           });
           const mainProject = response.data.find((p) => p._id === projectId);
           if (mainProject && mainProject.members) {
-            const members = mainProject.members.map((member) => ({
-              email: member.email,
-              initials: member.initials || member.username?.slice(0, 2).toUpperCase() || "U",
-            }));
-            setMainProjectMembers(members);
+            const memberEmails = mainProject.members.map((member) => member.email);
+            setMainProjectMembers(memberEmails);
           } else {
             toast.error("Main project not found.");
           }
@@ -109,16 +107,10 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
           },
         }
       );
-      const newSubproject = {
-        ...response.data.subProject,
-        members: response.data.subProject.members.map((member) => ({
-          ...member,
-          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || "U",
-        })),
-      };
+
       toast.success("Subproject created successfully!");
       if (onSubProjectCreated) {
-        onSubProjectCreated({ subProject: newSubproject });
+        onSubProjectCreated(response.data);
       }
       onClose();
     } catch (err) {
@@ -129,14 +121,17 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
     }
   };
 
+  // List all available members (not already added)
   const availableMembers = mainProjectMembers.filter(
-    (member) => !subprojectData.members.includes(member.email)
+    (email) => !subprojectData.members.includes(email)
   );
 
   return (
     <div>
       <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        {/* Modal Container with Scroll */}
         <div className="bg-white p-8 rounded-lg shadow-lg w-96 relative max-h-[90vh] overflow-y-auto">
+          {/* Close Button (X) */}
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-xl text-gray-600 hover:text-gray-800"
@@ -144,11 +139,14 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
             ×
           </button>
 
+          {/* Form Section */}
           <h1 className="text-2xl font-bold mb-6">Create Subproject</h1>
 
+          {/* Error Message */}
           {error && <p className="text-red-600">{error}</p>}
 
           <form onSubmit={handleSubmit}>
+            {/* Title */}
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2">Title</label>
               <input
@@ -161,6 +159,7 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
               />
             </div>
 
+            {/* Description */}
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
               <textarea
@@ -172,6 +171,7 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
               />
             </div>
 
+            {/* Due Date */}
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2">Due Date</label>
               <input
@@ -183,6 +183,7 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
               />
             </div>
 
+            {/* Status */}
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2">Status</label>
               <select
@@ -197,6 +198,7 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
               </select>
             </div>
 
+            {/* Members Section */}
             <div className="mb-4 relative">
               <label className="block text-gray-700 text-sm font-bold mb-2">Add Members</label>
               <div className="flex mb-4">
@@ -219,20 +221,22 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
                 </button>
               </div>
 
+              {/* Email Suggestions Dropdown */}
               {showDropdown && availableMembers.length > 0 && (
                 <div className="absolute z-10 w-full max-w-[calc(100%-80px)] bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                  {availableMembers.map((member, index) => (
+                  {availableMembers.map((email, index) => (
                     <div
                       key={index}
                       className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm text-gray-700"
-                      onMouseDown={() => handleSelectSuggestion(member.email)}
+                      onMouseDown={() => handleSelectSuggestion(email)}
                     >
-                      {member.email} ({member.initials})
+                      {email}
                     </div>
                   ))}
                 </div>
               )}
 
+              {/* Scrollable Members List */}
               <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-gray-50">
                 {subprojectData.members.length === 0 ? (
                   <p className="text-gray-500 text-sm">No members added</p>
@@ -256,6 +260,7 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
               </div>
             </div>
 
+            {/* Submit Button */}
             <div className="flex items-center justify-between">
               <button
                 type="submit"
