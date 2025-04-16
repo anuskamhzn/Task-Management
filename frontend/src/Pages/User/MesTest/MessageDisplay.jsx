@@ -10,33 +10,12 @@ const MessageDisplay = ({
   onReply,
   onDelete,
   onEdit,
-  socket,              // Add socket prop
-  onMarkAsRead,        // Add callback to update parent state
+  onMarkAsRead,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editContent, setEditContent] = useState('');
-
-
-  // Mark messages as read when chat is opened
-  useEffect(() => {
-    if (socket && currentChat && chatType && messages.length > 0) {
-      const hasUnreadMessages = messages.some(msg => !msg.isRead && msg.sender?._id !== currentUser?._id);
-      if (hasUnreadMessages) {
-        socket.emit('markMessagesAsRead', {
-          conversationId: currentChat.id,
-          type: chatType,
-        });
-        console.log(`Emitted markMessagesAsRead for ${chatType} chat ${currentChat.id}`);
-
-        // Optionally update parent state immediately
-        if (chatType === 'private' && onMarkAsRead) {
-          onMarkAsRead(currentChat.id);
-        }
-      }
-    }
-  }, [socket, currentChat, chatType, messages, currentUser, onMarkAsRead]);
 
   const openModal = (photoBase64, contentType) => {
     setSelectedImage({ base64: photoBase64, contentType });

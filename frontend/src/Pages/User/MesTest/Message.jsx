@@ -13,10 +13,9 @@ import Manage from '../../User/MesTest/GroupManage/Manage';
 import ChatList from '../../User/MesTest/ChatList';
 import toast from 'react-hot-toast';
 
-let socket = null;
-
 const Message = () => {
   const [auth, setAuth] = useAuth();
+  const socketRef = useRef(null); // Stable socket reference
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -41,6 +40,7 @@ const Message = () => {
   const [showGroupInfoSidebar, setShowGroupInfoSidebar] = useState(false);
   const [recentSenders, setRecentSenders] = useState([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const lastMarkedChatId = useRef(null); // Track last marked chat
 
   const arrayBufferToBase64 = (buffer) => {
     const bytes = new Uint8Array(buffer);
@@ -116,27 +116,27 @@ const Message = () => {
   };
 
   const initializeSocket = () => {
-    if (socket) {
-      socket.emit('logout');
-      socket.disconnect();
+    if (socketRef.current) {
+      socketRef.current.emit('logout');
+      socketRef.current.disconnect();
       console.log('Previous socket disconnected');
     }
     if (auth.token) {
-      socket = io(process.env.REACT_APP_API || 'http://localhost:5000', {
+      socketRef.current = io(process.env.REACT_APP_API || 'http://localhost:5000', {
         auth: { token: auth.token },
         transports: ['websocket', 'polling'],
       });
 
-      socket.on('connect', () => {
+      socketRef.current.on('connect', () => {
         console.log('Socket connected with user:', currentUser?._id, currentUser?.username);
       });
 
-      socket.on('connect_error', (error) => {
+      socketRef.current.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
         toast.error('Failed to connect to chat server');
       });
 
-      socket.on('error', (error) => {
+      socketRef.current.on('error', (error) => {
         console.error('Socket error:', error);
         toast.error(`Chat error: ${error.message}`);
       });
@@ -144,10 +144,10 @@ const Message = () => {
   };
 
   const handleLogout = () => {
-    if (socket) {
-      socket.emit('logout');
-      socket.disconnect();
-      socket = null;
+    if (socketRef.current) {
+      socketRef.current.emit('logout');
+      socketRef.current.disconnect();
+      socketRef.current = null;
       console.log('Socket disconnected on logout');
     }
     setAuth({ token: null, user: null });
@@ -209,22 +209,78 @@ const Message = () => {
     }
 
     return () => {
-      if (socket) {
-        socket.off('connect');
-        socket.off('connect_error');
-        socket.off('newMessage');
-        socket.off('newMessageReply');
-        socket.off('recentSenderUpdate');
-        socket.off('error');
+      if (socketRef.current) {
+        socketRef.current.off('connect');
+        socketRef.current.off('connect_error');
+        socketRef.current.off('newMessage');
+        socketRef.current.off('newMessageReply');
+        socketRef.current.off('recentSenderUpdate');
+        socketRef.current.off('error');
       }
     };
   }, [auth.token, setAuth]);
 
+  // Mark messages as read when chat is opened
   useEffect(() => {
-    if (socket && currentUser?._id && isDataLoaded) {
+    if (!socketRef.current || !currentChat || !chatType || messages.length === 0) {
+      console.log('Skipping markMessagesAsRead: missing dependencies', {
+        socket: !!socketRef.current,
+        currentChat: currentChat?.id,
+        chatType,
+        messagesLength: messages.length,
+      });
+      return;
+    }
+
+    // Skip if this chat was already marked
+    if (lastMarkedChatId.current === currentChat.id) {
+      console.log('Skipping markMessagesAsRead: already marked', currentChat.id);
+      return;
+    }
+
+    const hasUnreadMessages = messages.some(
+      (msg) => !msg.isRead && msg.sender?._id !== currentUser?._id
+    );
+
+    if (hasUnreadMessages) {
+      console.log('Emitting markMessagesAsRead', { chatId: currentChat.id, chatType });
+      socketRef.current.emit(
+        'markMessagesAsRead',
+        {
+          conversationId: currentChat.id,
+          type: chatType,
+        },
+        () => {
+          console.log('markMessagesAsRead callback received', { chatId: currentChat.id });
+        }
+      );
+      lastMarkedChatId.current = currentChat.id; // Update last marked chat
+
+      if (chatType === 'private') {
+        setRecentSenders((prev) =>
+          prev.map((sender) =>
+            sender.senderId === currentChat.id
+              ? { ...sender, unreadCount: 0 }
+              : sender
+          )
+        );
+        console.log('Updated recentSenders for read', currentChat.id);
+      }
+    } else {
+      console.log('No unread messages to mark', { chatId: currentChat.id });
+    }
+
+    // Reset lastMarkedChatId when chat changes
+    return () => {
+      lastMarkedChatId.current = null;
+    };
+  }, [currentChat, chatType, messages, currentUser]);
+
+  useEffect(() => {
+    if (socketRef.current && currentUser?._id && isDataLoaded) {
       if (currentChat && chatType === 'group') {
-        socket.emit('joinGroupRoom', currentChat.id);
-        socket.on('joinedRoom', ({ groupId }) => {
+        socketRef.current.emit('joinGroupRoom', currentChat.id);
+        socketRef.current.on('joinedRoom', ({ groupId }) => {
           console.log('Joined group room:', groupId);
         });
       }
@@ -304,7 +360,7 @@ const Message = () => {
         );
       };
 
-      socket.on('memberAdded', (data) => {
+      socketRef.current.on('memberAdded', (data) => {
         setGroups((prev) =>
           prev.map((group) =>
             group.id === data.groupId
@@ -318,7 +374,7 @@ const Message = () => {
         }
       });
 
-      socket.on('memberRemoved', (data) => {
+      socketRef.current.on('memberRemoved', (data) => {
         setGroups((prev) =>
           prev.map((group) =>
             group.id === data.groupId
@@ -331,7 +387,7 @@ const Message = () => {
         );
       });
 
-      socket.on('memberQuit', (data) => {
+      socketRef.current.on('memberQuit', (data) => {
         if (data.memberId === currentUser._id) {
           setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
           setCurrentChat(null);
@@ -356,7 +412,7 @@ const Message = () => {
         }
       });
 
-      socket.on('groupDeleted', (data) => {
+      socketRef.current.on('groupDeleted', (data) => {
         setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
         if (currentChat?.id === data.groupId) {
           setCurrentChat(null);
@@ -366,29 +422,29 @@ const Message = () => {
         }
       });
 
-      socket.on('recentSenderUpdate', handleRecentSenderUpdate);
-      socket.on('newMessage', handleNewMessage);
-      socket.on('newMessageReply', handleNewMessage);
-      socket.on('newGroupMessageReply', handleNewMessage);
-      socket.on('messageDeleted', handleMessageDeleted);
-      socket.on('groupMessageDeleted', handleMessageDeleted);
-      socket.on('messageEdited', handleMessageEdited);
-      socket.on('groupMessageEdited', handleMessageEdited);
+      socketRef.current.on('recentSenderUpdate', handleRecentSenderUpdate);
+      socketRef.current.on('newMessage', handleNewMessage);
+      socketRef.current.on('newMessageReply', handleNewMessage);
+      socketRef.current.on('newGroupMessageReply', handleNewMessage);
+      socketRef.current.on('messageDeleted', handleMessageDeleted);
+      socketRef.current.on('groupMessageDeleted', handleMessageDeleted);
+      socketRef.current.on('messageEdited', handleMessageEdited);
+      socketRef.current.on('groupMessageEdited', handleMessageEdited);
 
       return () => {
-        socket.off('recentSenderUpdate', handleRecentSenderUpdate);
-        socket.off('newMessage', handleNewMessage);
-        socket.off('newMessageReply', handleNewMessage);
-        socket.off('newGroupMessageReply', handleNewMessage);
-        socket.off('messageDeleted', handleMessageDeleted);
-        socket.off('groupMessageDeleted', handleMessageDeleted);
-        socket.off('messageEdited', handleMessageEdited);
-        socket.off('groupMessageEdited', handleMessageEdited);
-        socket.off('joinedRoom');
-        socket.off('memberAdded');
-        socket.off('memberRemoved');
-        socket.off('memberQuit');
-        socket.off('groupDeleted');
+        socketRef.current.off('recentSenderUpdate', handleRecentSenderUpdate);
+        socketRef.current.off('newMessage', handleNewMessage);
+        socketRef.current.off('newMessageReply', handleNewMessage);
+        socketRef.current.off('newGroupMessageReply', handleNewMessage);
+        socketRef.current.off('messageDeleted', handleMessageDeleted);
+        socketRef.current.off('groupMessageDeleted', handleMessageDeleted);
+        socketRef.current.off('messageEdited', handleMessageEdited);
+        socketRef.current.off('groupMessageEdited', handleMessageEdited);
+        socketRef.current.off('joinedRoom');
+        socketRef.current.off('memberAdded');
+        socketRef.current.off('memberRemoved');
+        socketRef.current.off('memberQuit');
+        socketRef.current.off('groupDeleted');
       };
     }
   }, [currentUser, currentChat, chatType, isDataLoaded]);
@@ -425,17 +481,6 @@ const Message = () => {
         setCurrentChat(chat);
         setChatType(type);
         fetchMessages(chat?.id, type);
-        if (type === 'private' && socket) {
-          socket.emit('markMessagesAsRead', { conversationId: chat.id, type: 'private' });
-          setRecentSenders((prev) =>
-            prev.map((sender) =>
-              sender.senderId === chat.id
-                ? { ...sender, unreadCount: 0 }
-                : sender
-            ).sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp))
-          );
-          console.log('Updated recentSenders locally for read:', chat.id);
-        }
       }, 0);
     } else {
       setCurrentChat(chat);
@@ -443,22 +488,11 @@ const Message = () => {
       setMessages([]);
       setShowUserInfoSidebar(false);
       fetchMessages(chat?.id, type);
-      if (type === 'private' && socket) {
-        socket.emit('markMessagesAsRead', { conversationId: chat.id, type: 'private' });
-        setRecentSenders((prev) =>
-          prev.map((sender) =>
-            sender.senderId === chat.id
-              ? { ...sender, unreadCount: 0 }
-              : sender
-          ).sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp))
-        );
-        console.log('Updated recentSenders locally for read:', chat.id);
-      }
     }
   };
 
   const handleSendMessage = async () => {
-    if ((!messageInput.trim() && !photo && !file) || !currentChat || !socket || !currentUser) return;
+    if ((!messageInput.trim() && !photo && !file) || !currentChat || !socketRef.current || !currentUser) return;
 
     try {
       const payload = chatType === 'group' ? { groupId: currentChat.id } : { recipientId: currentChat.id };
@@ -514,7 +548,7 @@ const Message = () => {
         ? (replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage')
         : (replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage');
 
-      socket.emit(event, payload, (response) => {
+      socketRef.current.emit(event, payload, (response) => {
         if (response && !response.success) {
           toast.error(response.message || 'Failed to send message');
         } else {
@@ -539,17 +573,28 @@ const Message = () => {
   };
 
   const handleDeleteMessage = (messageId) => {
-    if (!socket || !currentChat) return;
+    if (!socketRef.current || !currentChat) return;
 
     const event = chatType === 'group' ? 'deleteGroupMessage' : 'deletePrivateMessage';
-    socket.emit(event, { messageId });
+    socketRef.current.emit(event, { messageId });
   };
 
   const handleEditMessage = (messageId, newContent) => {
-    if (!socket || !currentChat || !newContent.trim()) return;
+    if (!socketRef.current || !currentChat || !newContent.trim()) return;
 
     const event = chatType === 'group' ? 'editGroupMessage' : 'editPrivateMessage';
-    socket.emit(event, { messageId, content: newContent });
+    socketRef.current.emit(event, { messageId, content: newContent });
+  };
+
+  const handleMarkAsRead = (conversationId) => {
+    setRecentSenders((prev) =>
+      prev.map((sender) =>
+        sender.senderId === conversationId
+          ? { ...sender, unreadCount: 0 }
+          : sender
+      )
+    );
+    console.log('handleMarkAsRead updated recentSenders for', conversationId);
   };
 
   return (
@@ -569,7 +614,7 @@ const Message = () => {
                 chatType={chatType}
                 handleChatClick={handleChatClick}
                 setMessages={setMessages}
-                socket={socket}
+                socket={socketRef.current}
                 token={auth.token}
                 currentUser={currentUser}
                 setShowAddUserModal={setShowAddUserModal}
@@ -622,6 +667,7 @@ const Message = () => {
                 onReply={handleReply}
                 onDelete={handleDeleteMessage}
                 onEdit={handleEditMessage}
+                onMarkAsRead={handleMarkAsRead} // Keep for UI updates
               />
               {currentChat && (
                 <MessageInput
@@ -663,7 +709,7 @@ const Message = () => {
                   groupId={currentChat.id}
                   currentUser={currentUser}
                   token={auth.token}
-                  socket={socket}
+                  socket={socketRef.current}
                   onGroupUpdate={(updatedGroup) => {
                     setGroups((prev) =>
                       prev.map((group) =>
