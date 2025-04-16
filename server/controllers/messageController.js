@@ -161,8 +161,8 @@ exports.sendPrivateMessageReply = async (req, res) => {
     await Message.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
 
     const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'username')
-      .populate('recipient', 'username');
+      .populate('sender', 'name')
+      .populate('recipient', 'name');
 
     res.status(200).json({ success: true, message: populatedMessage });
   } catch (error) {
@@ -183,8 +183,8 @@ exports.sendPrivateMessageReply = async (req, res) => {
 //         { sender: recipientId, recipient: userId },
 //       ],
 //     })
-//       .populate('sender', 'username')
-//       .populate('recipient', 'username') // Ensure recipient is populated properly
+//       .populate('sender', 'name')
+//       .populate('recipient', 'name') // Ensure recipient is populated properly
 //       .sort({ timestamp: 1 });
 
 //     res.status(200).json({ success: true, messages });
@@ -266,8 +266,8 @@ exports.editPrivateMessage = async (req, res) => {
     await message.save();
 
     const populatedMessage = await Message.findById(messageId)
-      .populate('sender', 'username')
-      .populate('recipient', 'username');
+      .populate('sender', 'name')
+      .populate('recipient', 'name');
 
     res.status(200).json({ success: true, message: populatedMessage });
   } catch (error) {
@@ -291,11 +291,11 @@ exports.getPrivateMessages = async (req, res) => {
       ],
       // deletedAt: null,
     })
-      .populate('sender', 'username')
-      .populate('recipient', 'username')
+      .populate('sender', 'name initials')
+      .populate('recipient', 'name initials')
       .populate({
         path: 'replies',
-        populate: { path: 'sender', select: 'username' },
+        populate: { path: 'sender', select: 'name' },
       })
       .sort({ timestamp: 1 })
       .skip(skip)
@@ -338,7 +338,7 @@ exports.getProjectMessages = async (req, res) => {
     }
 
     const messages = await Message.find({ project: projectId })
-      .populate('sender', 'username')
+      .populate('sender', 'name')
       .sort({ timestamp: 1 });
 
     res.status(200).json({ success: true, messages });
@@ -397,8 +397,9 @@ exports.getRecentPrivateSenders = async (req, res) => {
         $project: {
           _id: 0,
           senderId: '$_id',
-          username: '$userInfo.username',
+          name: '$userInfo.name',
           email: '$userInfo.email',
+          initials: '$userInfo.initials',
           latestTimestamp: 1,
           unreadCount: 1,
           totalCount: 1,

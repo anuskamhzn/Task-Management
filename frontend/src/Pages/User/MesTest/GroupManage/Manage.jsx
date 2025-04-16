@@ -135,6 +135,21 @@ const Manage = ({ groupId, currentUser, token, socket, onGroupUpdate, onGroupDel
       fetchGroupDetails();
     };
 
+    const getRandomColor = (name) => {
+      const colors = [
+        'bg-red-500',
+        'bg-blue-500',
+        'bg-green-500',
+        'bg-purple-500',
+        'bg-pink-500',
+        'bg-indigo-500',
+        'bg-yellow-500',
+        'bg-teal-500',
+      ];
+      const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+      return colors[index];
+    };
+
     if (loading) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -189,7 +204,7 @@ const Manage = ({ groupId, currentUser, token, socket, onGroupUpdate, onGroupDel
       <div className="border-b border-gray-700 pb-4">
         <h3 className="text-2xl font-semibold text-white">{group.groupName}</h3>
         <p className="text-sm text-gray-400 mt-1">
-          Admin: <span className="font-medium">{group.creator.username}</span>
+          Admin: <span className="font-medium">{group.creator.name}</span>
         </p>
       </div>
 
@@ -226,12 +241,27 @@ const Manage = ({ groupId, currentUser, token, socket, onGroupUpdate, onGroupDel
                 key={member._id}
                 className="flex justify-between items-center p-2 hover:bg-gray-700 rounded-lg transition duration-150"
               >
-                <span className="text-gray-200">
-                  {member.username || 'Unknown User'}{' '}
-                  {member._id === group.creator._id && (
-                    <span className="text-blue-400 text-sm">(Admin)</span>
-                  )}
-                </span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full overflow-hidden">
+                    {member.avatar ? (
+                      <img
+                        src={member.avatar}
+                        alt={member.initials || 'User'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className={`w-full h-full ${getRandomColor(member.name || '')} flex items-center justify-center text-white text-sm font-semibold`}>
+                        {member.initials || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-gray-200">
+                    {member.name || 'Unknown User'}{' '}
+                    {member._id === group.creator._id && (
+                      <span className="text-blue-400 text-sm">(Admin)</span>
+                    )}
+                  </span>
+                </div>
                 {group.creator._id === currentUser._id && member._id !== currentUser._id && (
                   <button
                     onClick={() => handleRemoveMember(member._id)}

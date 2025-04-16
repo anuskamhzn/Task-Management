@@ -320,7 +320,7 @@ exports.sendGroupMessageReply = async (req, res) => {
     // Update parent message to include this reply
     await GrpMsg.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
 
-    const populatedMessage = await GrpMsg.findById(message._id).populate('sender', 'username');
+    const populatedMessage = await GrpMsg.findById(message._id).populate('sender', 'name initials');
     res.status(200).json({ success: true, message: populatedMessage });
   } catch (error) {
     console.error('Error sending group message reply:', error);
@@ -384,7 +384,7 @@ exports.editGroupMessage = async (req, res) => {
     message.updatedAt = new Date();
     await message.save();
 
-    const populatedMessage = await GrpMsg.findById(messageId).populate('sender', 'username');
+    const populatedMessage = await GrpMsg.findById(messageId).populate('sender', 'name initials');
     res.status(200).json({ success: true, message: populatedMessage });
   } catch (error) {
     console.error('Error editing group message:', error);
@@ -409,8 +409,8 @@ exports.getGroupMessages = async (req, res) => {
       group: groupId, 
       // deletedAt: null 
     })
-      .populate('sender', 'username')
-      .populate({ path: 'replies', populate: { path: 'sender', select: 'username' } })
+      .populate('sender', 'name initials')
+      .populate({ path: 'replies', populate: { path: 'sender', select: 'initials name' } })
       .sort({ timestamp: 1 }) // Ascending order
       .skip(skip)
       .limit(parseInt(limit));
@@ -447,7 +447,7 @@ exports.getGroupMessages = async (req, res) => {
 //     }
 
 //     const messages = await GrpMsg.find({ group: groupId })
-//       .populate('sender', 'username')
+//       .populate('sender', 'name')
 //       .sort({ timestamp: 1 });
 
 //     res.status(200).json({ success: true, messages });
@@ -460,8 +460,8 @@ exports.getGroupMessages = async (req, res) => {
 exports.getUserGroups = async (req, res) => {
   try {
     const groups = await Group.find({ members: req.user.id })
-      .populate('members', 'username email')
-      .populate('creator', 'username');
+      .populate('members', 'name email initials')
+      .populate('creator', 'name initials');
     
     res.status(200).json({ success: true, groups });
   } catch (error) {
@@ -477,8 +477,8 @@ exports.getGroupMembers = async (req, res) => {
     const userId = req.user.id;
 
     const group = await Group.findById(groupId)
-      .populate('members', 'username email')
-      .populate('creator', 'username email');
+      .populate('members', 'name email initials')
+      .populate('creator', 'name email initials');
 
     if (!group) {
       return res.status(404).json({ success: false, message: 'Group not found' });
@@ -533,8 +533,8 @@ exports.removeMemberFromGroup = async (req, res) => {
     await group.save();
 
     const updatedGroup = await Group.findById(groupId)
-      .populate('members', 'username email')
-      .populate('creator', 'username email');
+      .populate('members', 'name email initials')
+      .populate('creator', 'name email initials');
 
     // Notify group and removed member
     io.to(`group_${groupId}`).emit('memberRemoved', {
@@ -705,8 +705,9 @@ exports.getRecentGroupSenders = async (req, res) => {
               as: "sender",
               in: {
                 senderId: "$$sender._id",
-                username: "$$sender.username",
+                name: "$$sender.name",
                 email: "$$sender.email",
+                initials: "$$sender.initials",
               },
             },
           },

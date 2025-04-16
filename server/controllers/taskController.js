@@ -434,7 +434,7 @@ exports.getTaskById = async (req, res) => {
       owner: ownerId,
       $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
     })
-    .populate('owner', 'name email username') // Populate owner with specific fields
+    .populate('owner', 'name email name') // Populate owner with specific fields
 
     if (!task) {
       return res.status(404).json({ 

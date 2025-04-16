@@ -43,21 +43,53 @@ const GroupChat = ({
   // Determine the groups to display based on the toggle state
   const displayedGroups = showAllGroups ? groups : groups.slice(0, initialLimit);
 
+  // Function to generate a random color based on the group name
+  const getRandomColor = (name) => {
+    const colors = [
+      'bg-red-500',
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-yellow-500',
+      'bg-teal-500',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
   return (
-    <div className="space-y-2 mt-4">
-      <h3 className="text-md font-semibold text-gray-600 px-2">Groups</h3>
-      {displayedGroups.map((group) => (
-        <div
-          key={`group-${group.id}`}
-          onClick={() => handleChatClick(group, 'group')}
-          className={`cursor-pointer hover:bg-gray-300 p-2 rounded-md flex items-center space-x-2 ${
-            currentChat?.id === group.id && chatType === 'group' ? 'bg-gray-300' : ''
-          }`}
-        >
-          <img src={group.avatar} alt={group.name} className="w-6 h-6 rounded-full" />
-          <span className="text-sm">{group.name}</span>
-        </div>
-      ))}
+    <div className="space-y-2">
+      <h3 className="text-md font-semibold text-gray-600 px-2">Group Chats</h3>
+      {displayedGroups.length === 0 ? (
+        <p className="text-sm text-gray-500 italic">No groups yet</p>
+      ) : (
+        displayedGroups.map((group) => (
+          <div
+            key={`group-${group.id}`}
+            onClick={() => handleChatClick(group, 'group')}
+            className={`cursor-pointer hover:bg-gray-300 p-2 rounded-md flex items-center space-x-2 ${
+              currentChat?.id === group.id && chatType === 'group' ? 'bg-gray-300' : ''
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full ${getRandomColor(group.name)} flex items-center justify-center text-white font-semibold text-sm`}>
+              {group.initials}
+            </div>
+
+            <div className="flex-1 flex justify-between items-center">
+              <span className={`text-sm ${group.unreadCount > 0 && currentChat?.id !== group.id ? 'font-bold' : ''}`}>
+                {group.name}
+              </span>
+              {group.unreadCount > 0 && currentChat?.id !== group.id && (
+                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                  {group.unreadCount}
+                </span>
+              )}
+            </div>
+          </div>
+        ))
+      )}
       {groups.length > initialLimit && (
         <button
           onClick={() => setShowAllGroups(!showAllGroups)}

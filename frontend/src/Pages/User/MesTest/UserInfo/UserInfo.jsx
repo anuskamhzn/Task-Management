@@ -38,6 +38,21 @@ const UserInfom = ({ userId }) => {
     fetchUserInfo();
   }, [auth.token, userId]);
 
+  const getRandomColor = (name) => {
+    const colors = [
+      'bg-red-500',
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-yellow-500',
+      'bg-teal-500',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
   return (
     <div className="text-white">
       {loading ? (
@@ -47,12 +62,18 @@ const UserInfom = ({ userId }) => {
       ) : user ? (
         <div className="space-y-6">
           <div className="flex flex-col items-center">
-            <div className="w-20 h-20 rounded-full bg-gray-500 flex items-center justify-center overflow-hidden">
-              <img
-                src={user.avatar || 'https://via.placeholder.com/80'}
-                alt={user.username || 'User'}
-                className="w-full h-full object-cover"
-              />
+            <div className="w-20 h-20 rounded-full overflow-hidden">
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.initials || 'User'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className={`w-full h-full ${getRandomColor(user.username || '')} flex items-center justify-center text-white text-2xl font-semibold`}>
+                  {user.initials || 'U'}
+                </div>
+              )}
             </div>
             <h2 className="text-xl font-semibold mt-2">{user.username || 'Unknown User'}</h2>
             <p className="text-sm text-gray-400">{user.email || `+977 ${user.phone || 'N/A'}`}</p>

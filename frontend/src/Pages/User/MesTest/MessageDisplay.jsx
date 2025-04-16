@@ -71,6 +71,21 @@ const MessageDisplay = ({
     }
   };
 
+  const getRandomColor = (name) => {
+    const colors = [
+      'bg-red-500',
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-yellow-500',
+      'bg-teal-500',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
   let lastMessageDate = '';
 
   return (
@@ -107,11 +122,9 @@ const MessageDisplay = ({
                   <div className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}>
                     <div className={`group flex items-start ${isSender ? 'flex-row-reverse space-x-reverse' : 'flex-row space-x-2'}`}>
                       {!isSender && (
-                        <img
-                          src={chatType === 'private' ? currentChat.avatar : msg.sender?.avatar || 'https://via.placeholder.com/32'}
-                          alt={chatType === 'private' ? currentChat.username : msg.sender?.username}
-                          className="w-8 h-8 rounded-full border-2 border-gray-200 shadow-md"
-                        />
+                        <div className={`w-8 h-8 rounded-full ${getRandomColor(msg.sender?.name || '')} flex items-center justify-center text-white font-semibold text-sm`}>
+                          {msg.sender?.initials || 'U'}
+                        </div>
                       )}
                       <div className="flex items-center space-x-2">
                         {/* Options Container - Visible on Hover */}
@@ -152,7 +165,7 @@ const MessageDisplay = ({
                         )}
                         <div className={`flex flex-col ${isSender ? 'order-1' : 'order-0'}`}>
                           {!isSender && (
-                            <p className="text-xs font-semibold text-gray-700 ml-1">{msg.sender?.username}</p>
+                            <p className="text-xs font-semibold text-gray-700 ml-1">{msg.sender?.name}</p>
                           )}
                           <div className={`max-w-md p-3 rounded-2xl shadow-md transition-all duration-200 ${
                             isSender 
@@ -193,7 +206,7 @@ const MessageDisplay = ({
                                 {isReply && parentMessage ? (
                                   <div className="break-words">
                                     <div className="bg-gradient-to-r from-blue-100 to-blue-50 p-2 rounded-lg mb-3 border-l-4 border-blue-500">
-                                      <p className="font-semibold text-sm mb-1 text-blue-700">{parentMessage.sender?.username}</p>
+                                      <p className="font-semibold text-sm mb-1 text-blue-700">{parentMessage.sender?.name}</p>
                                       <p className="text-sm">{parentContent}</p>
                                       {parentMessage.photo?.data && (
                                         <img
@@ -248,7 +261,7 @@ const MessageDisplay = ({
                                         />
                                         {!isSender && (
                                           <p className="text-xs mt-1 text-gray-500">
-                                            Sent by {msg.sender?.username}
+                                            Sent by {msg.sender?.name}
                                           </p>
                                         )}
                                       </div>
@@ -264,7 +277,7 @@ const MessageDisplay = ({
                                         </a>
                                         {!isSender && (
                                           <p className="text-xs mt-1 text-gray-500">
-                                            Sent by {msg.sender?.username}
+                                            Sent by {msg.sender?.name}
                                           </p>
                                         )}
                                       </div>

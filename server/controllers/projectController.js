@@ -69,7 +69,7 @@ exports.createProject = async (req, res) => {
 
     // Populate members with full user details
     const populatedProject = await Project.findById(newProject._id)
-      .populate('members', 'email username initials')
+      .populate('members', 'email name initials')
       .lean();
 
     for (const email of members) {
@@ -87,8 +87,8 @@ exports.createProject = async (req, res) => {
         members: populatedProject.members.map(member => ({
           _id: member._id,
           email: member.email,
-          username: member.username,
-          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || 'U'
+          name: member.name,
+          initials: member.initials || member.name?.slice(0, 2).toUpperCase() || 'U'
         }))
       }
     });
@@ -259,7 +259,7 @@ exports.getAllProjects = async (req, res) => {
       deletedAt: null
     }).populate({
       path: 'owner members',
-      select: 'name email username initials photo',
+      select: 'name email name initials photo',
       options: {
         transform: (doc) => {
           if (!doc) return null;
@@ -368,7 +368,7 @@ exports.getAllDeletedProjects = async (req, res) => {
       ]
     }).populate({
       path: 'owner members',
-      select: 'name email username initials photo',
+      select: 'name email name initials photo',
       options: {
         transform: (doc) => {
           if (!doc) return null;
@@ -498,7 +498,7 @@ exports.updateProject = async (req, res) => {
 
     // Populate members with full user details
     const populatedProject = await Project.findById(projectId)
-      .populate('members', 'email username initials')
+      .populate('members', 'email name initials')
       .lean();
 
     res.status(200).json({
@@ -508,8 +508,8 @@ exports.updateProject = async (req, res) => {
         members: populatedProject.members.map(member => ({
           _id: member._id,
           email: member.email,
-          username: member.username,
-          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || 'U'
+          name: member.name,
+          initials: member.initials || member.name?.slice(0, 2).toUpperCase() || 'U'
         })),
         removedMembers,
       }
@@ -660,7 +660,7 @@ exports.createSubProject = async (req, res) => {
 
     // Populate members with full user details
     const populatedSubProject = await SubProject.findById(newSubProject._id)
-      .populate('members', 'email username initials')
+      .populate('members', 'email name initials')
       .lean();
 
     mainProject.subProjects.push(newSubProject._id);
@@ -674,8 +674,8 @@ exports.createSubProject = async (req, res) => {
         members: populatedSubProject.members.map(member => ({
           _id: member._id,
           email: member.email,
-          username: member.username,
-          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || 'U'
+          name: member.name,
+          initials: member.initials || member.name?.slice(0, 2).toUpperCase() || 'U'
         }))
       }
     });
@@ -710,7 +710,7 @@ exports.getSubProjectsByMainProject = async (req, res) => {
       deletedAt: null,
     }).populate({
       path: 'members',
-      select: 'name email username initials photo',
+      select: 'name email name initials photo',
       options: {
         transform: (doc) => {
           if (!doc) return null;
@@ -949,7 +949,7 @@ exports.updateSubProject = async (req, res) => {
 
     // Populate members with full user details
     const populatedSubProject = await SubProject.findById(subProjectId)
-      .populate('members', 'email username initials')
+      .populate('members', 'email name initials')
       .lean();
 
     res.status(200).json({
@@ -960,8 +960,8 @@ exports.updateSubProject = async (req, res) => {
         members: populatedSubProject.members.map(member => ({
           _id: member._id,
           email: member.email,
-          username: member.username,
-          initials: member.initials || member.username?.slice(0, 2).toUpperCase() || 'U'
+          name: member.name,
+          initials: member.initials || member.name?.slice(0, 2).toUpperCase() || 'U'
         })),
         removeMembers,
       }
@@ -985,7 +985,7 @@ exports.getSubProjectById = async (req, res) => {
       .populate('mainProject')
       .populate({
         path: 'owner members',
-        select: 'name email username initials photo',
+        select: 'name email name initials photo',
         options: {
           transform: (doc) => {
             if (!doc) return null;
@@ -1031,7 +1031,7 @@ exports.getProjectById = async (req, res) => {
     })
       .populate({
         path: 'owner',
-        select: 'name email username initials photo',
+        select: 'name email name initials photo',
         options: {
           transform: (doc) => {
             if (!doc) return null;
@@ -1050,7 +1050,7 @@ exports.getProjectById = async (req, res) => {
       })
       .populate({
         path: 'members',
-        select: 'name email username initials photo',
+        select: 'name email name initials photo',
         options: {
           transform: (doc) => {
             if (!doc) return null;

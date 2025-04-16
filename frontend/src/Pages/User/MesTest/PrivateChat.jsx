@@ -14,7 +14,7 @@ const PrivateChat = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [showAllUsers, setShowAllUsers] = useState(false);
-  const initialLimit = 5;
+  const initialLimit = 2;
 
   useEffect(() => {
     if (currentChat && chatType === 'private') {
@@ -39,9 +39,10 @@ const PrivateChat = ({
     .map((sender) => {
       const user = users.find((u) => u.id === sender.senderId) || {
         id: sender.senderId,
-        username: sender.username,
+        name: sender.name,
         email: sender.email,
-        avatar: 'https://example.com/default-avatar.jpg',
+        initials: sender.initials,
+        // avatar: 'https://example.com/default-avatar.jpg',
       };
       return {
         ...user,
@@ -74,14 +75,16 @@ const PrivateChat = ({
           <div
             key={`user-${user.id}`}
             onClick={() => handleChatClick(user, 'private')}
-            className={`cursor-pointer hover:bg-gray-300 p-2 rounded-md flex items-center space-x-2 ${
-              currentChat?.id === user.id && chatType === 'private' ? 'bg-gray-300' : ''
-            }`}
+            className={`cursor-pointer hover:bg-gray-300 p-2 rounded-md flex items-center space-x-2 ${currentChat?.id === user.id && chatType === 'private' ? 'bg-gray-300' : ''
+              }`}
           >
-            <img src={user.avatar} alt={user.username} className="w-6 h-6 rounded-full" />
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm">
+              {user.initials}
+            </div>
+
             <div className="flex-1 flex justify-between items-center">
               <span className={`text-sm ${user.unreadCount > 0 && currentChat?.id !== user.id ? 'font-bold' : ''}`}>
-                {user.username}
+                {user.name}
               </span>
               {user.unreadCount > 0 && currentChat?.id !== user.id && (
                 <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">

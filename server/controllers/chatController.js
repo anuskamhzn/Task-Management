@@ -8,7 +8,7 @@ exports.users = async (req, res) => {
         const users = await userModel.find({
             // _id: { $ne: req.user.id },
             role: { $ne: 'Admin' }     // Exclude users with role 'admin'
-        }).select('username email avatar');
+        }).select('name name email photo initials');
         res.status(200).json(users);
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -19,7 +19,7 @@ exports.users = async (req, res) => {
 // Get list of users the current user has added (chatted with)
 exports.getAddedUsers = async (req, res) => {
     try {
-        const user = await userModel.findById(req.user.id).populate('contacts', 'username email avatar');
+        const user = await userModel.findById(req.user.id).populate('contacts', 'name initials name email photo');
 
         if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -69,7 +69,7 @@ exports.addUserToChat = async (req, res) => {
   
       res.status(200).json({ 
         message: 'User added to chat list' + (addedToOther ? ' mutually' : ''),
-        user: { _id: userToAdd._id, username: userToAdd.username, email: userToAdd.email, avatar: userToAdd.avatar },
+        user: { _id: userToAdd._id, name: userToAdd.name, name:userToAdd.name, initials:userToAdd.initials, email: userToAdd.email, photo: userToAdd.photo },
         contacts: user.contacts 
       });
     } catch (error) {

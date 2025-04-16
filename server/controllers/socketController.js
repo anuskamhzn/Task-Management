@@ -54,16 +54,17 @@ exports.setupSocket = (io) => {
         await message.save();
 
         const populatedMessage = await Message.findById(message._id)
-          .populate('sender', 'username avatar')
-          .populate('recipient', 'username avatar');
+          .populate('sender', 'name photo initials')
+          .populate('recipient', 'name photo initials');
 
         io.to(recipientId).emit('newMessage', populatedMessage);
         socket.emit('newMessage', populatedMessage);
         // Update for recipient (as before)
             const recipientUpdate = {
               senderId: socket.user.id,
-              username: populatedMessage.sender.username,
+              name: populatedMessage.sender.name,
               email: populatedMessage.sender.email,
+              initials: populatedMessage.sender.initials,
               latestTimestamp: populatedMessage.timestamp,
               unreadCount: 1,
               totalCount: 1, // Will be adjusted on frontend if sender exists
@@ -74,8 +75,10 @@ exports.setupSocket = (io) => {
             // Update for sender (new addition)
             const senderUpdate = {
               senderId: recipientId, // For sender, the "recent contact" is the recipient
-              username: populatedMessage.recipient.username,
+              name: populatedMessage.recipient.name,
+              name: populatedMessage.recipient.name,
               email: populatedMessage.recipient.email,
+              initials: populatedMessage.sender.initials,
               latestTimestamp: populatedMessage.timestamp,
               unreadCount: 0, // Sender’s messages are read by themselves
               totalCount: 1, // Will be adjusted on frontend
@@ -109,8 +112,8 @@ exports.setupSocket = (io) => {
     //     await message.save();
 
     //     const populatedMessage = await Message.findById(message._id)
-    //       .populate('sender', 'username email')
-    //       .populate('recipient', 'username email');
+    //       .populate('sender', 'name email')
+    //       .populate('recipient', 'name email');
 
     //     io.to(recipientId).emit('newMessage', populatedMessage);
     //     socket.emit('newMessage', populatedMessage);
@@ -118,7 +121,7 @@ exports.setupSocket = (io) => {
     //     // Update for recipient (as before)
     //     const recipientUpdate = {
     //       senderId: userId,
-    //       username: populatedMessage.sender.username,
+    //       name: populatedMessage.sender.name,
     //       email: populatedMessage.sender.email,
     //       latestTimestamp: populatedMessage.timestamp,
     //       unreadCount: 1,
@@ -130,7 +133,7 @@ exports.setupSocket = (io) => {
     //     // Update for sender (new addition)
     //     const senderUpdate = {
     //       senderId: recipientId, // For sender, the "recent contact" is the recipient
-    //       username: populatedMessage.recipient.username,
+    //       name: populatedMessage.recipient.name,
     //       email: populatedMessage.recipient.email,
     //       latestTimestamp: populatedMessage.timestamp,
     //       unreadCount: 0, // Sender’s messages are read by themselves
@@ -197,17 +200,18 @@ exports.setupSocket = (io) => {
         await Message.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
 
         const populatedMessage = await Message.findById(message._id)
-          .populate('sender', 'username avatar')
-          .populate('recipient', 'username avatar')
-          .populate({ path: 'replies', populate: { path: 'sender', select: 'username' } });
+          .populate('sender', 'name photo initials')
+          .populate('recipient', 'name photo initlas')
+          .populate({ path: 'replies', populate: { path: 'sender', select: 'name' } });
 
         io.to(recipientId).emit('newMessageReply', populatedMessage);
         socket.emit('newMessageReply', populatedMessage);
         // Update recentSenderUpdate for recipient
         const recipientUpdate = {
           senderId: socket.user.id,
-          username: populatedMessage.sender.username,
+          name: populatedMessage.sender.name,
           email: populatedMessage.sender.email,
+          initials: populatedMessage.sender.initials,
           latestTimestamp: populatedMessage.timestamp,
           unreadCount: 1, // Increment unread count for recipient
           totalCount: 1,  // Will be adjusted on frontend if sender exists
@@ -217,8 +221,9 @@ exports.setupSocket = (io) => {
         // Update recentSenderUpdate for sender
         const senderUpdate = {
           senderId: recipientId, // For sender, the "recent contact" is the recipient
-          username: populatedMessage.recipient.username,
+          name: populatedMessage.recipient.name,
           email: populatedMessage.recipient.email,
+          initials: populatedMessage.sender.initials,
           latestTimestamp: populatedMessage.timestamp,
           unreadCount: 0, // Sender’s messages are read by themselves
           totalCount: 1,  // Will be adjusted on frontend
@@ -277,8 +282,8 @@ exports.setupSocket = (io) => {
     //     await Message.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
 
     //     const populatedMessage = await Message.findById(message._id)
-    //       .populate('sender', 'username email')
-    //       .populate('recipient', 'username email');
+    //       .populate('sender', 'name email')
+    //       .populate('recipient', 'name email');
 
     //     // Emit new reply to both sender and recipient
     //     io.to(recipientId).emit('newMessageReply', populatedMessage);
@@ -287,7 +292,7 @@ exports.setupSocket = (io) => {
     //     // Update recentSenderUpdate for recipient
     //     const recipientUpdate = {
     //       senderId: userId,
-    //       username: populatedMessage.sender.username,
+    //       name: populatedMessage.sender.name,
     //       email: populatedMessage.sender.email,
     //       latestTimestamp: populatedMessage.timestamp,
     //       unreadCount: 1, // Increment unread count for recipient
@@ -298,7 +303,7 @@ exports.setupSocket = (io) => {
     //     // Update recentSenderUpdate for sender
     //     const senderUpdate = {
     //       senderId: recipientId, // For sender, the "recent contact" is the recipient
-    //       username: populatedMessage.recipient.username,
+    //       name: populatedMessage.recipient.name,
     //       email: populatedMessage.recipient.email,
     //       latestTimestamp: populatedMessage.timestamp,
     //       unreadCount: 0, // Sender’s messages are read by themselves
@@ -331,8 +336,8 @@ exports.setupSocket = (io) => {
     //     await message.save();
 
     //     const updatedMessage = await Message.findById(messageId)
-    //       .populate('sender', 'username avatar')
-    //       .populate('recipient', 'username avatar');
+    //       .populate('sender', 'name photo')
+    //       .populate('recipient', 'name photo');
 
     //     io.to(message.recipient.toString()).emit('messageDeleted', updatedMessage);
     //     socket.emit('messageDeleted', updatedMessage); // Send full updated message
@@ -368,8 +373,8 @@ exports.setupSocket = (io) => {
         }
 
         const updatedMessage = await Message.findById(messageId)
-          .populate('sender', 'username email')
-          .populate('recipient', 'username email');
+          .populate('sender', 'name email initials')
+          .populate('recipient', 'name email initials');
 
         // Notify both sender and recipient with the full updated message
         io.to(message.recipient.toString()).emit('messageDeleted', updatedMessage);
@@ -386,13 +391,13 @@ exports.setupSocket = (io) => {
 
         if (remainingMessages.length > 0) {
           const lastMessage = remainingMessages[0];
-          const senderInfo = await User.findById(lastMessage.sender, 'username email');
-          const recipientInfo = await User.findById(lastMessage.recipient, 'username email');
+          const senderInfo = await User.findById(lastMessage.sender, 'name email initials');
+          const recipientInfo = await User.findById(lastMessage.recipient, 'name email initials');
 
           // Update recipient’s recentSenderUpdate
           io.to(message.recipient.toString()).emit('recentSenderUpdate', {
             senderId: lastMessage.sender.toString(),
-            username: senderInfo.username,
+            name: senderInfo.name,
             email: senderInfo.email,
             latestTimestamp: lastMessage.timestamp,
             unreadCount: lastMessage.isRead ? 0 : 1, // Adjust based on last message status
@@ -402,18 +407,19 @@ exports.setupSocket = (io) => {
           // Update sender’s recentSenderUpdate
           io.to(userId).emit('recentSenderUpdate', {
             senderId: message.recipient.toString(),
-            username: recipientInfo.username,
+            name: recipientInfo.name,
             email: recipientInfo.email,
+            initials: recipientInfo.initials,
             latestTimestamp: lastMessage.timestamp,
             unreadCount: 0, // Sender’s view of recipient has no unread
             totalCount: 1, // Frontend will aggregate
           });
         } else {
           // No messages left, reset recentSenderUpdate
-          const recipientInfo = await User.findById(message.recipient, 'username email');
+          const recipientInfo = await User.findById(message.recipient, 'name email initials');
           io.to(message.recipient.toString()).emit('recentSenderUpdate', {
             senderId: userId,
-            username: updatedMessage.sender.username,
+            name: updatedMessage.sender.name,
             email: updatedMessage.sender.email,
             latestTimestamp: new Date(0), // Reset to epoch or keep last known
             unreadCount: 0,
@@ -421,7 +427,7 @@ exports.setupSocket = (io) => {
           });
           io.to(userId).emit('recentSenderUpdate', {
             senderId: message.recipient.toString(),
-            username: recipientInfo.username,
+            name: recipientInfo.name,
             email: recipientInfo.email,
             latestTimestamp: new Date(0),
             unreadCount: 0,
@@ -458,8 +464,8 @@ exports.setupSocket = (io) => {
         await message.save();
 
         const populatedMessage = await Message.findById(messageId)
-          .populate('sender', 'username avatar')
-          .populate('recipient', 'username avatar');
+          .populate('sender', 'name photo')
+          .populate('recipient', 'name photo');
 
         // Notify both sender and recipient
         io.to(message.recipient.toString()).emit('messageEdited', populatedMessage);
@@ -467,6 +473,59 @@ exports.setupSocket = (io) => {
       } catch (error) {
         console.error('Error editing message:', error);
         socket.emit('error', { message: 'Error editing message', error: error.message });
+      }
+    });
+
+    socket.on('addUserToChat', async ({ email }, callback) => {
+      try {
+        if (!socket.user?.id) throw new Error('No sender ID');
+        if (!email) throw new Error('Email is required');
+    
+        // Find current user
+        const user = await User.findById(socket.user.id);
+        if (!user) throw new Error('User not found');
+    
+        // Find the user to add using email
+        const userToAdd = await User.findOne({ email });
+        if (!userToAdd) throw new Error('User with this email not found');
+    
+        // Prevent adding self
+        if (userToAdd._id.equals(user._id)) {
+          throw new Error('You cannot add yourself');
+        }
+    
+        // Add to current user's contacts if not already added
+        let addedToCurrent = false;
+        if (!user.contacts.includes(userToAdd._id)) {
+          user.contacts.push(userToAdd._id);
+          addedToCurrent = true;
+        }
+    
+        // Add current user to the other user's contacts if not already added
+        let addedToOther = false;
+        if (!userToAdd.contacts.includes(user._id)) {
+          userToAdd.contacts.push(user._id);
+          addedToOther = true;
+        }
+    
+        // Save both users if changes were made
+        if (addedToCurrent) await user.save();
+        if (addedToOther) await userToAdd.save();
+    
+        // Notify both users
+        io.to(userToAdd._id.toString()).emit('addedToChat', {
+          user: { _id: user._id, name: user.name, email: user.email, photo: user.photo , initials:user.initials},
+        });
+        socket.emit('addUserSuccess', {
+          message: 'User added to chat list' + (addedToOther ? ' mutually' : ''),
+          user: { _id: userToAdd._id, name: userToAdd.name, email: userToAdd.email, photo: userToAdd.photo , initials:usersToAdd.initials},
+        });
+    
+        if (callback) callback({ success: true, user: userToAdd });
+      } catch (error) {
+        console.error('Error adding user to chat:', error);
+        socket.emit('error', { message: 'Error adding user to chat', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
       }
     });
 
@@ -555,7 +614,7 @@ exports.setupSocket = (io) => {
         await message.save();
 
         const populatedMessage = await GrpMsg.findById(message._id)
-          .populate('sender', 'username avatar');
+          .populate('sender', 'name photo initials');
 
         io.to(`group_${groupId}`).emit('newMessage', populatedMessage);
         socket.emit('newMessage', populatedMessage);
@@ -614,8 +673,8 @@ exports.setupSocket = (io) => {
         await GrpMsg.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
 
         const populatedMessage = await GrpMsg.findById(message._id)
-          .populate('sender', 'username avatar')
-          .populate({ path: 'replies', populate: { path: 'sender', select: 'username' } });
+          .populate('sender', 'name photo initials')
+          .populate({ path: 'replies', populate: { path: 'sender', select: 'name' } });
 
         io.to(`group_${groupId}`).emit('newGroupMessageReply', populatedMessage);
         socket.emit('newGroupMessageReply', populatedMessage);
@@ -651,8 +710,8 @@ exports.setupSocket = (io) => {
     //     }
 
     //     const updatedMessage = await GrpMsg.findById(messageId)
-    //       .populate('sender', 'username avatar')
-    //       .populate('recipient', 'username avatar');
+    //       .populate('sender', 'name photo')
+    //       .populate('recipient', 'name photo');
 
     //     // Notify all group members
     //     // io.to(`group_${message.group.toString()}`).emit('groupMessageDeleted', { messageId });
@@ -680,7 +739,7 @@ exports.setupSocket = (io) => {
         await message.save();
 
         const updatedMessage = await GrpMsg.findById(messageId)
-          .populate('sender', 'username avatar');
+          .populate('sender', 'name photo');
 
         io.to(`group_${message.group.toString()}`).emit('groupMessageDeleted', updatedMessage);
         socket.emit('groupMessageDeleted', updatedMessage); // Send full updated message
@@ -712,7 +771,7 @@ exports.setupSocket = (io) => {
         await message.save();
 
         const populatedMessage = await GrpMsg.findById(messageId)
-          .populate('sender', 'username avatar');
+          .populate('sender', 'name photo');
 
         io.to(`group_${message.group.toString()}`).emit('groupMessageEdited', populatedMessage);
         socket.emit('groupMessageEdited', populatedMessage);
@@ -740,8 +799,8 @@ exports.setupSocket = (io) => {
     socket.on('requestGroupMembers', async (groupId) => {
       try {
         const group = await Group.findById(groupId)
-          .populate('members', 'username email')
-          .populate('creator', 'username email');
+          .populate('members', 'name email initials')
+          .populate('creator', 'name email initials');
 
         if (!group || !group.members.includes(socket.user.id)) {
           socket.emit('error', { message: 'Unauthorized or group not found' });
@@ -785,8 +844,8 @@ exports.setupSocket = (io) => {
         await group.save();
 
         const updatedGroup = await Group.findById(groupId)
-          .populate('members', 'username email')
-          .populate('creator', 'username email');
+          .populate('members', 'name email initials')
+          .populate('creator', 'name email initials');
 
         io.to(`group_${groupId}`).emit('memberAdded', {
           groupId,
@@ -829,8 +888,8 @@ exports.setupSocket = (io) => {
         await group.save();
 
         const updatedGroup = await Group.findById(groupId)
-          .populate('members', 'username email')
-          .populate('creator', 'username email');
+          .populate('members', 'name email initials')
+          .populate('creator', 'name email initials');
 
         io.to(`group_${groupId}`).emit('memberRemoved', {
           groupId,
@@ -982,7 +1041,7 @@ exports.setupSocket = (io) => {
     //         {
     //           $project: {
     //             senderId: '$_id',
-    //             username: '$senderInfo.username',
+    //             name: '$senderInfo.name',
     //             email: '$senderInfo.email',
     //             latestTimestamp: 1,
     //             unreadCount: 1,
@@ -1001,11 +1060,11 @@ exports.setupSocket = (io) => {
     //           { timestamp: 1 },
     //           { sort: { timestamp: -1 } }
     //         );
-    //         const senderInfo = await User.findById(conversationId, 'username email');
+    //         const senderInfo = await User.findById(conversationId, 'name email');
     //         if (senderInfo) {
     //           const update = {
     //             senderId: conversationId,
-    //             username: senderInfo.username,
+    //             name: senderInfo.name,
     //             email: senderInfo.email,
     //             latestTimestamp: lastMessage ? lastMessage.timestamp : new Date(0), // Use last message or epoch
     //             unreadCount: 0,
