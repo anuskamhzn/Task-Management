@@ -40,6 +40,11 @@ const Register = () => {
       toast.error('Password should be at least 6 characters long');
       return;
     }
+    // Check if phone number is exactly 10 digits
+    if (phone.length !== 10) {
+      toast.error('Phone number should be 10 digits');
+      return;
+    }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,6 +63,7 @@ const Register = () => {
       const res = await axios.post(registerUrl, {
         name,
         email,
+        phone,
         password,
         confirmPassword,
         phone,
@@ -135,9 +141,8 @@ const Register = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   readOnly={redirect === 'approve-invite' && invitedEmail !== ''}
-                  className={`p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    redirect === 'approve-invite' && invitedEmail !== '' ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
+                  className={`p-3 w-full pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${redirect === 'approve-invite' && invitedEmail !== '' ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                   required
                 />
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">

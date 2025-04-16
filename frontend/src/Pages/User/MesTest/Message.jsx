@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 
 const Message = () => {
   const [auth, setAuth] = useAuth();
-  const socketRef = useRef(null); // Stable socket reference
+  const socketRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -39,8 +39,9 @@ const Message = () => {
   const [showUserInfoSidebar, setShowUserInfoSidebar] = useState(false);
   const [showGroupInfoSidebar, setShowGroupInfoSidebar] = useState(false);
   const [recentSenders, setRecentSenders] = useState([]);
+  const [recentGroups, setRecentGroups] = useState([]); // New state for recent groups
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const lastMarkedChatId = useRef(null); // Track last marked chat
+  const lastMarkedChatId = useRef(null);
 
   const arrayBufferToBase64 = (buffer) => {
     const bytes = new Uint8Array(buffer);
@@ -105,7 +106,6 @@ const Message = () => {
       const sortedSenders = (response.data.recentSenders || []).sort(
         (a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp)
       );
-      // console.log('Fetched recentSenders:', sortedSenders);
       setRecentSenders(sortedSenders);
       return sortedSenders;
     } catch (error) {
@@ -115,29 +115,43 @@ const Message = () => {
     }
   };
 
+  const fetchRecentGroups = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API}/api/group-chat/recent-group-senders`, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const sortedGroups = (response.data.recentGroups || []).sort(
+        (a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp)
+      );
+      setRecentGroups(sortedGroups);
+      return sortedGroups;
+    } catch (error) {
+      console.error('Error fetching recent groups:', error);
+      setRecentGroups([]);
+      return [];
+    }
+  };
+
   const initializeSocket = () => {
     if (socketRef.current) {
       socketRef.current.emit('logout');
       socketRef.current.disconnect();
-      // console.log('Previous socket disconnected');
     }
     if (auth.token) {
-      socketRef.current = io(process.env.REACT_APP_API , {
+      socketRef.current = io(process.env.REACT_APP_API, {
         auth: { token: auth.token },
         transports: ['websocket', 'polling'],
       });
 
       socketRef.current.on('connect', () => {
-        // console.log('Socket connected with user:', currentUser?._id, currentUser?.name);
+        // console.log('Socket connected with user:', currentUser?._id);
       });
 
       socketRef.current.on('connect_error', (error) => {
-        // console.error('Socket connection error:', error);
         toast.error('Failed to connect to chat server');
       });
 
       socketRef.current.on('error', (error) => {
-        // console.error('Socket error:', error);
         toast.error(`Chat error: ${error.message}`);
       });
     }
@@ -148,7 +162,6 @@ const Message = () => {
       socketRef.current.emit('logout');
       socketRef.current.disconnect();
       socketRef.current = null;
-      // console.log('Socket disconnected on logout');
     }
     setAuth({ token: null, user: null });
     setMessages([]);
@@ -156,6 +169,7 @@ const Message = () => {
     setChatType(null);
     setCurrentUser(null);
     setRecentSenders([]);
+    setRecentGroups([]);
     setUsers([]);
     setGroups([]);
     setIsDataLoaded(false);
@@ -166,7 +180,7 @@ const Message = () => {
 
     const fetchInitialData = async () => {
       try {
-        const [currentUserRes, usersRes, groupsRes, recentSendersRes] = await Promise.all([
+        const [currentUserRes, usersRes, groupsRes, recentSendersRes, recentGroupsRes] = await Promise.all([
           axios.get(`${process.env.REACT_APP_API}/api/auth/user-info`, {
             headers: { Authorization: `Bearer ${auth.token}` },
           }),
@@ -177,6 +191,7 @@ const Message = () => {
             headers: { Authorization: `Bearer ${auth.token}` },
           }),
           fetchRecentSenders(),
+          fetchRecentGroups(),
         ]);
 
         setCurrentUser(currentUserRes.data);
@@ -195,9 +210,11 @@ const Message = () => {
             name: group.name,
             avatar: 'https://example.com/default-group-avatar.jpg',
             members: group.members || [],
+            initials: group.initials || group.name.substring(0, 2).toUpperCase(),
           }))
         );
         setRecentSenders(recentSendersRes);
+        setRecentGroups(recentGroupsRes);
         setIsDataLoaded(true);
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -216,6 +233,7 @@ const Message = () => {
         socketRef.current.off('newMessage');
         socketRef.current.off('newMessageReply');
         socketRef.current.off('recentSenderUpdate');
+        socketRef.current.off('recentGroupUpdate');
         socketRef.current.off('error');
       }
     };
@@ -224,19 +242,10 @@ const Message = () => {
   // Mark messages as read when chat is opened
   useEffect(() => {
     if (!socketRef.current || !currentChat || !chatType || messages.length === 0) {
-      // console.log('Skipping markMessagesAsRead: missing dependencies',
-      //    {
-      //   socket: !!socketRef.current,
-      //   currentChat: currentChat?.id,
-      //   chatType,
-      //   messagesLength: messages.length,
-      // });
       return;
     }
 
-    // Skip if this chat was already marked
     if (lastMarkedChatId.current === currentChat.id) {
-      // console.log('Skipping markMessagesAsRead: already marked', currentChat.id);
       return;
     }
 
@@ -245,7 +254,6 @@ const Message = () => {
     );
 
     if (hasUnreadMessages) {
-      // console.log('Emitting markMessagesAsRead', { chatId: currentChat.id, chatType });
       socketRef.current.emit(
         'markMessagesAsRead',
         {
@@ -256,7 +264,7 @@ const Message = () => {
           // console.log('markMessagesAsRead callback received', { chatId: currentChat.id });
         }
       );
-      lastMarkedChatId.current = currentChat.id; // Update last marked chat
+      lastMarkedChatId.current = currentChat.id;
 
       if (chatType === 'private') {
         setRecentSenders((prev) =>
@@ -266,13 +274,17 @@ const Message = () => {
               : sender
           )
         );
-        // console.log('Updated recentSenders for read', currentChat.id);
+      } else if (chatType === 'group') {
+        setRecentGroups((prev) =>
+          prev.map((group) =>
+            group.groupId === currentChat.id
+              ? { ...group, unreadCount: 0 }
+              : group
+          )
+        );
       }
-    } else {
-      // console.log('No unread messages to mark', { chatId: currentChat.id });
     }
 
-    // Reset lastMarkedChatId when chat changes
     return () => {
       lastMarkedChatId.current = null;
     };
@@ -287,15 +299,14 @@ const Message = () => {
         });
       }
 
-
       const handleRecentSenderUpdate = (update) => {
-        // console.log('Received recentSenderUpdate:', update);
         setRecentSenders((prev) => {
           const existing = prev.find((sender) => sender.senderId === update.senderId);
           const newSender = {
             senderId: update.senderId,
             name: update.name,
             email: update.email,
+            initials: update.initials,
             latestTimestamp: update.latestTimestamp,
             unreadCount: update.unreadCount,
             totalCount: update.totalCount,
@@ -318,8 +329,36 @@ const Message = () => {
         });
       };
 
+      const handleRecentGroupUpdate = (update) => {
+        setRecentGroups((prev) => {
+          const existing = prev.find((group) => group.groupId === update.groupId);
+          const newGroup = {
+            groupId: update.groupId,
+            groupName: update.groupName,
+            latestTimestamp: update.latestTimestamp,
+            unreadCount: update.unreadCount,
+            totalCount: update.totalCount,
+            senders: update.senders || [],
+          };
+
+          if (update.totalCount === 0) {
+            return prev.filter((group) => group.groupId !== update.groupId);
+          }
+
+          if (existing) {
+            return [
+              newGroup,
+              ...prev.filter((group) => group.groupId !== update.groupId),
+            ].sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp));
+          }
+
+          return [newGroup, ...prev].sort((a, b) =>
+            new Date(b.latestTimestamp) - new Date(a.latestTimestamp)
+          );
+        });
+      };
+
       const handleNewMessage = (message) => {
-        // console.log('Received new message:', message);
         const senderId = message.sender?._id || (message.sender && message.sender.toString());
         const groupId = message.group?._id || (message.group && message.group.toString());
         const recipientId = message.recipient?._id || (message.recipient && message.recipient.toString());
@@ -382,9 +421,9 @@ const Message = () => {
           prev.map((group) =>
             group.id === data.groupId
               ? {
-                ...group,
-                members: (group.members || []).filter((m) => m._id !== data.memberId),
-              }
+                  ...group,
+                  members: (group.members || []).filter((m) => m._id !== data.memberId),
+                }
               : group
           )
         );
@@ -393,6 +432,7 @@ const Message = () => {
       socketRef.current.on('memberQuit', (data) => {
         if (data.memberId === currentUser._id) {
           setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
+          setRecentGroups((prev) => prev.filter((group) => group.groupId !== data.groupId));
           setCurrentChat(null);
           setChatType(null);
           setMessages([]);
@@ -402,9 +442,9 @@ const Message = () => {
             prev.map((group) =>
               group.id === data.groupId
                 ? {
-                  ...group,
-                  members: (group.members || []).filter((m) => m._id !== data.memberId),
-                }
+                    ...group,
+                    members: (group.members || []).filter((m) => m._id !== data.memberId),
+                  }
                 : group
             )
           );
@@ -417,6 +457,7 @@ const Message = () => {
 
       socketRef.current.on('groupDeleted', (data) => {
         setGroups((prev) => prev.filter((group) => group.id !== data.groupId));
+        setRecentGroups((prev) => prev.filter((group) => group.groupId !== data.groupId));
         if (currentChat?.id === data.groupId) {
           setCurrentChat(null);
           setChatType(null);
@@ -426,6 +467,7 @@ const Message = () => {
       });
 
       socketRef.current.on('recentSenderUpdate', handleRecentSenderUpdate);
+      socketRef.current.on('recentGroupUpdate', handleRecentGroupUpdate);
       socketRef.current.on('newMessage', handleNewMessage);
       socketRef.current.on('newMessageReply', handleNewMessage);
       socketRef.current.on('newGroupMessageReply', handleNewMessage);
@@ -436,6 +478,7 @@ const Message = () => {
 
       return () => {
         socketRef.current.off('recentSenderUpdate', handleRecentSenderUpdate);
+        socketRef.current.off('recentGroupUpdate', handleRecentGroupUpdate);
         socketRef.current.off('newMessage', handleNewMessage);
         socketRef.current.off('newMessageReply', handleNewMessage);
         socketRef.current.off('newGroupMessageReply', handleNewMessage);
@@ -475,7 +518,6 @@ const Message = () => {
   };
 
   const handleChatClick = (chat, type) => {
-    // console.log('handleChatClick:', { chatId: chat?.id, type, currentChatId: currentChat?.id });
     if (currentChat && currentChat?.id === chat?.id) {
       setMessages([]);
       setCurrentChat(null);
@@ -494,8 +536,12 @@ const Message = () => {
     }
   };
 
+  const handleReply = (messageId) => {
+    setReplyToMessageId(messageId);
+  };
+
   const handleSendMessage = async () => {
-    if ((!messageInput.trim() && !photo && !file) || !currentChat || !socketRef.current || !currentUser) return;
+    if ((!messageInput.trim() && !photo && !file) || !currentChat || !socketRef) return;
 
     try {
       const payload = chatType === 'group' ? { groupId: currentChat.id } : { recipientId: currentChat.id };
@@ -515,47 +561,36 @@ const Message = () => {
       }
 
       if (replyToMessageId) {
-        const parentMessage = messages.find((msg) => msg._id === replyToMessageId);
-        if (!parentMessage) {
-          toast.error('Cannot reply: Parent message not found');
-          setReplyToMessageId(null);
-          return;
-        }
-        if (
-          (chatType === 'private' &&
-            parentMessage.sender?._id !== currentChat.id &&
-            parentMessage.recipient?._id !== currentChat.id &&
-            parentMessage.sender?._id !== currentUser._id &&
-            parentMessage.recipient?._id !== currentUser._id) ||
-          (chatType === 'group' && parentMessage.group?._id !== currentChat.id)
-        ) {
-          toast.error('Cannot reply: Parent message is not part of this conversation');
-          setReplyToMessageId(null);
-          return;
-        }
         payload.parentMessageId = replyToMessageId;
       }
-
-      const MAX_SIZE = 7.5 * 1024 * 1024;
+      const MAX_SIZE = 7.5 * 1024 * 1024; // 7.5MB to account for Base64 overhead
 
       if (photo && photo.size > MAX_SIZE) {
+        // console.log('Photo exceeds limit:', photo.size, '>', MAX_SIZE);
         toast.error('Photo exceeds 7.5MB limit');
         return;
       }
       if (file && file.size > MAX_SIZE) {
+        // console.log('File exceeds limit:', file.size, '>', MAX_SIZE);
         toast.error('File exceeds 7.5MB limit');
         return;
       }
 
+      // if (chatType === 'private') {
+      //   socket.emit(replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage', payload);
+      // } else if (chatType === 'group') {
+      //   socket.emit(replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage', payload);
+      // }
+
+      // Emit the message via socket and listen for response
       const event = chatType === 'private'
         ? (replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage')
         : (replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage');
 
       socketRef.current.emit(event, payload, (response) => {
         if (response && !response.success) {
+          // Display error from backend using toast
           toast.error(response.message || 'Failed to send message');
-        } else {
-          console.log('Message sent:', response.message);
         }
       });
 
@@ -566,14 +601,11 @@ const Message = () => {
       setShowAttachmentOptions(false);
       setReplyToMessageId(null);
     } catch (error) {
-      // console.error('Error sending message:', error);
+      console.error('Error sending message:', error);
       toast.error('Failed to send message');
     }
   };
-
-  const handleReply = (messageId) => {
-    setReplyToMessageId(messageId);
-  };
+  
 
   const handleDeleteMessage = (messageId) => {
     if (!socketRef.current || !currentChat) return;
@@ -587,17 +619,6 @@ const Message = () => {
 
     const event = chatType === 'group' ? 'editGroupMessage' : 'editPrivateMessage';
     socketRef.current.emit(event, { messageId, content: newContent });
-  };
-
-  const handleMarkAsRead = (conversationId) => {
-    setRecentSenders((prev) =>
-      prev.map((sender) =>
-        sender.senderId === conversationId
-          ? { ...sender, unreadCount: 0 }
-          : sender
-      )
-    );
-    // console.log('handleMarkAsRead updated recentSenders for', conversationId);
   };
 
   return (
@@ -624,6 +645,7 @@ const Message = () => {
                 setShowAddUserModal={setShowAddUserModal}
                 setShowAddGroupModal={setShowAddGroupModal}
                 recentSenders={recentSenders}
+                recentGroups={recentGroups}
               />
             ) : (
               <div className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
@@ -671,7 +693,6 @@ const Message = () => {
                 onReply={handleReply}
                 onDelete={handleDeleteMessage}
                 onEdit={handleEditMessage}
-                onMarkAsRead={handleMarkAsRead} // Keep for UI updates
               />
               {currentChat && (
                 <MessageInput
@@ -725,6 +746,7 @@ const Message = () => {
                   }}
                   onGroupDeleted={(groupId) => {
                     setGroups((prev) => prev.filter((group) => group.id !== groupId));
+                    setRecentGroups((prev) => prev.filter((group) => group.groupId !== groupId));
                     setCurrentChat(null);
                     setChatType(null);
                     setMessages([]);
@@ -792,21 +814,18 @@ const Message = () => {
                     { email: emailInput },
                     { headers: { Authorization: `Bearer ${auth.token}` } }
                   );
-                  // console.log('Add user response:', response.data); // Detailed debug log
                   if (response.data.message.includes("User added")) {
                     const newUser = {
                       id: response.data.user._id.toString(),
-                      name: response.data.user.name || response.data.user.name, // Fallback to name or email prefix
+                      name: response.data.user.name || response.data.user.email.split('@')[0],
                       email: response.data.user.email,
                       initials: response.data.user.initials || response.data.user.name.substring(0, 2).toUpperCase(),
                       avatar: response.data.user.avatar || 'https://example.com/default-avatar.jpg',
                     };
                     setUsers((prev) => {
                       if (prev.some((u) => u.id === newUser.id)) {
-                        // console.log('User already in state:', newUser.id);
                         return prev;
                       }
-                      // console.log('Adding user from HTTP:', newUser);
                       return [...prev, newUser];
                     });
                     setShowAddUserModal(false);
@@ -816,7 +835,6 @@ const Message = () => {
                     toast.error(response.data.message);
                   }
                 } catch (error) {
-                  // console.error('Error adding user:', error);
                   toast.error('Failed to add user.');
                 }
               }}

@@ -3,6 +3,7 @@ import axios from 'axios';
 
 const GroupChat = ({
   groups,
+  recentGroups,
   currentChat,
   chatType,
   handleChatClick,
@@ -10,11 +11,10 @@ const GroupChat = ({
   socket,
   token,
   currentUser,
-  sendMessage,
 }) => {
   const [loading, setLoading] = useState(false);
   const [showAllGroups, setShowAllGroups] = useState(false);
-  const initialLimit = 2; // Show 5 groups initially
+  const initialLimit = 2;
 
   // Fetch group messages
   useEffect(() => {
@@ -25,6 +25,11 @@ const GroupChat = ({
           const response = await axios.get(`${process.env.REACT_APP_API}/api/group-chat/messages/${currentChat.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          console.log('Fetched group messages:', response.data.messages.map(m => ({
+            id: m._id,
+            groupId: m.group?._id,
+            senderId: m.sender?._id,
+          })));
           setMessages(response.data.messages || []);
         } catch (error) {
           console.error('Error fetching group messages:', error);
@@ -40,8 +45,18 @@ const GroupChat = ({
     }
   }, [currentChat, chatType, token, setMessages, socket]);
 
-  // Determine the groups to display based on the toggle state
-  const displayedGroups = showAllGroups ? groups : groups.slice(0, initialLimit);
+  // Merge groups with recentGroups data
+  const enrichedGroups = groups.map((group) => {
+    const recentGroup = recentGroups.find((rg) => rg.groupId === group.id);
+    return {
+      ...group,
+      unreadCount: recentGroup ? recentGroup.unreadCount : 0,
+      latestTimestamp: recentGroup ? recentGroup.latestTimestamp : new Date(0),
+      senders: recentGroup ? recentGroup.senders : [],
+    };
+  }).sort((a, b) => new Date(b.latestTimestamp) - new Date(a.latestTimestamp));
+
+  const displayedGroups = showAllGroups ? enrichedGroups : enrichedGroups.slice(0, initialLimit);
 
   // Function to generate a random color based on the group name
   const getRandomColor = (name) => {
@@ -76,26 +91,33 @@ const GroupChat = ({
             <div className={`w-8 h-8 rounded-full ${getRandomColor(group.name)} flex items-center justify-center text-white font-semibold text-sm`}>
               {group.initials}
             </div>
-
-            <div className="flex-1 flex justify-between items-center">
-              <span className={`text-sm ${group.unreadCount > 0 && currentChat?.id !== group.id ? 'font-bold' : ''}`}>
-                {group.name}
-              </span>
-              {group.unreadCount > 0 && currentChat?.id !== group.id && (
-                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
-                  {group.unreadCount}
+            <div className="flex-1 flex flex-col">
+              <div className="flex justify-between items-center">
+                <span className={`text-sm ${group.unreadCount > 0 && currentChat?.id !== group.id ? 'font-bold' : ''}`}>
+                  {group.name}
+                </span>
+                {group.unreadCount > 0 && currentChat?.id !== group.id && (
+                  <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                    {group.unreadCount}
+                  </span>
+                )}
+              </div>
+              {group.senders && group.senders.length > 0 && (
+                <span className="text-xs text-gray-500 truncate">
+                  {group.senders.slice(0, 2).map(s => s.name).join(', ')}
+                  {group.senders.length > 2 ? ` +${group.senders.length - 2}` : ''}
                 </span>
               )}
             </div>
           </div>
         ))
       )}
-      {groups.length > initialLimit && (
+      {enrichedGroups.length > initialLimit && (
         <button
           onClick={() => setShowAllGroups(!showAllGroups)}
           className="text-blue-600 text-sm font-medium hover:underline focus:outline-none"
         >
-          {showAllGroups ? 'Show Less' : `Show More (${groups.length - initialLimit} more)`}
+          {showAllGroups ? 'Show Less' : `Show More (${enrichedGroups.length - initialLimit} more)`}
         </button>
       )}
       {loading && <p className="text-sm text-gray-500">Loading messages...</p>}

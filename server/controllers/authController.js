@@ -35,6 +35,9 @@ exports.register = async (req, res) => {
     if (password.length < 6) {
       return res.status(400).json({ message: "Password should be at least 6 characters long" });
     }
+    if (phone.length  !== 10) {
+      return res.status(400).json({ message: "Phone number should be 10 digits." });
+    }
 
     // Check if this is an invitation-based registration
     if (redirect === 'approve-invite' && token) {
@@ -170,16 +173,16 @@ exports.login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
-
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid email or password' });
+      return res.status(400).json({ message: 'Email not registered' });
     }
-
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid email or password' });
+      return res.status(400).json({ message: 'Incorrect password' });
     }
+    
 
     const accessToken = JWT.sign(
       { id: user._id, email: user.email, role: user.role },

@@ -51,14 +51,22 @@ const Login = () => {
         }
       } else {
         setLoading(false);
-        toast.error(response.data.message);
+        // Show backend error message
+        toast.error(response.data.message || "Something went wrong. Please try again.");
       }
     } catch (error) {
       setLoading(false);
       console.error(error);
-      toast.error("Something went wrong. Please try again.");
+  
+      // Check if the error has a response and display that specific error message
+      if (error.response && error.response.data && error.response.data.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     }
   };
+  
   
 
   return (

@@ -15,6 +15,7 @@ const ChatList = ({
   setShowAddUserModal,
   setShowAddGroupModal,
   recentSenders,
+  recentGroups,
 }) => {
   return (
     <aside className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
@@ -67,6 +68,7 @@ const ChatList = ({
           ) : (
             <GroupChat
               groups={groups}
+              recentGroups={recentGroups}
               currentChat={currentChat}
               chatType={chatType}
               handleChatClick={handleChatClick}

@@ -60,34 +60,34 @@ exports.setupSocket = (io) => {
         io.to(recipientId).emit('newMessage', populatedMessage);
         socket.emit('newMessage', populatedMessage);
         // Update for recipient (as before)
-            const recipientUpdate = {
-              senderId: socket.user.id,
-              name: populatedMessage.sender.name,
-              email: populatedMessage.sender.email,
-              initials: populatedMessage.sender.initials,
-              latestTimestamp: populatedMessage.timestamp,
-              unreadCount: 1,
-              totalCount: 1, // Will be adjusted on frontend if sender exists
-            };
-            // console.log(`Emitting recentSenderUpdate to recipient ${recipientId}:`, recipientUpdate);
-            io.to(recipientId).emit('recentSenderUpdate', recipientUpdate);
+        const recipientUpdate = {
+          senderId: socket.user.id,
+          name: populatedMessage.sender.name,
+          email: populatedMessage.sender.email,
+          initials: populatedMessage.sender.initials,
+          latestTimestamp: populatedMessage.timestamp,
+          unreadCount: 1,
+          totalCount: 1, // Will be adjusted on frontend if sender exists
+        };
+        // console.log(`Emitting recentSenderUpdate to recipient ${recipientId}:`, recipientUpdate);
+        io.to(recipientId).emit('recentSenderUpdate', recipientUpdate);
 
-            // Update for sender (new addition)
-            const senderUpdate = {
-              senderId: recipientId, // For sender, the "recent contact" is the recipient
-              name: populatedMessage.recipient.name,
-              name: populatedMessage.recipient.name,
-              email: populatedMessage.recipient.email,
-              initials: populatedMessage.sender.initials,
-              latestTimestamp: populatedMessage.timestamp,
-              unreadCount: 0, // Sender’s messages are read by themselves
-              totalCount: 1, // Will be adjusted on frontend
-            };
-            // console.log(`Emitting recentSenderUpdate to sender ${userId}:`, senderUpdate);
-            io.to(socket.user.id).emit('recentSenderUpdate', senderUpdate);
+        // Update for sender (new addition)
+        const senderUpdate = {
+          senderId: recipientId, // For sender, the "recent contact" is the recipient
+          name: populatedMessage.recipient.name,
+          name: populatedMessage.recipient.name,
+          email: populatedMessage.recipient.email,
+          initials: populatedMessage.sender.initials,
+          latestTimestamp: populatedMessage.timestamp,
+          unreadCount: 0, // Sender’s messages are read by themselves
+          totalCount: 1, // Will be adjusted on frontend
+        };
+        // console.log(`Emitting recentSenderUpdate to sender ${userId}:`, senderUpdate);
+        io.to(socket.user.id).emit('recentSenderUpdate', senderUpdate);
 
-          } 
-       catch (error) {
+      }
+      catch (error) {
         console.error('Error sending message:', error);
         socket.emit('error', { message: 'Error sending message', error: error.message });
       }
@@ -480,47 +480,47 @@ exports.setupSocket = (io) => {
       try {
         if (!socket.user?.id) throw new Error('No sender ID');
         if (!email) throw new Error('Email is required');
-    
+
         // Find current user
         const user = await User.findById(socket.user.id);
         if (!user) throw new Error('User not found');
-    
+
         // Find the user to add using email
         const userToAdd = await User.findOne({ email });
         if (!userToAdd) throw new Error('User with this email not found');
-    
+
         // Prevent adding self
         if (userToAdd._id.equals(user._id)) {
           throw new Error('You cannot add yourself');
         }
-    
+
         // Add to current user's contacts if not already added
         let addedToCurrent = false;
         if (!user.contacts.includes(userToAdd._id)) {
           user.contacts.push(userToAdd._id);
           addedToCurrent = true;
         }
-    
+
         // Add current user to the other user's contacts if not already added
         let addedToOther = false;
         if (!userToAdd.contacts.includes(user._id)) {
           userToAdd.contacts.push(user._id);
           addedToOther = true;
         }
-    
+
         // Save both users if changes were made
         if (addedToCurrent) await user.save();
         if (addedToOther) await userToAdd.save();
-    
+
         // Notify both users
         io.to(userToAdd._id.toString()).emit('addedToChat', {
-          user: { _id: user._id, name: user.name, email: user.email, photo: user.photo , initials:user.initials},
+          user: { _id: user._id, name: user.name, email: user.email, photo: user.photo, initials: user.initials },
         });
         socket.emit('addUserSuccess', {
           message: 'User added to chat list' + (addedToOther ? ' mutually' : ''),
-          user: { _id: userToAdd._id, name: userToAdd.name, email: userToAdd.email, photo: userToAdd.photo , initials:usersToAdd.initials},
+          user: { _id: userToAdd._id, name: userToAdd.name, email: userToAdd.email, photo: userToAdd.photo, initials: usersToAdd.initials },
         });
-    
+
         if (callback) callback({ success: true, user: userToAdd });
       } catch (error) {
         console.error('Error adding user to chat:', error);
@@ -567,10 +567,11 @@ exports.setupSocket = (io) => {
     });
 
     // Group message handler using GrpMsg model
+    // Group message handler (updated to emit recentGroupUpdate)
     socket.on('sendGroupMessage', async ({ groupId, content, photo, file }) => {
       try {
-        const group = await Group.findById(groupId);
-        if (!group || !group.members.includes(socket.user.id)) {
+        const group = await Group.findById(groupId).populate('members', 'name email initials');
+        if (!group || !group.members.some(member => member._id.toString() === socket.user.id)) {
           socket.emit('error', { message: 'Unauthorized' });
           return;
         }
@@ -591,8 +592,7 @@ exports.setupSocket = (io) => {
             contentType: photo.contentType || 'image/jpeg',
           };
           messageData.type = "photo";
-        }
-        else if (file) {
+        } else if (file) {
           const fileBuffer = Buffer.from(file.data, 'base64');
           messageData.file = {
             data: fileBuffer,
@@ -600,14 +600,12 @@ exports.setupSocket = (io) => {
             fileName: file.fileName || 'uploaded_file',
           };
           messageData.type = "file";
-        }
-        else if (!content || content.trim() === "") {
+        } else if (!content || content.trim() === "") {
           throw new Error('Message content cannot be empty when no file or photo is provided');
         }
 
         if (messageData.photo?.data?.length > MAX_SIZE || messageData.file?.data?.length > MAX_SIZE) {
-          // throw new Error('File or photo exceeds 10MB limit');
-          return callback('File or photo exceeds 10MB limit');
+          throw new Error('File or photo exceeds 10MB limit');
         }
 
         const message = new GrpMsg(messageData);
@@ -618,6 +616,34 @@ exports.setupSocket = (io) => {
 
         io.to(`group_${groupId}`).emit('newMessage', populatedMessage);
         socket.emit('newMessage', populatedMessage);
+
+        // Emit recentGroupUpdate to all group members except the sender
+        const groupUpdate = {
+          groupId: groupId,
+          groupName: group.name,
+          latestTimestamp: populatedMessage.timestamp,
+          unreadCount: 1,
+          totalCount: 1,
+          senders: [{
+            senderId: socket.user.id,
+            name: populatedMessage.sender.name,
+            email: populatedMessage.sender.email,
+            initials: populatedMessage.sender.initials,
+          }],
+        };
+
+        group.members.forEach(member => {
+          if (member._id.toString() !== socket.user.id) {
+            io.to(member._id.toString()).emit('recentGroupUpdate', groupUpdate);
+          }
+        });
+
+        // For the sender, emit with unreadCount: 0
+        const senderGroupUpdate = {
+          ...groupUpdate,
+          unreadCount: 0,
+        };
+        io.to(socket.user.id).emit('recentGroupUpdate', senderGroupUpdate);
       } catch (error) {
         console.error('Error sending group message:', error);
         socket.emit('error', { message: 'Error sending group message', error: error.message });
@@ -625,6 +651,7 @@ exports.setupSocket = (io) => {
     });
 
     // Send group message reply
+    // Group message reply handler (updated to emit recentGroupUpdate)
     socket.on('sendGroupMessageReply', async ({ groupId, content, photo, file, parentMessageId }) => {
       try {
         const userId = socket.user.id;
@@ -632,8 +659,8 @@ exports.setupSocket = (io) => {
         if (!groupId) throw new Error('No group ID provided');
         if (!parentMessageId) throw new Error('No parent message ID provided');
 
-        const group = await Group.findById(groupId);
-        if (!group || !group.members.includes(userId)) {
+        const group = await Group.findById(groupId).populate('members', 'name email initials');
+        if (!group || !group.members.some(member => member._id.toString() === userId)) {
           throw new Error('Unauthorized');
         }
 
@@ -647,7 +674,7 @@ exports.setupSocket = (io) => {
           group: groupId,
           content: content || "",
           type: "text",
-          parentMessageId: parentMessageId, // Save parentMessageId in the reply message
+          parentMessageId: parentMessageId,
         };
 
         const MAX_SIZE = 10 * 1024 * 1024;
@@ -678,6 +705,34 @@ exports.setupSocket = (io) => {
 
         io.to(`group_${groupId}`).emit('newGroupMessageReply', populatedMessage);
         socket.emit('newGroupMessageReply', populatedMessage);
+
+        // Emit recentGroupUpdate to all group members except the sender
+        const groupUpdate = {
+          groupId: groupId,
+          groupName: group.name,
+          latestTimestamp: populatedMessage.timestamp,
+          unreadCount: 1,
+          totalCount: 1,
+          senders: [{
+            senderId: userId,
+            name: populatedMessage.sender.name,
+            email: populatedMessage.sender.email,
+            initials: populatedMessage.sender.initials,
+          }],
+        };
+
+        group.members.forEach(member => {
+          if (member._id.toString() !== userId) {
+            io.to(member._id.toString()).emit('recentGroupUpdate', groupUpdate);
+          }
+        });
+
+        // For the sender, emit with unreadCount: 0
+        const senderGroupUpdate = {
+          ...groupUpdate,
+          unreadCount: 0,
+        };
+        io.to(userId).emit('recentGroupUpdate', senderGroupUpdate);
       } catch (error) {
         console.error('Error sending group message reply:', error);
         socket.emit('error', { message: 'Error sending group message reply', error: error.message });
@@ -975,7 +1030,7 @@ exports.setupSocket = (io) => {
         if (!conversationId || conversationId === 'undefined' || !mongoose.Types.ObjectId.isValid(conversationId)) {
           throw new Error('Invalid or missing conversation ID');
         }
-    
+
         if (type === 'private') {
           const updated = await Message.updateMany(
             {
@@ -987,7 +1042,172 @@ exports.setupSocket = (io) => {
             { $set: { isRead: true } }
           );
           // ...
+
+          io.to(conversationId).emit('messagesRead', { recipientId: userId, updatedCount: updated.modifiedCount });
+
+          const recentSender = await Message.aggregate([
+            {
+              $match: {
+                $or: [
+                  { recipient: new mongoose.Types.ObjectId(userId), sender: new mongoose.Types.ObjectId(conversationId) },
+                  { sender: new mongoose.Types.ObjectId(userId), recipient: new mongoose.Types.ObjectId(conversationId) },
+                ],
+                deletedAt: null,
+              },
+            },
+            {
+              $group: {
+                _id: {
+                  $cond: [
+                    { $eq: ['$sender', new mongoose.Types.ObjectId(userId)] },
+                    '$recipient',
+                    '$sender',
+                  ],
+                },
+                latestTimestamp: { $max: '$timestamp' },
+                unreadCount: {
+                  $sum: {
+                    $cond: [
+                      { $and: [{ $eq: ['$recipient', new mongoose.Types.ObjectId(userId)] }, { $eq: ['$isRead', false] }] },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                totalCount: { $sum: 1 },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'senderInfo',
+              },
+            },
+            { $unwind: '$senderInfo' },
+            {
+              $project: {
+                senderId: '$_id',
+                name: '$senderInfo.name',
+                email: '$senderInfo.email',
+                initials: '$senderInfo.initials',
+                latestTimestamp: 1,
+                unreadCount: 1,
+                totalCount: 1,
+              },
+            },
+          ]);
+
+          if (recentSender.length > 0) {
+            io.to(userId).emit('recentSenderUpdate', recentSender[0]);
+          } else {
+            const senderInfo = await User.findById(conversationId, 'name email initials');
+            if (senderInfo) {
+              io.to(userId).emit('recentSenderUpdate', {
+                senderId: conversationId,
+                name: senderInfo.name,
+                email: senderInfo.email,
+                initials: senderInfo.initials,
+                latestTimestamp: new Date(0),
+                unreadCount: 0,
+                totalCount: 0,
+              });
+            }
+          }
         }
+        else if (type === 'group') {
+          const group = await Group.findById(conversationId);
+          if (!group || !group.members.includes(userId)) {
+            throw new Error('Unauthorized or group not found');
+          }
+
+          const updated = await GrpMsg.updateMany(
+            {
+              group: conversationId,
+              sender: { $ne: userId },
+              isRead: false,
+              deletedAt: null,
+            },
+            { $set: { isRead: true } }
+          );
+
+          io.to(`group_${conversationId}`).emit('groupMessagesRead', { userId, updatedCount: updated.modifiedCount });
+
+          const recentGroup = await GrpMsg.aggregate([
+            {
+              $match: {
+                group: new mongoose.Types.ObjectId(conversationId),
+                sender: { $ne: new mongoose.Types.ObjectId(userId) },
+                deletedAt: null,
+              },
+            },
+            {
+              $group: {
+                _id: '$group',
+                latestTimestamp: { $max: '$timestamp' },
+                unreadCount: {
+                  $sum: { $cond: [{ $eq: ['$isRead', false] }, 1, 0] },
+                },
+                totalCount: { $sum: 1 },
+                senderIds: { $addToSet: '$sender' },
+              },
+            },
+            {
+              $lookup: {
+                from: 'groups',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'groupInfo',
+              },
+            },
+            { $unwind: '$groupInfo' },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'senderIds',
+                foreignField: '_id',
+                as: 'senders',
+              },
+            },
+            {
+              $project: {
+                groupId: '$_id',
+                groupName: '$groupInfo.name',
+                latestTimestamp: 1,
+                unreadCount: 1,
+                totalCount: 1,
+                senders: {
+                  $map: {
+                    input: '$senders',
+                    as: 'sender',
+                    in: {
+                      senderId: '$$sender._id',
+                      name: '$$sender.name',
+                      email: '$$sender.email',
+                      initials: '$$sender.initials',
+                    },
+                  },
+                },
+              },
+            },
+          ]);
+
+          if (recentGroup.length > 0) {
+            io.to(userId).emit('recentGroupUpdate', recentGroup[0]);
+          } else {
+            io.to(userId).emit('recentGroupUpdate', {
+              groupId: conversationId,
+              groupName: group.name,
+              latestTimestamp: new Date(0),
+              unreadCount: 0,
+              totalCount: 0,
+              senders: [],
+            });
+          }
+        }
+
+        socket.emit('markAsReadSuccess', { conversationId, type });
       } catch (error) {
         console.error('Error marking messages as read:', error);
         socket.emit('error', { message: 'Error marking messages as read', error: error.message });
