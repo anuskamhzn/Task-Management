@@ -84,7 +84,7 @@ const Members = ({ onClose }) => {
                         {member.name ? member.name[0].toUpperCase() : "U"}
                       </div>
                       <div>
-                        <p className="text-gray-800 font-medium">{member.username || "Unknown"}</p>
+                        <p className="text-gray-800 font-medium">{member.name || "Unknown"}</p>
                         <p className="text-gray-600 text-sm">{member.email}</p>
                       </div>
                     </li>

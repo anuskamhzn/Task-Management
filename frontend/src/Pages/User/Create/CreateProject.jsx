@@ -93,99 +93,118 @@ const CreateProjectForm = ({ onClose, onProjectCreated }) => {
     }
   };
 
+  // Quill toolbar configuration
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean'],
+    ],
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-96 relative max-h-[80vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-xl text-gray-600 hover:text-gray-800"
-        >
-          ×
-        </button>
-        <h1 className="text-2xl font-bold mb-6">Create New Project</h1>
+      <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Create New Project</h2>
+          <button
+            className="text-gray-500 hover:text-gray-700 text-xl font-medium"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Title</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
               name="title"
               value={projectData.title}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               placeholder="Enter project title"
               required
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <ReactQuill
               value={projectData.description}
               onChange={handleDescriptionChange}
               className="bg-white"
               theme="snow"
+              modules={quillModules}
               placeholder="Enter project description"
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Due Date</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
             <input
               type="date"
               name="dueDate"
               value={projectData.dueDate}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Add Members</label>
-            <div className="flex mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Add Members</label>
+            <div className="flex gap-2 mb-2">
               <input
                 type="email"
                 name="newMember"
                 value={projectData.newMember || ""}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg"
+                className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                 placeholder="Enter member email"
               />
               <button
                 type="button"
                 onClick={handleAddMember}
-                className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg"
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition"
               >
                 Add
               </button>
             </div>
-            <div className="flex flex-wrap">
-              {projectData.members.map((email, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center bg-blue-200 text-blue-700 py-1 px-3 rounded-full mr-2 mb-2"
-                >
-                  {email}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveMember(email)}
-                    className="ml-2 text-red-500"
+
+            <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-gray-50">
+              {projectData.members.length === 0 ? (
+                <p className="text-gray-500 text-sm">No members added</p>
+              ) : (
+                projectData.members.map((email, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-blue-100 rounded-md p-1 mb-1"
                   >
-                    x
-                  </button>
-                </span>
-              ))}
+                    <span className="text-blue-800 text-sm truncate flex-1">{email}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMember(email)}
+                      className="text-red-500 hover:text-red-700 ml-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Status</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
               value={projectData.status}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             >
               <option value="To Do">To Do</option>
               <option value="In Progress">In Progress</option>
@@ -193,15 +212,13 @@ const CreateProjectForm = ({ onClose, onProjectCreated }) => {
             </select>
           </div>
 
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-              disabled={loading}
-            >
-              {loading ? "Creating..." : "Create Project"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            className={`w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50 transition ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={loading}
+          >
+            {loading ? "Creating..." : "Create Project"}
+          </button>
         </form>
       </div>
     </div>

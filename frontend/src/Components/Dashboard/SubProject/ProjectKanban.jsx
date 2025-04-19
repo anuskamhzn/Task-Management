@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FaEllipsisV, FaPlusCircle, FaEdit, FaTrashAlt, FaEye } from "react-icons/fa";
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -6,6 +6,7 @@ import { useParams } from 'react-router-dom';
 import ModifySubproject from '../../../Pages/User/Modify/SubProjectModify';
 import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
 import ViewSubDetail from '../../../Pages/User/Projects/ViewSubDetail';
+import parse from 'html-react-parser';
 
 const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, setProjects, auth }) => {
   const [openMenu, setOpenMenu] = useState(null);
@@ -16,6 +17,21 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewSubProjectId, setViewSubProjectId] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    // Prevent scrolling when modals are open
+    useEffect(() => {
+      if (isDetailModalOpen || isCreateModalOpen) {
+        document.body.style.overflow = "hidden";
+        document.body.style.height = "100vh";
+      } else {
+        document.body.style.overflow = "auto";
+        document.body.style.height = "auto";
+      }
+      return () => {
+        document.body.style.overflow = "auto";
+        document.body.style.height = "auto";
+      };
+    }, [isDetailModalOpen, isCreateModalOpen]);
 
   const handleCreateSubprojectClick = () => setIsCreateModalOpen(true);
   const handleCloseCreateSubprojectModal = () => setIsCreateModalOpen(false);
@@ -38,8 +54,8 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
       setProjects((prev) => prev.map((project) => project._id === subProjectId ? { ...project, status: newStatus } : project));
     } catch (err) {
       console.error("Error updating status:", err);
-      toast.error(err.response?.data.message === "Only assigned members can update the status." 
-        ? "Only assigned members can update the status." 
+      toast.error(err.response?.data.message === "Only assigned members can update the status."
+        ? "Only assigned members can update the status."
         : "Error updating status.");
     }
   };
@@ -60,8 +76,8 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
       toast.success("Subproject deleted successfully!");
     } catch (err) {
       console.error("Error deleting subproject:", err);
-      toast.error(err.response?.data.message === "Only owner can delete the project." 
-        ? "Only owner can delete the project." 
+      toast.error(err.response?.data.message === "Only owner can delete the project."
+        ? "Only owner can delete the project."
         : "Error deleting project.");
     }
   };
@@ -105,7 +121,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
 
   // Array of Tailwind background colors for random assignment
   const cardColors = [
-    'bg-indigo-100', 'bg-teal-100', 'bg-amber-100', 'bg-rose-100', 
+    'bg-indigo-100', 'bg-teal-100', 'bg-amber-100', 'bg-rose-100',
     'bg-emerald-100', 'bg-purple-100', 'bg-blue-100', 'bg-pink-100'
   ];
 
@@ -121,6 +137,15 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   }, [toDoProjects, inProgressProjects, completedProjects]);
 
   const renderProjects = (projects) => {
+    // Utility function to strip HTML tags and truncate text
+    const truncateDescription = (html, maxLength = 50) => {
+      // Create a temporary DOM element to parse HTML
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      const text = div.textContent || div.innerText || '';
+      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    };
+
     return projects.map((project) => (
       <div
         key={project._id}
@@ -164,7 +189,9 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
             </div>
           )}
         </div>
-        <p className="text-sm text-gray-700 mt-2 line-clamp-2">{project.description}</p>
+        <div className="text-sm text-gray-700 mt-2 description-content line-clamp-1">
+          {parse(project.description)}
+        </div>
         <p className="text-xs text-gray-500 mt-2 italic">Due: {new Date(project.dueDate).toLocaleDateString()}</p>
         <div className="flex gap-2 mt-3">{renderUsers(project.members || [])}</div>
       </div>
@@ -287,6 +314,20 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
           />
         </div>
       )}
+      <style jsx>{`
+  .description-content ul,
+  .description-content ol {
+    list-style: disc inside;
+    padding-left: 1rem;
+    margin: 0.5rem 0;
+  }
+  .description-content ol {
+    list-style: decimal inside;
+  }
+  .description-content li {
+    margin-bottom: 0.25rem;
+  }
+`}</style>
     </div>
   );
 };

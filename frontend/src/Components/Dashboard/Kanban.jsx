@@ -11,6 +11,7 @@ import CreateTask from "../../Pages/User/Create/CreateTask";
 import CreateProjectForm from "../../Pages/User/Create/CreateProject";
 import ViewTaskDetail from '../../Pages/User/Tasks/ViewTaskDetail';
 import ViewProjectDetail from '../../Pages/User/Projects/ViewProjectDetail';
+import parse from 'html-react-parser';
 
 const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
   const [auth] = useAuth();
@@ -38,6 +39,21 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
   const [isProjectDetailOpen, setIsProjectDetailOpen] = useState(false);
   const [viewTaskId, setViewTaskId] = useState(null);
   const [viewProjectId, setViewProjectId] = useState(null);
+
+  // Prevent scrolling when modals are open
+  useEffect(() => {
+    if (isCreateModalTaskOpen || isCreateModalOpen || isTaskDetailOpen || isProjectDetailOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+    } else {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, [isCreateModalTaskOpen, isCreateModalOpen , isTaskDetailOpen, isProjectDetailOpen]);
 
   // Toggle modal visibility
   const handleCreateTaskClick = () => {
@@ -302,30 +318,31 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
                     className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
                     onClick={() => handleProjectModify(project._id)}
                   >
-                    <FaEdit />Modify
+                    <FaEdit /> Modify
                   </button>
                   <button
                     className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     onClick={() => openConfirmDialog(project._id, project.title, 'project')}
                   >
-                    <FaTrashAlt />Delete
+                    <FaTrashAlt /> Delete
                   </button>
                 </div>
               )}
             </div>
           )}
         </div>
-        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{project.description}</p>
+        <div className="text-sm text-gray-600 mt-2 line-clamp-2 description-content">
+          {parse(project.description)}
+        </div>
         <div className="flex items-center justify-between mt-3">
           <p className="text-xs text-gray-500">
             Due: {new Date(project.dueDate).toLocaleDateString()}
           </p>
           <div className="flex gap-2">{renderUsers(project.members || [])}</div>
         </div>
-        {/* View Project Button (NavLink to Kanban) */}
         <NavLink
           to={`/dashboard/project/subproject/${project._id}`}
-          onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
+          onClick={(e) => e.stopPropagation()}
           className="inline-block bg-violet-700 hover:bg-violet-800 text-white text-sm px-4 py-2 rounded-md transition"
         >
           View Project
@@ -382,7 +399,9 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
             </div>
           )}
         </div>
-        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
+        <div className="text-sm text-gray-600 mt-2 line-clamp-2 description-content">
+          {parse(task.description)}
+        </div>        
         <div className="flex items-center justify-between mt-3">
           <p className="text-xs text-gray-500">
             Due: {new Date(task.dueDate).toLocaleDateString()}
@@ -598,6 +617,21 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
         </div>
       )}
 
+ {/* Add CSS styling at the bottom of the Kanban component, before the closing return */}
+      <style jsx>{`
+  .description-content ul,
+  .description-content ol {
+    list-style: disc inside;
+    padding-left: 1rem;
+    margin: 0.5rem 0;
+  }
+  .description-content ol {
+    list-style: decimal inside;
+  }
+  .description-content li {
+    margin-bottom: 0.25rem;
+  }
+`}</style>
     </div>
   );
 };

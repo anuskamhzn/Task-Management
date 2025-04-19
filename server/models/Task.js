@@ -15,7 +15,9 @@ const taskSchema = new mongoose.Schema({
   deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-});
+},
+{ timestamps: true }
+);
 
 // ✅ Add TTL index separately (only applies when `deletedAt` is set)
 taskSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 2592000 }); // 30 days (30 * 24 * 60 * 60)

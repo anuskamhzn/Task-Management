@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FaPlusCircle, FaEdit, FaTrash, FaList, FaSpinner, FaCheck } from "react-icons/fa";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -7,6 +6,7 @@ import { useParams } from "react-router-dom";
 import ModifySubtask from "../../../Pages/User/Modify/SubTaskModify";
 import CreateSubtask from "../../../Pages/User/Create/CreateSubtask";
 import ViewSubtaskDetail from "../../../Pages/User/Tasks/ViewSubtaskDetail";
+import parse from 'html-react-parser';
 
 const TaskTableView = ({ tasks, setTasks, auth }) => {
   const [openMenu, setOpenMenu] = useState(null);
@@ -22,6 +22,21 @@ const TaskTableView = ({ tasks, setTasks, auth }) => {
   const handleCreateSubtaskClick = () => setIsCreateModalOpen(true);
   const handleCloseCreateSubtaskModal = () => setIsCreateModalOpen(false);
   const handleSubtaskCreated = (subTask) => setTasks((prev) => [subTask.subTask, ...prev]);
+
+    // Prevent scrolling when modals are open
+    useEffect(() => {
+      if (isDetailModalOpen || isCreateModalOpen ) {
+        document.body.style.overflow = "hidden";
+        document.body.style.height = "100vh";
+      } else {
+        document.body.style.overflow = "auto";
+        document.body.style.height = "auto";
+      }
+      return () => {
+        document.body.style.overflow = "auto";
+        document.body.style.height = "auto";
+      };
+    }, [isDetailModalOpen, isCreateModalOpen]);
 
   const handleStatusChange = async (subTaskId, newStatus) => {
     try {
@@ -86,9 +101,18 @@ const TaskTableView = ({ tasks, setTasks, auth }) => {
 
   const handleActionClick = (taskId, e) => {
     const buttonRect = e.target.getBoundingClientRect();
+    const menuWidth = 192; // Based on w-48 (48 * 4px = 192px)
+    const viewportWidth = window.innerWidth;
+    let leftPosition = buttonRect.left + window.scrollX;
+
+    // Adjust left position to prevent overflow
+    if (leftPosition + menuWidth > viewportWidth) {
+      leftPosition = viewportWidth - menuWidth - 10; // 10px padding from edge
+    }
+
     setMenuPosition({
       top: buttonRect.bottom + window.scrollY + 5, // Position below the button
-      left: buttonRect.left + window.scrollX, // Align with the button's left edge
+      left: Math.max(10, leftPosition), // Ensure it doesn't go off the left edge
     });
     setOpenMenu(openMenu === taskId ? null : taskId);
   };
@@ -122,16 +146,22 @@ const TaskTableView = ({ tasks, setTasks, auth }) => {
                   <td className="py-4 px-6 text-gray-800 cursor-pointer" onClick={() => handleViewDetail(task._id)}>
                     {task.title}
                   </td>
-                  <td className="py-4 px-6 text-gray-600">{task.description}</td>
+                  <td className="py-4 px-6 text-gray-600 cursor-pointer" onClick={() => handleViewDetail(task._id)}>
+                    <div className="description-content line-clamp-2 relative group">
+                      {parse(task.description.substring(0, 50) + (task.description.length > 50 ? "..." : ""))}
+                      <div className="absolute hidden  bg-gray-800 text-white text-xs rounded py-1 px-2 z-10 -top-8 left-0">
+                        {parse(task.description)}
+                      </div>
+                    </div>
+                  </td>
                   <td className="py-4 px-6">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${
-                        task.status === "To Do"
+                      className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${task.status === "To Do"
                           ? "bg-gray-100 text-gray-800"
                           : task.status === "In Progress"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
                     >
                       {task.status}
                     </span>
@@ -181,33 +211,30 @@ const TaskTableView = ({ tasks, setTasks, auth }) => {
             <hr className="my-2 border-gray-200" />
             <button
               onClick={() => handleStatusChange(openMenu, "To Do")}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-gray-200 ${
-                tasks.find((task) => task._id === openMenu).status === "To Do"
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-gray-200 ${tasks.find((task) => task._id === openMenu).status === "To Do"
                   ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                   : "bg-white text-gray-800 hover:bg-gray-50"
-              }`}
+                }`}
               disabled={tasks.find((task) => task._id === openMenu).status === "To Do"}
             >
               <FaList className="text-gray-600" /> To Do
             </button>
             <button
               onClick={() => handleStatusChange(openMenu, "In Progress")}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-yellow-200 ${
-                tasks.find((task) => task._id === openMenu).status === "In Progress"
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-yellow-200 ${tasks.find((task) => task._id === openMenu).status === "In Progress"
                   ? "bg-yellow-200 text-yellow-400 cursor-not-allowed"
                   : "bg-white text-yellow-800 hover:bg-yellow-50"
-              }`}
+                }`}
               disabled={tasks.find((task) => task._id === openMenu).status === "In Progress"}
             >
               <FaSpinner className="text-yellow-600" /> In Progress
             </button>
             <button
               onClick={() => handleStatusChange(openMenu, "Completed")}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-blue-200 ${
-                tasks.find((task) => task._id === openMenu).status === "Completed"
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-blue-200 ${tasks.find((task) => task._id === openMenu).status === "Completed"
                   ? "bg-blue-200 text-blue-400 cursor-not-allowed"
                   : "bg-white text-blue-800 hover:bg-blue-50"
-              }`}
+                }`}
               disabled={tasks.find((task) => task._id === openMenu).status === "Completed"}
             >
               <FaCheck className="text-blue-600" /> Completed
@@ -257,6 +284,21 @@ const TaskTableView = ({ tasks, setTasks, auth }) => {
           <ViewSubtaskDetail mainTaskId={taskId} subTaskId={viewSubTaskId} onClose={handleCloseDetailModal} />
         </div>
       )}
+
+      <style jsx>{`
+  .description-content ul,
+  .description-content ol {
+    list-style: disc inside;
+    padding-left: 1rem;
+    margin: 0.5rem 0;
+  }
+  .description-content ol {
+    list-style: decimal inside;
+  }
+  .description-content li {
+    margin-bottom: 0.25rem;
+  }
+`}</style>
     </div>
   );
 };

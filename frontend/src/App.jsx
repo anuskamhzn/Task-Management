@@ -1,6 +1,8 @@
 import React, { Suspense } from 'react';
 import { Route, Routes, NavLink } from 'react-router-dom';
 import { Toaster } from "react-hot-toast";
+import ProjectGantt from './Components/Dashboard/SubProject/GanttChart';
+import TaskGanttChart from './Components/Dashboard/SubTask/TaskGanttChart';
 
 // Lazy load components
 const Login = React.lazy(() => import('./Pages/Auth/Login'));
@@ -71,6 +73,8 @@ const App = () => {
             <Route path="settings" element={<Setting />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="kanban" element={<KanbanUser />} />
+            <Route path="project/:projectId/gantt" element={<ProjectGantt  />} />
+            <Route path="task/:taskId/gantt" element={<TaskGanttChart  />} />
           </Route>
 
           {/* Admin Routes */}

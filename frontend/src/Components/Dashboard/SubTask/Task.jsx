@@ -8,6 +8,7 @@ import TaskKanban from './TaskKanban';
 import TaskTableView from './TaskListView';
 import { FaTrash } from "react-icons/fa";
 import CreateSubtask from "../../../Pages/User/Create/CreateSubtask";
+import { FaChartGantt } from "react-icons/fa6";
 
 const Task = () => {
   const [auth] = useAuth();
@@ -32,6 +33,21 @@ const Task = () => {
       fetchTask();
     }
   }, [auth, taskId]);
+
+  // Prevent scrolling when modals are open
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+    } else {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, [isCreateModalOpen]);
 
   const fetchMainTask = async () => {
     try {
@@ -66,9 +82,9 @@ const Task = () => {
         setTasks(sortedTasks);
       }
     } catch (err) {
-      console.error("Error fetching task:", err);
       if (err.response && err.response.status === 404) {
         setError(err.response.data.message || "No subtasks found for this task.");
+        setTasks([]); // Ensure tasks is an empty array for empty state
       } else {
         setError("Failed to fetch task. Please try again.");
       }
@@ -86,7 +102,7 @@ const Task = () => {
   };
 
   const handleSubtaskCreated = (subTask) => {
-    setTasks((prevTasks) => [...prevTasks, subTask.subTask,]); // Add to the top
+    setTasks((prevTasks) => [subTask.subTask, ...prevTasks]); // Add to the top
   };
 
   return (
@@ -103,38 +119,27 @@ const Task = () => {
               Task Name: {mainTask ? mainTask.title : "Loading..."}
             </h1>
             <div className="flex gap-4 items-center">
-              <button
-                onClick={handleCreateSubtaskClick}
-                className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition"
+              <NavLink
+                to={`/dashboard/task/${taskId}/gantt`}
+                className="flex items-center bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg shadow-md transition"
               >
-                <span className="mr-2 text-xl">+</span> Create Sub Task
-              </button>
+                <FaChartGantt className="mr-2" />
+                Gantt
+              </NavLink>
               <NavLink to={`/dashboard/subtask-trash/${taskId}`} className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md transition">
                 <FaTrash className="text-lg" />
               </NavLink>
             </div>
           </div>
 
-          {/* {error && <p className="text-red-500 text-center">{error}</p>} */}
-          {tasks && tasks.length > 0 ? (
-            // <TaskKanban
-            //   toDoTasks={tasks.filter(task => task?.status === "To Do")}
-            //   inProgressTasks={tasks.filter(task => task?.status === "In Progress")}
-            //   completedTasks={tasks.filter(task => task?.status === "Completed")}
-            //   tasks={tasks}
-            //   setTasks={setTasks}
-            //   auth={auth}
-            // />
+          {loading ? (
+            <p className="text-center text-gray-500">Loading...</p>
+          ) : (
             <TaskTableView
-              toDoTasks={tasks.filter(task => task?.status === "To Do")}
-              inProgressTasks={tasks.filter(task => task?.status === "In Progress")}
-              completedTasks={tasks.filter(task => task?.status === "Completed")}
-              tasks={tasks}
+              tasks={tasks || []} // Ensure tasks is always an array
               setTasks={setTasks}
               auth={auth}
             />
-          ) : (
-            <p className="text-center text-gray-500">No subtasks available.</p>
           )}
         </div>
       </div>

@@ -259,29 +259,39 @@ exports.getAllProjects = async (req, res) => {
       deletedAt: null
     }).populate({
       path: 'owner members',
-      select: 'name email name initials photo',
+      select: 'name email initials photo',
       options: {
         transform: (doc) => {
           if (!doc) return null;
           return {
-            ...doc.toObject(),
+            ...doc, // Use doc directly since it's a plain object due to .lean()
             initials: doc.initials || getInitials(doc.name),
             photo: doc.photo && doc.photo.data
               ? {
-                data: doc.photo.data.toString('base64'),
-                contentType: doc.photo.contentType,
-              }
+                  data: doc.photo.data.toString('base64'),
+                  contentType: doc.photo.contentType,
+                }
               : null,
           };
         },
       },
-    });
+    }).lean(); // Use lean to get plain objects
 
     if (!projects || projects.length === 0) {
       return res.status(200).json([]);
     }
 
-    res.status(200).json(projects);
+    // Ensure description is returned as-is (HTML content)
+    const formattedProjects = projects.map(project => ({
+      ...project,
+      description: project.description, // Preserve HTML content
+      members: project.members.map(member => ({
+        ...member,
+        initials: member.initials || getInitials(member.name) || 'U'
+      }))
+    }));
+
+    res.status(200).json(formattedProjects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     res.status(500).json({ message: 'Error fetching projects', error: error.message });
@@ -440,7 +450,7 @@ exports.updateProject = async (req, res) => {
     let removedMembers = [];
 
     if (title) project.title = title;
-    if (description) project.description = description;
+    if (description) project.description = description; // Store HTML description from editor
     if (dueDate) {
       if (isNaN(new Date(dueDate).getTime())) {
         return res.status(400).json({ message: "Invalid due date" });
@@ -505,6 +515,7 @@ exports.updateProject = async (req, res) => {
       message: "Project updated successfully",
       project: {
         ...populatedProject,
+        description, // Ensure raw HTML description is returned
         members: populatedProject.members.map(member => ({
           _id: member._id,
           email: member.email,
@@ -648,7 +659,7 @@ exports.createSubProject = async (req, res) => {
 
     const newSubProject = new SubProject({
       title,
-      description,
+      description, // Store HTML description from editor
       dueDate,
       status: status || "To Do",
       mainProject: mainProjectId,
@@ -668,9 +679,9 @@ exports.createSubProject = async (req, res) => {
 
     res.status(201).json({
       message: "Sub-project created successfully!",
-      // subProject: newSubProject,
       subProject: {
         ...populatedSubProject,
+        description, // Ensure raw HTML description is returned
         members: populatedSubProject.members.map(member => ({
           _id: member._id,
           email: member.email,
@@ -710,29 +721,41 @@ exports.getSubProjectsByMainProject = async (req, res) => {
       deletedAt: null,
     }).populate({
       path: 'members',
-      select: 'name email name initials photo',
+      select: 'name email initials photo',
       options: {
         transform: (doc) => {
           if (!doc) return null;
           return {
-            ...doc.toObject(),
+            ...doc, // Use doc directly since it's a plain object
             initials: doc.initials || getInitials(doc.name),
             photo: doc.photo && doc.photo.data
               ? {
-                data: doc.photo.data.toString('base64'),
-                contentType: doc.photo.contentType,
-              }
+                  data: doc.photo.data.toString('base64'),
+                  contentType: doc.photo.contentType,
+                }
               : null,
           };
         },
       },
-    });
+    }).lean();
 
     if (subProjects.length === 0) {
-      return res.status(404).json({ message: "No sub-projects found for this main project." });
+      return res.status(404).json([]);
+    }
+    // Ensure description is returned as-is (HTML content)
+    const formattedSubProjects = subProjects.map(subProject => ({
+      ...subProject,
+      description: subProject.description, // Preserve HTML content
+      members: subProject.members.map(member => ({
+        ...member,
+        initials: member.initials || getInitials(member.name) || 'U'
+      }))
+    }));
+    if (formattedSubProjects.length === 0) {
+      return res.status(404).json([]);
     }
 
-    res.status(200).json({ subProjects });
+    res.status(200).json({ subProjects: formattedSubProjects });
   } catch (error) {
     console.error("Error fetching sub-projects:", error);
     res.status(500).json({ message: "Error fetching sub-projects", error: error.message });
@@ -893,7 +916,7 @@ exports.updateSubProject = async (req, res) => {
     }
 
     if (title) subProject.title = title;
-    if (description) subProject.description = description;
+    if (description) subProject.description = description; // Store HTML description from editor
     if (dueDate) {
       if (isNaN(new Date(dueDate).getTime())) {
         return res.status(400).json({ message: "Invalid due date" });
@@ -954,9 +977,9 @@ exports.updateSubProject = async (req, res) => {
 
     res.status(200).json({
       message: "Sub-project updated successfully",
-      // subProject,
       subProject: {
         ...populatedSubProject,
+        description, // Ensure raw HTML description is returned
         members: populatedSubProject.members.map(member => ({
           _id: member._id,
           email: member.email,
@@ -985,29 +1008,40 @@ exports.getSubProjectById = async (req, res) => {
       .populate('mainProject')
       .populate({
         path: 'owner members',
-        select: 'name email name initials photo',
+        select: 'name email initials photo',
         options: {
           transform: (doc) => {
             if (!doc) return null;
             return {
-              ...doc.toObject(),
+              ...doc, // Use doc directly since it's a plain object
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
-                  data: doc.photo.data.toString('base64'),
-                  contentType: doc.photo.contentType,
-                }
+                    data: doc.photo.data.toString('base64'),
+                    contentType: doc.photo.contentType,
+                  }
                 : null,
             };
           },
         },
-      });
+      })
+      .lean();
 
     if (!subproject) {
       return res.status(404).json({ message: "Subproject not found" });
     }
 
-    res.json(subproject);
+    // Ensure description is returned as-is (HTML content)
+    const formattedSubproject = {
+      ...subproject,
+      description: subproject.description, // Preserve HTML content
+      members: subproject.members.map(member => ({
+        ...member,
+        initials: member.initials || getInitials(member.name) || 'U'
+      }))
+    };
+
+    res.json(formattedSubproject);
   } catch (error) {
     console.error("Error fetching subproject:", error);
     res.status(500).json({ message: "Server error" });
@@ -1031,18 +1065,18 @@ exports.getProjectById = async (req, res) => {
     })
       .populate({
         path: 'owner',
-        select: 'name email name initials photo',
+        select: 'name email initials photo',
         options: {
           transform: (doc) => {
             if (!doc) return null;
             return {
-              ...doc.toObject(),
+              ...doc, // Use doc directly since it's a plain object
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
-                  data: doc.photo.data.toString('base64'),
-                  contentType: doc.photo.contentType,
-                }
+                    data: doc.photo.data.toString('base64'),
+                    contentType: doc.photo.contentType,
+                  }
                 : null,
             };
           },
@@ -1050,23 +1084,24 @@ exports.getProjectById = async (req, res) => {
       })
       .populate({
         path: 'members',
-        select: 'name email name initials photo',
+        select: 'name email initials photo',
         options: {
           transform: (doc) => {
             if (!doc) return null;
             return {
-              ...doc.toObject(),
+              ...doc, // Use doc directly since it's a plain object
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
-                  data: doc.photo.data.toString('base64'),
-                  contentType: doc.photo.contentType,
-                }
+                    data: doc.photo.data.toString('base64'),
+                    contentType: doc.photo.contentType,
+                  }
                 : null,
             };
           },
         },
-      });
+      })
+      .lean();
 
     if (!project) {
       return res.status(404).json({
@@ -1074,7 +1109,17 @@ exports.getProjectById = async (req, res) => {
       });
     }
 
-    res.status(200).json(project);
+    // Ensure description is returned as-is (HTML content)
+    const formattedProject = {
+      ...project,
+      description: project.description, // Preserve HTML content
+      members: project.members.map(member => ({
+        ...member,
+        initials: member.initials || getInitials(member.name) || 'U'
+      }))
+    };
+
+    res.status(200).json(formattedProject);
   } catch (error) {
     console.error("Error fetching project:", error);
     res.status(500).json({ message: "Error fetching project", error: error.message });

@@ -78,76 +78,90 @@ const ViewSubDetail = ({ mainProjectId, subProjectId, onClose }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Sub Project Name: {subProject.title}</h2>
+<div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
+  <h2 className="text-2xl font-bold text-gray-800 mb-4">Sub Project Name: {subProject.title}</h2>
 
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Description</h3>
-          <p className="text-gray-600">
-            {subProject.description ? parse(subProject.description) : "No description available."}
-          </p>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Due Date</h3>
-          <p className="text-gray-600">{new Date(subProject.dueDate).toLocaleDateString()}</p>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Status</h3>
-          <span
-            className={`px-2 py-1 rounded-full text-sm ${
-              subProject.status === "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-            }`}
-          >
-            {subProject.status}
-          </span>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Project Lead</h3>
-          <p className="text-gray-600">{subProject.owner?.username} ({subProject.owner?.email})</p>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Project Members</h3>
-          {subProject.members && subProject.members.length > 0 ? (
-            <ul className="list-disc pl-5 text-gray-600">
-              {subProject.members.map((member) => (
-                <li key={member._id}>
-                  {member.username} ({member.email})
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-600">No members assigned.</p>
-          )}
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Pending Invites</h3>
-          {subProject.pendingInvites && subProject.pendingInvites.length > 0 ? (
-            <ul className="list-disc pl-5 text-gray-600">
-              {subProject.pendingInvites.map((email, index) => (
-                <li key={index}>{email}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-600">No pending invites.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={onClose}
-          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
-        >
-          Close
-        </button>
+  <div className="space-y-4">
+    <div>
+      <h3 className="text-lg font-semibold text-gray-700">Description</h3>
+      <div className="text-gray-600 description-content">
+        {subProject.description ? parse(subProject.description) : "No description available."}
       </div>
     </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-gray-700">Due Date</h3>
+      <p className="text-gray-600">{new Date(subProject.dueDate).toLocaleDateString()}</p>
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-gray-700">Status</h3>
+      <span
+        className={`px-2 py-1 rounded-full text-sm ${subProject.status === "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+          }`}
+      >
+        {subProject.status}
+      </span>
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-gray-700">Project Lead</h3>
+      <p className="text-gray-600">{subProject.owner?.name} ({subProject.owner?.email})</p>
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-gray-700">Project Members</h3>
+      {subProject.members && subProject.members.length > 0 ? (
+        <ul className="list-disc pl-5 text-gray-600">
+          {subProject.members.map((member) => (
+            <li key={member._id}>
+              {member.name} ({member.email})
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-600">No members assigned.</p>
+      )}
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-gray-700">Pending Invites</h3>
+      {subProject.pendingInvites && subProject.pendingInvites.length > 0 ? (
+        <ul className="list-disc pl-5 text-gray-600">
+          {subProject.pendingInvites.map((email, index) => (
+            <li key={index}>{email}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-600">No pending invites.</p>
+      )}
+    </div>
+  </div>
+
+  <div className="mt-6 flex justify-end">
+    <button
+      onClick={onClose}
+      className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+    >
+      Close
+    </button>
+  </div>
+
+  <style jsx>{`
+    .description-content ul,
+    .description-content ol {
+      list-style: disc inside;
+      padding-left: 1rem;
+      margin: 0.5rem 0;
+    }
+    .description-content ol {
+      list-style: decimal inside;
+    }
+    .description-content li {
+      margin-bottom: 0.25rem;
+    }
+  `}</style>
+</div>
   );
 };
 

@@ -7,24 +7,24 @@ exports.createTask = async (req, res) => {
   try {
     const { title, description, dueDate, status } = req.body;
 
-        // Validate input
-        if (!title || !description || !dueDate) {
-          return res.status(400).json({ message: 'Title description  and due date are required.' });
-        }
+    // Validate input
+    if (!title || !description || !dueDate) {
+      return res.status(400).json({ message: 'Title, description, and due date are required.' });
+    }
 
     // Assuming the logged-in user's ID is available in req.user
     const owner = req.user.id; // The user creating the task (owner)
 
     const newTask = new Task({
       title,
-      description,
+      description, // Store HTML description from rich text editor
       owner, // Set the owner to the logged-in user
       dueDate,
       status,
     });
 
     await newTask.save();
-    res.status(201).json({ message: 'Task created successfully', task: newTask });
+    res.status(201).json({ message: 'Task created successfully', task: { ...newTask.toObject(), description } });
   } catch (error) {
     res.status(500).json({ message: 'Error creating task', error: error.message });
   }
@@ -38,9 +38,15 @@ exports.getTasksByOwner = async (req, res) => {
     const tasks = await Task.find({
       owner: ownerId,
       $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-    });
+    }).lean();
 
-    res.status(200).json(tasks);
+    // Ensure description is returned as-is (HTML content)
+    const formattedTasks = tasks.map(task => ({
+      ...task,
+      description: task.description // Preserve HTML content
+    }));
+
+    res.status(200).json(formattedTasks);
   } catch (error) {
     res.status(500).json({ message: "Error fetching tasks", error: error.message });
   }
@@ -184,14 +190,14 @@ exports.updateTask = async (req, res) => {
 
     // Update task fields
     task.title = title ?? task.title;
-    task.description = description ?? task.description;
+    task.description = description ?? task.description; // Store HTML description from rich text editor
     task.dueDate = dueDate ?? task.dueDate;
     task.status = status ?? task.status;
 
     // Save the updated task
     await task.save();
 
-    res.status(200).json({ message: 'Task updated successfully', task });
+    res.status(200).json({ message: 'Task updated successfully', task: { ...task.toObject(), description } });
   } catch (error) {
     res.status(500).json({ message: 'Error updating task', error: error.message });
   }
@@ -232,7 +238,7 @@ exports.createSubTask = async (req, res) => {
     // Create the subtask
     const newSubTask = new SubTask({
       title,
-      description,
+      description, // Store HTML description from rich text editor
       dueDate,
       status,
       mainTask: mainTaskId,
@@ -240,10 +246,10 @@ exports.createSubTask = async (req, res) => {
     });
 
     await newSubTask.save();
-        // Add the new subproject to the parent project's subProjects array
-        mainTask.subTasks.push(newSubTask._id);
-        await mainTask.save();
-    res.status(201).json({ message: "Subtask created successfully", subTask: newSubTask });
+    // Add the new subtask to the parent task's subTasks array
+    mainTask.subTasks.push(newSubTask._id);
+    await mainTask.save();
+    res.status(201).json({ message: "Subtask created successfully", subTask: { ...newSubTask.toObject(), description } });
   } catch (error) {
     console.error("Error creating subtask:", error);
     res.status(500).json({ message: "Error creating subtask", error: error.message });
@@ -260,13 +266,19 @@ exports.getSubTasksByMainTask = async (req, res) => {
       owner: ownerId,
       mainTask: mainTaskId,
       deletedAt: null, // Exclude soft-deleted subtasks
-    });
+    }).lean();
 
-    if (subTasks.length === 0) {
+    // Ensure description is returned as-is (HTML content)
+    const formattedSubTasks = subTasks.map(subTask => ({
+      ...subTask,
+      description: subTask.description // Preserve HTML content
+    }));
+
+    if (formattedSubTasks.length === 0) {
       return res.status(200).json([]); // Return an empty array instead of 404
     }
 
-    res.status(200).json(subTasks);
+    res.status(200).json(formattedSubTasks);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching subtasks', error: error.message });
   }
@@ -409,14 +421,14 @@ exports.updateSubTask = async (req, res) => {
 
     // Update subtask fields only if the fields are provided
     subTask.title = title || subTask.title;
-    subTask.description = description || subTask.description;
+    subTask.description = description || subTask.description; // Store HTML description from rich text editor
     subTask.dueDate = dueDate || subTask.dueDate;
     subTask.status = status || subTask.status;
 
     // Save the updated subtask
     await subTask.save();
 
-    res.status(200).json({ message: 'Subtask updated successfully', subTask });
+    res.status(200).json({ message: 'Subtask updated successfully', subTask: { ...subTask.toObject(), description } });
   } catch (error) {
     res.status(500).json({ message: 'Error updating subtask', error: error.message });
   }
@@ -434,7 +446,8 @@ exports.getTaskById = async (req, res) => {
       owner: ownerId,
       $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
     })
-    .populate('owner', 'name email name') // Populate owner with specific fields
+    .populate('owner', 'name email initials')
+    .lean();
 
     if (!task) {
       return res.status(404).json({ 
@@ -442,7 +455,13 @@ exports.getTaskById = async (req, res) => {
       });
     }
 
-    res.status(200).json(task);
+    // Ensure description is returned as-is (HTML content)
+    const formattedTask = {
+      ...task,
+      description: task.description // Preserve HTML content
+    };
+
+    res.status(200).json(formattedTask);
   } catch (error) {
     res.status(500).json({ 
       message: 'Error fetching task', 
@@ -460,17 +479,23 @@ exports.getSubtaskById = async (req, res) => {
     if (!mainTask) {
       return res.status(404).json({ message: "Main task not found" });
     }
-    // Fetch the subproject and populate the referenced fields (mainProject, owner, members)
+    // Fetch the subtask and populate the referenced fields (mainTask, owner)
     const subtask = await SubTask.findById(subTaskId)
-      .populate('mainTask')  // Populating the mainProject reference (Project model)
-      .populate('owner')        // Populating the owner reference (User model)
+      .populate('mainTask')  // Populating the mainTask reference (Task model)
+      .populate('owner', 'name email initials')
+      .lean();
 
     if (!subtask) {
       return res.status(404).json({ message: "Subtask not found" });
     }
 
-    // Return the populated subproject
-    res.json(subtask);
+    // Ensure description is returned as-is (HTML content)
+    const formattedSubtask = {
+      ...subtask,
+      description: subtask.description // Preserve HTML content
+    };
+
+    res.json(formattedSubtask);
   } catch (error) {
     console.error("Error fetching subtask:", error);
     res.status(500).json({ message: "Server error" });

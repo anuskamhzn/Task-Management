@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { Line } from "react-chartjs-2"
+import { useState, useEffect } from "react";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,74 +10,70 @@ import {
   Tooltip,
   Legend,
   Filler,
-} from "chart.js"
-import axios from "axios"
-import { useAuth } from "../../context/auth"
+} from "chart.js";
+import axios from "axios";
+import { useAuth } from "../../context/auth";
 
-// Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-export default function Statistics() {
-  const [auth] = useAuth()
-  const [activeTab, setActiveTab] = useState("task")
-  const [taskAnalytics, setTaskAnalytics] = useState(null)
-  const [projectAnalytics, setProjectAnalytics] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+export default function Statistics({ refreshTrigger }) {
+  const [auth] = useAuth();
+  const [activeTab, setActiveTab] = useState("task");
+  const [taskAnalytics, setTaskAnalytics] = useState(null);
+  const [projectAnalytics, setProjectAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchAnalytics = async () => {
     if (!auth.token) {
-      setError("No authentication token available")
-      setLoading(false)
-      return
+      setError("No authentication token available");
+      setLoading(false);
+      return;
     }
     try {
-      // Fetch task analytics
       const taskResponse = await axios.get(`${process.env.REACT_APP_API}/api/task/ts/analytics`, {
         headers: { Authorization: `Bearer ${auth.token}` },
-      })
-      setTaskAnalytics(taskResponse.data.analytics)
+      });
+      setTaskAnalytics(taskResponse.data.analytics);
 
-      // Fetch project analytics
       const projectResponse = await axios.get(`${process.env.REACT_APP_API}/api/project/pro/analytics`, {
         headers: { Authorization: `Bearer ${auth.token}` },
-      })
-      setProjectAnalytics(projectResponse.data.analytics)
+      });
+      setProjectAnalytics(projectResponse.data.analytics);
 
-      setLoading(false)
+      setLoading(false);
     } catch (err) {
-      setError(err.message || "Failed to fetch analytics")
-      setLoading(false)
+      setError(err.message || "Failed to fetch analytics");
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchAnalytics()
-  }, [auth.token])
+    fetchAnalytics();
+  }, [auth.token, refreshTrigger]); // Refetch when auth.token or refreshTrigger changes
 
   const getChartData = () => {
-    const analytics = activeTab === "task" ? taskAnalytics : projectAnalytics
-    if (!analytics) return null
+    const analytics = activeTab === "task" ? taskAnalytics : projectAnalytics;
+    if (!analytics) return null;
 
-    const labels = ["To Do", "In Progress", "Completed"]
-    const data = [analytics.statusCounts.toDo, analytics.statusCounts.inProgress, analytics.statusCounts.completed]
+    const labels = ["To Do", "In Progress", "Completed"];
+    const data = [analytics.statusCounts.toDo, analytics.statusCounts.inProgress, analytics.statusCounts.completed];
 
-    // Create gradient for task chart
     const createGradient = (ctx, color1, color2) => {
-      const gradient = ctx.createLinearGradient(0, 0, 0, 400)
-      gradient.addColorStop(0, color1)
-      gradient.addColorStop(1, color2)
-      return gradient
-    }
+      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, color1);
+      gradient.addColorStop(1, color2);
+      return gradient;
+    };
 
-    const ctx = document.getElementById("statistics-chart")?.getContext("2d")
-    let gradientFill = null
+    const ctx = document.getElementById("statistics-chart")?.getContext("2d");
+    let gradientFill = null;
 
     if (ctx) {
       gradientFill =
         activeTab === "task"
           ? createGradient(ctx, "rgba(126, 34, 206, 0.4)", "rgba(126, 34, 206, 0.05)")
-          : createGradient(ctx, "rgba(109, 40, 217, 0.4)", "rgba(109, 40, 217, 0.05)")
+          : createGradient(ctx, "rgba(109, 40, 217, 0.4)", "rgba(109, 40, 217, 0.05)");
     }
 
     return {
@@ -99,8 +95,8 @@ export default function Statistics() {
           pointHoverRadius: 8,
         },
       ],
-    }
-  }
+    };
+  };
 
   const chartOptions = {
     responsive: true,
@@ -176,14 +172,13 @@ export default function Statistics() {
         left: 20,
       },
     },
-  }
+  };
 
-  // Generate summary data
   const getSummaryData = () => {
-    const analytics = activeTab === "task" ? taskAnalytics : projectAnalytics
-    if (!analytics) return null
+    const analytics = activeTab === "task" ? taskAnalytics : projectAnalytics;
+    if (!analytics) return null;
 
-    const total = analytics.statusCounts.toDo + analytics.statusCounts.inProgress + analytics.statusCounts.completed
+    const total = analytics.statusCounts.toDo + analytics.statusCounts.inProgress + analytics.statusCounts.completed;
 
     return [
       {
@@ -222,8 +217,8 @@ export default function Statistics() {
           </svg>
         ),
       },
-    ]
-  }
+    ];
+  };
 
   return (
     <div className="shadow-lg rounded-lg border bg-white overflow-hidden">
@@ -291,7 +286,6 @@ export default function Statistics() {
           </button>
         </div>
       </div>
-
       {loading ? (
         <div className="flex flex-col justify-center items-center h-[300px] bg-gray-50/30">
           <svg
@@ -328,7 +322,6 @@ export default function Statistics() {
         </div>
       ) : (
         <div className="p-4">
-          {/* Summary Cards */}
           {getSummaryData() && (
             <div className="grid grid-cols-2 gap-4 mb-6">
               {getSummaryData().map((item, index) => (
@@ -342,8 +335,6 @@ export default function Statistics() {
               ))}
             </div>
           )}
-
-          {/* Chart */}
           <div className="h-[250px]">
             {getChartData() ? (
               <Line id="statistics-chart" data={getChartData()} options={chartOptions} />
@@ -372,5 +363,5 @@ export default function Statistics() {
         </div>
       )}
     </div>
-  )
+  );
 }

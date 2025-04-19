@@ -3,6 +3,9 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import sanitizeHtml from "sanitize-html";
 
 const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
   const { projectId } = useParams();
@@ -39,8 +42,15 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
       );
       const subProjectData = response.data;
       if (subProjectData) {
+        // Sanitize the description to remove Quill artifacts and unwanted tags
+        const cleanDescription = sanitizeHtml(subProjectData.description || "", {
+          allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+          allowedAttributes: {},
+          disallowedTagsMode: 'discard',
+        });
         const formattedSubproject = {
           ...subProjectData,
+          description: cleanDescription,
           members: subProjectData.members.map((member) => ({
             email: member.email,
             initials: member.initials || member.username?.slice(0, 2).toUpperCase() || "U",
@@ -91,6 +101,11 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSubproject({ ...subproject, [name]: value });
+  };
+
+  const handleDescriptionChange = (value) => {
+
+    setSubproject({ ...subproject, description: value });
   };
 
   const handleAddMember = () => {
@@ -181,6 +196,16 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
     (email) => !subproject.members.includes(email)
   );
 
+  // Quill toolbar configuration
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean'],
+    ],
+  };
+
   return (
     <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
@@ -214,13 +239,13 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              name="description"
-              value={subproject.description}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md p-2 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none"
-              placeholder="Enter description"
-              required
+            <ReactQuill
+              value={subproject.description || ""}
+              onChange={handleDescriptionChange}
+              modules={quillModules}
+              className="bg-white"
+              theme="snow"
+              placeholder="Enter project description"
             />
           </div>
 
@@ -235,7 +260,7 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
             />
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
@@ -247,7 +272,7 @@ const ModifySubproject = ({ auth, setProjects, subProjectId, onClose }) => {
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
-          </div>
+          </div> */}
 
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Members</label>

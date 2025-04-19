@@ -29,7 +29,7 @@ const ChatList = ({
         </h2>
         <div className="flex space-x-2">
           <button
-            className="text-white bg-blue-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+            className="text-white bg-purple-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-purple-700 transition-colors shadow-sm"
             onClick={() => setShowAddUserModal(true)}
             title="Add User"
             aria-label="Add User"
@@ -37,7 +37,7 @@ const ChatList = ({
             + User
           </button>
           <button
-            className="text-white bg-green-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-green-700 transition-colors shadow-sm"
+            className="text-white bg-violet-700 px-3 py-1 rounded-full text-sm font-medium hover:bg-violet-800 transition-colors shadow-sm"
             onClick={() => setShowAddGroupModal(true)}
             title="Add Group"
             aria-label="Add Group"

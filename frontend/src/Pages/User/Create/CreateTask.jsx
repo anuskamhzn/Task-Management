@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/auth";
 import toast from "react-hot-toast";
-import ReactQuill from "react-quill"; // Import React Quill
-import "react-quill/dist/quill.snow.css"; // Import Quill styles
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import sanitizeHtml from "sanitize-html";
 
 const CreateTask = ({ onClose, onTaskCreated }) => {
   const [auth] = useAuth();
@@ -20,14 +21,26 @@ const CreateTask = ({ onClose, onTaskCreated }) => {
     setTaskData({ ...taskData, [name]: value });
   };
 
+  const handleDescriptionChange = (value) => {
+    setTaskData({ ...taskData, description: value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Sanitize description before submitting
+      const cleanDescription = sanitizeHtml(taskData.description, {
+        allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+        allowedAttributes: {},
+        disallowedTagsMode: 'discard',
+      });
+      const sanitizedTaskData = { ...taskData, description: cleanDescription };
+
       const response = await axios.post(
         `${process.env.REACT_APP_API}/api/task/create`,
-        taskData,
+        sanitizedTaskData,
         {
           headers: {
             Authorization: `Bearer ${auth.token}`,
@@ -35,81 +48,85 @@ const CreateTask = ({ onClose, onTaskCreated }) => {
         }
       );
       toast.success("Task created successfully!");
-      // Pass the newly created task to the parent component (Tasks)
       if (onTaskCreated) {
-        onTaskCreated(response.data.task); // This updates the task list in the parent
+        onTaskCreated(response.data.task);
       }
-      onClose(); // Close modal on successful task creation
+      onClose();
     } catch (error) {
-      toast.error("Error creating task");
+      toast.error(error.response?.data?.message || "Error creating task");
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  // Quill toolbar configuration
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean'],
+    ],
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-      {/* Modal Container */}
-      <div className="bg-white p-8 rounded-lg shadow-lg w-96 relative">
-        {/* Close Button (X) */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-xl text-gray-600 hover:text-gray-800"
-        >
-          &times;
-        </button>
+      <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Create Task</h2>
+          <button
+            className="text-gray-500 hover:text-gray-700 text-xl font-medium"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
 
-        <h1 className="text-2xl font-bold mb-6 text-center">Create Task</h1>
-
-        {/* Form Section */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
           <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
               name="title"
               value={taskData.title}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              placeholder="Enter task title"
               required
             />
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
-            <textarea
-              name="description"
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <ReactQuill
               value={taskData.description}
-              onChange={handleChange}
-              // className="bg-white"
-              // theme="snow"
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={handleDescriptionChange}
+              className="bg-white"
+              theme="snow"
+              modules={quillModules}
+              placeholder="Enter task description"
             />
           </div>
 
-          {/* Due Date */}
           <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">Due Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
             <input
               type="date"
               name="dueDate"
               value={taskData.dueDate}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>
 
-          {/* Status */}
           <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
               value={taskData.status}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             >
               <option value="To Do">To Do</option>
               <option value="In Progress">In Progress</option>
@@ -117,16 +134,13 @@ const CreateTask = ({ onClose, onTaskCreated }) => {
             </select>
           </div>
 
-          {/* Submit Button */}
-          <div className="flex justify-center">
-            <button
-              type="submit"
-              className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-              disabled={loading}
-            >
-              {loading ? "Creating..." : "Create Task"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50 transition"
+          >
+            {loading ? "Creating..." : "Create Task"}
+          </button>
         </form>
       </div>
     </div>

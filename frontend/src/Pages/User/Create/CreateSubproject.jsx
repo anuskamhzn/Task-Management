@@ -3,6 +3,8 @@ import axios from "axios";
 import { useAuth } from "../../../context/auth";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
   const [auth] = useAuth();
@@ -55,6 +57,10 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSubprojectData({ ...subprojectData, [name]: value });
+  };
+
+  const handleDescriptionChange = (value) => {
+    setSubprojectData({ ...subprojectData, description: value });
   };
 
   const handleAddMember = () => {
@@ -129,146 +135,153 @@ const CreateSubproject = ({ onClose, onSubProjectCreated }) => {
     }
   };
 
+  // Quill toolbar configuration
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean'],
+    ],
+  };
+
   const availableMembers = mainProjectMembers.filter(
     (member) => !subprojectData.members.includes(member.email)
   );
 
   return (
-    <div>
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-        <div className="bg-white p-8 rounded-lg shadow-lg w-96 relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Create Subproject</h2>
           <button
+            className="text-gray-500 hover:text-gray-700 text-xl font-medium"
             onClick={onClose}
-            className="absolute top-4 right-4 text-xl text-gray-600 hover:text-gray-800"
           >
             ×
           </button>
+        </div>
 
-          <h1 className="text-2xl font-bold mb-6">Create Subproject</h1>
+        {error && <p className="text-red-600 mb-4">{error}</p>}
 
-          {error && <p className="text-red-600">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input
+              type="text"
+              name="title"
+              value={subprojectData.title}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              placeholder="Enter subproject title"
+              required
+            />
+          </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Title</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <ReactQuill
+              value={subprojectData.description}
+              onChange={handleDescriptionChange}
+              className="bg-white"
+              theme="snow"
+              modules={quillModules}
+              placeholder="Enter subproject description"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <input
+              type="date"
+              name="dueDate"
+              value={subprojectData.dueDate}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              name="status"
+              value={subprojectData.status}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+            >
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Add Members</label>
+            <div className="flex mb-4">
               <input
-                type="text"
-                name="title"
-                value={subprojectData.title}
+                type="email"
+                name="newMember"
+                value={subprojectData.newMember || ""}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                required
+                className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="Select or enter member email"
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
               />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
-              <textarea
-                name="description"
-                value={subprojectData.description}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none"
-                required
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Due Date</label>
-              <input
-                type="date"
-                name="dueDate"
-                value={subprojectData.dueDate}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Status</label>
-              <select
-                name="status"
-                value={subprojectData.status}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              >
-                <option value="To Do">To Do</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-
-            <div className="mb-4 relative">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Add Members</label>
-              <div className="flex mb-4">
-                <input
-                  type="email"
-                  name="newMember"
-                  value={subprojectData.newMember || ""}
-                  onChange={handleChange}
-                  className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  placeholder="Select or enter member email"
-                  onFocus={() => setShowDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddMember}
-                  className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-                >
-                  Add
-                </button>
-              </div>
-
-              {showDropdown && availableMembers.length > 0 && (
-                <div className="absolute z-10 w-full max-w-[calc(100%-80px)] bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                  {availableMembers.map((member, index) => (
-                    <div
-                      key={index}
-                      className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm text-gray-700"
-                      onMouseDown={() => handleSelectSuggestion(member.email)}
-                    >
-                      {member.email} ({member.initials})
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-gray-50">
-                {subprojectData.members.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No members added</p>
-                ) : (
-                  subprojectData.members.map((email, index) => (
-                    <span
-                      key={index}
-                      className="flex items-center justify-between bg-blue-200 text-blue-700 py-1 px-3 rounded-md mb-1"
-                    >
-                      <span className="truncate flex-1">{email}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(email)}
-                        className="ml-2 text-red-500 hover:text-red-700"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
               <button
-                type="submit"
-                className={`w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg ${
-                  loading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                disabled={loading}
+                type="button"
+                onClick={handleAddMember}
+                className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition"
               >
-                {loading ? "Creating..." : "Create Subproject"}
+                Add
               </button>
             </div>
-          </form>
-        </div>
+
+            {showDropdown && availableMembers.length > 0 && (
+              <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                {availableMembers.map((member, index) => (
+                  <div
+                    key={index}
+                    className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm text-gray-700"
+                    onMouseDown={() => handleSelectSuggestion(member.email)}
+                  >
+                    {member.email} ({member.initials})
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-gray-50">
+              {subprojectData.members.length === 0 ? (
+                <p className="text-gray-500 text-sm">No members added</p>
+              ) : (
+                subprojectData.members.map((email, index) => (
+                  <span
+                    key={index}
+                    className="flex items-center justify-between bg-blue-100 text-blue-800 py-1 px-3 rounded-md mb-1"
+                  >
+                    <span className="truncate flex-1">{email}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMember(email)}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className={`w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50 transition ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={loading}
+          >
+            {loading ? "Creating..." : "Create Subproject"}
+          </button>
+        </form>
       </div>
     </div>
   );

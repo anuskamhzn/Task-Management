@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/auth";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import sanitizeHtml from "sanitize-html";
 
 const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const [project, setProject] = useState({
@@ -31,8 +34,15 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
       });
       const projectData = response.data.find((p) => p._id === projectId);
       if (projectData) {
+        // Sanitize description only when fetching
+        const cleanDescription = sanitizeHtml(projectData.description || "", {
+          allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+          allowedAttributes: {},
+          disallowedTagsMode: 'discard',
+        });
         setProject({
           ...projectData,
+          description: cleanDescription,
           members: projectData.members.map((m) => m.email),
           dueDate: projectData.dueDate ? projectData.dueDate.split("T")[0] : "",
           newMember: "",
@@ -52,6 +62,11 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProject({ ...project, [name]: value });
+  };
+
+  const handleDescriptionChange = (value) => {
+    // Store raw HTML from ReactQuill without sanitization
+    setProject({ ...project, description: value });
   };
 
   const handleAddMember = () => {
@@ -84,8 +99,16 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Sanitize description only when submitting
+      const cleanDescription = sanitizeHtml(project.description, {
+        allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+        allowedAttributes: {},
+        disallowedTagsMode: 'discard',
+      });
+      const updatedProject = { ...project, description: cleanDescription };
+
       const url = `${process.env.REACT_APP_API}/api/project/update-project/${projectId}`;
-      const response = await axios.put(url, project, {
+      const response = await axios.put(url, updatedProject, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
 
@@ -109,6 +132,16 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
   const membersToShow = availableMembers.filter(
     (email) => !project.members.includes(email)
   );
+
+  // Quill toolbar configuration
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean'],
+    ],
+  };
 
   return (
     <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
@@ -143,13 +176,13 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              name="description"
-              value={project.description}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md p-2 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none"
-              placeholder="Enter description"
-              required
+            <ReactQuill
+              value={project.description || ""}
+              onChange={handleDescriptionChange}
+              className="bg-white"
+              theme="snow"
+              modules={quillModules}
+              placeholder="Enter project description"
             />
           </div>
 
@@ -164,7 +197,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
             />
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
@@ -176,7 +209,7 @@ const ModifyProject = ({ auth, setProjects, projectId, onClose }) => {
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
-          </div>
+          </div> */}
 
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Members</label>

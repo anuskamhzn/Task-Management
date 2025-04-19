@@ -27,6 +27,7 @@ const Message = () => {
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [groupNameInput, setGroupNameInput] = useState('');
+  const [groupEmails, setGroupEmails] = useState([]); // New state for email list
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
   const [newGroupId, setNewGroupId] = useState(null);
   const [photo, setPhoto] = useState(null);
@@ -421,9 +422,9 @@ const Message = () => {
           prev.map((group) =>
             group.id === data.groupId
               ? {
-                  ...group,
-                  members: (group.members || []).filter((m) => m._id !== data.memberId),
-                }
+                ...group,
+                members: (group.members || []).filter((m) => m._id !== data.memberId),
+              }
               : group
           )
         );
@@ -442,9 +443,9 @@ const Message = () => {
             prev.map((group) =>
               group.id === data.groupId
                 ? {
-                    ...group,
-                    members: (group.members || []).filter((m) => m._id !== data.memberId),
-                  }
+                  ...group,
+                  members: (group.members || []).filter((m) => m._id !== data.memberId),
+                }
                 : group
             )
           );
@@ -605,7 +606,7 @@ const Message = () => {
       toast.error('Failed to send message');
     }
   };
-  
+
 
   const handleDeleteMessage = (messageId) => {
     if (!socketRef.current || !currentChat) return;
@@ -619,6 +620,23 @@ const Message = () => {
 
     const event = chatType === 'group' ? 'editGroupMessage' : 'editPrivateMessage';
     socketRef.current.emit(event, { messageId, content: newContent });
+  };
+
+  // Handler for adding an email to the groupEmails list
+  const handleAddGroupEmail = () => {
+    if (emailInput.trim() && !groupEmails.includes(emailInput.trim())) {
+      setGroupEmails([...groupEmails, emailInput.trim()]);
+      setEmailInput('');
+    } else if (groupEmails.includes(emailInput.trim())) {
+      toast.error('This email is already in the list.');
+    } else {
+      toast.error('Please enter a valid email.');
+    }
+  };
+
+  // Handler for removing an email from the groupEmails list
+  const handleRemoveGroupEmail = (emailToRemove) => {
+    setGroupEmails(groupEmails.filter(email => email !== emailToRemove));
   };
 
   return (
@@ -848,23 +866,71 @@ const Message = () => {
 
       {showAddGroupModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg relative w-80 shadow-lg">
+          <div className="bg-white p-6 rounded-lg relative w-96 shadow-lg">
             <button
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition"
-              onClick={() => setShowAddGroupModal(false)}
+              onClick={() => {
+                setShowAddGroupModal(false);
+                setGroupNameInput('');
+                setEmailInput('');
+                setGroupEmails([]);
+              }}
               aria-label="Close modal"
             >
               ✕
             </button>
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Create Group</h3>
-            <input
-              type="text"
-              value={groupNameInput}
-              onChange={(e) => setGroupNameInput(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter group name"
-              aria-label="Group name input"
-            />
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Group Name</label>
+              <input
+                type="text"
+                value={groupNameInput}
+                onChange={(e) => setGroupNameInput(e.target.value)}
+                className="w-full p-3 mt-1 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter group name"
+                aria-label="Group name input"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Add Member Email</label>
+              <div className="flex space-x-2 mt-1">
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="p-3 w-full border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter an email"
+                  aria-label="Email input"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddGroupEmail}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-lg disabled:bg-gray-400"
+                  disabled={!emailInput.trim()}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+            {groupEmails.length > 0 && (
+              <div className="mb-4 max-h-40 overflow-y-auto">
+                <label className="block text-sm font-medium text-gray-700">Members to Add</label>
+                <ul className="mt-2 space-y-2">
+                  {groupEmails.map((email, index) => (
+                    <li key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded-lg">
+                      <span>{email}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGroupEmail(email)}
+                        className="ml-2 text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <button
               onClick={async () => {
                 if (!groupNameInput.trim()) {
@@ -874,27 +940,30 @@ const Message = () => {
                 try {
                   const response = await axios.post(
                     `${process.env.REACT_APP_API}/api/group-chat/create`,
-                    { name: groupNameInput },
+                    { name: groupNameInput, emails: groupEmails },
                     { headers: { Authorization: `Bearer ${auth.token}` } }
                   );
                   if (response.data.success) {
                     const newGroup = {
                       id: response.data.group._id,
                       name: response.data.group.name,
-                      initials: response.data.group.initials || response.data.group.name.substring(0, 2).toUpperCase(),
+                      initials: response.data.group.name.substring(0, 2).toUpperCase(),
                       avatar: 'https://example.com/default-group-avatar.jpg',
+                      members: response.data.group.members || [],
                     };
                     setGroups([...groups, newGroup]);
-                    setNewGroupId(response.data.group._id);
-                    setShowAddMembersModal(true);
                     setShowAddGroupModal(false);
                     setGroupNameInput('');
+                    setEmailInput('');
+                    setGroupEmails([]);
+                    toast.success(response.data.message || 'Group created successfully!');
                   }
                 } catch (error) {
-                  toast.error("Failed to create group.");
+                  const errorMessage = error.response?.data?.message || 'Failed to create group.';
+                  toast.error(errorMessage);
                 }
               }}
-              className="w-full mt-4 bg-green-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+              className="w-full mt-4 bg-violet-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition"
             >
               Create
             </button>

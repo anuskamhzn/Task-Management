@@ -7,18 +7,19 @@ import Sidebar from "../../Navigation/Sidebar";
 import ProjectKanban from './ProjectKanban';
 import { FaTrash } from "react-icons/fa";
 import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
-import Members from "../../../Pages/User/Projects/Members"; // Import Members component
+import Members from "../../../Pages/User/Projects/Members";
 import ViewSubDetail from "../../../Pages/User/Projects/ViewSubDetail";
+import { FaChartGantt } from "react-icons/fa6";
 
 const Project = () => {
   const [auth] = useAuth();
   const { projectId } = useParams();
   const [mainProject, setMainProject] = useState(null);
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState([]); // Initialize as empty array
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false); // State for Members popup
+  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
 
   useEffect(() => {
     if (projectId && auth.token) {
@@ -26,8 +27,23 @@ const Project = () => {
     }
   }, [projectId, auth.token]);
 
+  // Prevent scrolling when modals are open
   useEffect(() => {
-    setProjects(null);
+    if (isMembersModalOpen || isCreateModalOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+    } else {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, [isMembersModalOpen, isCreateModalOpen]);
+
+  useEffect(() => {
+    setProjects([]); // Ensure projects is always an array
     setError(null);
     setLoading(true);
     if (auth && auth.user) {
@@ -60,14 +76,15 @@ const Project = () => {
       });
 
       if (response.data && response.data.subProjects) {
-        setProjects(response.data.subProjects);
+        setProjects([]); // Set empty array if no subprojects
+        setProjects(response.data.subProjects); // Set subprojects
       } else {
-        setError("No subprojects found for this project.");
+        setError("No subprojects found.");
       }
     } catch (err) {
-      console.error("Error fetching sub-projects:", err);
       if (err.response && err.response.status === 404) {
         setError("No subprojects found.");
+        setProjects([]); // Set empty array on error
       } else {
         setError("Failed to fetch sub-projects. Please try again later.");
       }
@@ -92,11 +109,11 @@ const Project = () => {
   };
 
   const handleSeeMembers = () => {
-    setIsMembersModalOpen(true); // Open Members popup
+    setIsMembersModalOpen(true);
   };
 
   const handleCloseMembersModal = () => {
-    setIsMembersModalOpen(false); // Close Members popup
+    setIsMembersModalOpen(false);
   };
 
   return (
@@ -119,29 +136,30 @@ const Project = () => {
               >
                 See Members
               </button>
-              <button
-                onClick={handleCreateSubprojectClick}
-                className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition"
+              <NavLink
+                to={`/dashboard/project/${projectId}/gantt`}
+                className="flex items-center bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg shadow-md transition"
               >
-                <span className="mr-2 text-xl">+</span> Create Sub Project
-              </button>
+                <FaChartGantt className="mr-2" />
+                Gantt
+              </NavLink>
               <NavLink to={`/dashboard/subproject-trash/${projectId}`} className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md transition">
                 <FaTrash className="text-lg" />
               </NavLink>
             </div>
           </div>
 
-          {projects && projects.length > 0 ? (
+          {loading ? (
+            <p className="text-center text-gray-500">Loading...</p>
+          ) : (
             <ProjectKanban
-              toDoProjects={projects.filter(project => project.status === "To Do")}
-              inProgressProjects={projects.filter(project => project.status === "In Progress")}
-              completedProjects={projects.filter(project => project.status === "Completed")}
-              projects={projects}
+              toDoProjects={(projects || []).filter(project => project.status === "To Do")}
+              inProgressProjects={(projects || []).filter(project => project.status === "In Progress")}
+              completedProjects={(projects || []).filter(project => project.status === "Completed")}
+              projects={projects || []}
               setProjects={setProjects}
               auth={auth}
             />
-          ) : (
-            <p className="text-center text-gray-500">No subprojects available.</p>
           )}
         </div>
       </div>

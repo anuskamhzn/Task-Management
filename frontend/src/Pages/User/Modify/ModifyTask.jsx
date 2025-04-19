@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { useParams } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import sanitizeHtml from "sanitize-html";
 
-const ModifyTask = ({ auth, setTasks, taskId , onClose}) => {
+const ModifyTask = ({ auth, setTasks, taskId, onClose }) => {
   const [task, setTask] = useState({
     title: "",
     description: "",
@@ -24,18 +26,28 @@ const ModifyTask = ({ auth, setTasks, taskId , onClose}) => {
     if (!taskId) return;
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API}/api/task`,
-        {
-          headers: { Authorization: `Bearer ${auth.token}` },
-        }
-      );
-      const TaskData = response.data.find((task) => task._id === taskId);
-
-      if (TaskData) setTask(TaskData);
-      else setError("Task not found.");
+      const response = await axios.get(`${process.env.REACT_APP_API}/api/task`, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      const taskData = response.data.find((t) => t._id === taskId);
+      if (taskData) {
+        // Sanitize description when fetching
+        const cleanDescription = sanitizeHtml(taskData.description || "", {
+          allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+          allowedAttributes: {},
+          disallowedTagsMode: 'discard',
+        });
+        setTask({
+          ...taskData,
+          description: cleanDescription,
+          dueDate: taskData.dueDate ? taskData.dueDate.split("T")[0] : "",
+        });
+      } else {
+        setError("Task not found.");
+      }
     } catch (err) {
-      setError("Failed to fetch subtask.");
+      setError(err.response?.data?.message || "Failed to fetch task.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -46,92 +58,121 @@ const ModifyTask = ({ auth, setTasks, taskId , onClose}) => {
     setTask({ ...task, [name]: value });
   };
 
+  const handleDescriptionChange = (value) => {
+    // Store raw HTML from ReactQuill without sanitization
+    setTask({ ...task, description: value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
+      // Sanitize description before submitting
+      const cleanDescription = sanitizeHtml(task.description, {
+        allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+        allowedAttributes: {},
+        disallowedTagsMode: 'discard',
+      });
+      const sanitizedTask = { ...task, description: cleanDescription };
+
       const url = `${process.env.REACT_APP_API}/api/task/update-task/${taskId}`;
-      const response = await axios.put(url, task, {
+      const response = await axios.put(url, sanitizedTask, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
-  
-      // Ensure that `response.data.Task` exists
+
       if (response.data && response.data.task) {
         setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task._id === taskId ? { ...task, ...response.data.task } : task
+          prevTasks.map((t) =>
+            t._id === taskId ? response.data.task : t
           )
         );
+        toast.success("Task updated successfully!");
+        onClose();
+      } else {
+        throw new Error("Invalid response from server.");
       }
-  
-      toast.success("Task updated successfully!");
-      onClose(); // Close modal after success
     } catch (err) {
-      toast.error("Error updating task.");
+      const errorMessage = err.response?.data?.message || "Error updating task.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
-  
+
+  // Quill toolbar configuration (same as ModifyProject.jsx)
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean'],
+    ],
+  };
 
   return (
-    <div className="w-96 bg-white rounded-2xl shadow-lg p-8 relative">
-      <button
-        className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
-        onClick={onClose}
-      >
-        ✖
-      </button>
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Edit Task</h2>
+    <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-800">Edit Task</h2>
+        <button
+          className="text-gray-500 hover:text-gray-700 text-xl font-medium"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+
       {loading ? (
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-gray-500 text-center py-4">Loading...</p>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && <p className="text-red-500 font-medium">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
               name="title"
-              value={task?.title || ""}
+              value={task.title || ""}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              placeholder="Enter the title"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              placeholder="Enter task title"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Description</label>
-            <textarea
-              name="description"
-              value={task?.description || ""}
-              onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              placeholder="Enter the description"
-              required
-            ></textarea>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <ReactQuill
+              value={task.description || ""}
+              onChange={handleDescriptionChange}
+              className="bg-white"
+              theme="snow"
+              modules={quillModules}
+              placeholder="Enter task description"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Due Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
             <input
               type="date"
               name="dueDate"
-              value={task?.dueDate ? task.dueDate.split("T")[0] : ""}
+              value={task.dueDate || ""}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
-              value={task?.status || "To Do"}
+              value={task.status || "To Do"}
               onChange={handleChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               required
             >
               <option value="To Do">To Do</option>
@@ -143,7 +184,7 @@ const ModifyTask = ({ auth, setTasks, taskId , onClose}) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 text-white py-3 px-5 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
+            className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50 transition"
           >
             {loading ? "Saving..." : "Save Changes"}
           </button>

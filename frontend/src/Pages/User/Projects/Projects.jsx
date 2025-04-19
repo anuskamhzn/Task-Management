@@ -21,8 +21,8 @@ const Projects = () => {
   const [openMenu, setOpenMenu] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, projectId: null, projectTitle: '' });
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for ViewProjectDetail popup
-  const [viewProjectId, setViewProjectId] = useState(null); // Track project to view
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [viewProjectId, setViewProjectId] = useState(null);
 
   useEffect(() => {
     setProjects([]);
@@ -32,6 +32,21 @@ const Projects = () => {
       fetchProjects();
     }
   }, [auth]);
+
+  // Prevent scrolling when modals are open
+  useEffect(() => {
+    if (isDetailModalOpen || isCreateModalOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+    } else {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, [isDetailModalOpen, isCreateModalOpen]);
 
   const fetchProjects = async () => {
     try {
@@ -58,7 +73,7 @@ const Projects = () => {
 
   const handleModify = (projectId) => {
     setSelectedProject(projectId);
-    setOpenMenu(null); // Close dropdown after selecting modify
+    setOpenMenu(null);
   };
 
   const handleDelete = async (projectId) => {
@@ -77,11 +92,11 @@ const Projects = () => {
 
   const openConfirmDialog = (projectId, projectTitle) => {
     setConfirmDialog({ isOpen: true, projectId, projectTitle });
-    setOpenMenu(null); // Close dropdown when opening confirm dialog
+    setOpenMenu(null);
   };
 
   const handleCloseModal = () => {
-    setSelectedProject(null); // Close modal
+    setSelectedProject(null);
   };
 
   const closeConfirmDialog = () => {
@@ -94,7 +109,7 @@ const Projects = () => {
   };
 
   const handleMenuToggle = (e, projectId) => {
-    e.stopPropagation(); // Prevent card click from triggering when clicking the menu icon
+    e.stopPropagation();
     setOpenMenu(openMenu === projectId ? null : projectId);
   };
 
@@ -112,23 +127,21 @@ const Projects = () => {
 
   const handleViewDetail = (projectId) => {
     setViewProjectId(projectId);
-    setIsDetailModalOpen(true); // Open ViewProjectDetail popup
+    setIsDetailModalOpen(true);
     setOpenMenu(null);
   };
 
   const handleCloseDetailModal = () => {
-    setIsDetailModalOpen(false); // Close ViewProjectDetail popup
+    setIsDetailModalOpen(false);
     setViewProjectId(null);
   };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside className="w-64 bg-gray-900 text-white shadow-lg fixed inset-y-0 left-0">
         <Sidebar />
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col ml-64">
         <Navbar />
         <div className="p-6">
@@ -161,7 +174,7 @@ const Projects = () => {
               {projects.map((project) => (
                 <div
                   key={project._id}
-                  onClick={() => handleViewDetail(project._id)} // Card click opens ViewProjectDetail
+                  onClick={() => handleViewDetail(project._id)}
                   className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200 cursor-pointer"
                   onMouseLeave={() => {
                     setHoveredProject(null);
@@ -169,33 +182,32 @@ const Projects = () => {
                   }}
                 >
                   <h3 className="text-lg font-semibold text-gray-800 mb-2 truncate">{project.title}</h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{parse(project.description)}</p>
+                  <div className="text-gray-600 text-sm mb-4 line-clamp-2 description-content">
+                    {parse(project.description)}
+                  </div>
                   <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                     <span>Due: {new Date(project.dueDate).toLocaleDateString()}</span>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        project.status === 'Completed'
+                      className={`px-2 py-1 rounded-full text-xs ${project.status === 'Completed'
                           ? 'bg-green-100 text-green-700'
                           : 'bg-yellow-100 text-yellow-700'
-                      }`}
+                        }`}
                     >
                       {project.status}
                     </span>
                   </div>
 
-                  {/* View Project Button (NavLink to Kanban) */}
                   <NavLink
                     to={`/dashboard/project/subproject/${project._id}`}
-                    onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-block bg-violet-600 hover:bg-violet-700 text-white text-sm px-4 py-2 rounded-md transition"
                   >
                     View Project
                   </NavLink>
 
-                  {/* Three Dots Icon */}
                   <div
                     className="absolute top-3 right-3 cursor-pointer hidden group-hover:block"
-                    onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with menu
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <FaEllipsisV
                       onClick={(e) => handleMenuToggle(e, project._id)}
@@ -203,23 +215,22 @@ const Projects = () => {
                     />
                   </div>
 
-                  {/* Dropdown Menu */}
                   {openMenu === project._id && (
                     <div
                       className="absolute right-3 top-8 w-32 bg-white shadow-lg border border-gray-200 rounded-md z-10"
-                      onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with dropdown
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         onClick={() => handleModify(project._id)}
-                         className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-teal-600 hover:bg-teal-50"
                       >
-                        <FaEdit/> Modify 
+                        <FaEdit /> Modify
                       </button>
                       <button
                         onClick={() => openConfirmDialog(project._id, project.title)}
                         className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                        >
-                        <FaTrashAlt />Delete
+                      >
+                        <FaTrashAlt /> Delete
                       </button>
                     </div>
                   )}
@@ -230,14 +241,12 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Modal for Creating Project */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <CreateProjectForm onClose={handleCloseCreateProjectModal} onProjectCreated={handleProjectCreated} />
         </div>
       )}
 
-      {/* Modal for Modifying Project */}
       {selectedProject && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ModifyProject
@@ -249,14 +258,12 @@ const Projects = () => {
         </div>
       )}
 
-      {/* Modal for Viewing Project Details */}
       {isDetailModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ViewProjectDetail projectId={viewProjectId} onClose={handleCloseDetailModal} />
         </div>
       )}
 
-      {/* Custom Confirmation Dialog */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all">
@@ -282,6 +289,21 @@ const Projects = () => {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .description-content ul,
+        .description-content ol {
+          list-style: disc inside;
+          padding-left: 1rem;
+          margin: 0.5rem 0;
+        }
+        .description-content ol {
+          list-style: decimal inside;
+        }
+        .description-content li {
+          margin-bottom: 0.25rem;
+        }
+      `}</style>
     </div>
   );
 };

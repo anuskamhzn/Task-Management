@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import ModifyTask from "../Modify/ModifyTask";
 import CreateTask from "../Create/CreateTask";
 import ViewTaskDetail from './ViewTaskDetail';
+import parse from 'html-react-parser';
 
 const Tasks = () => {
   const [auth] = useAuth();
@@ -32,6 +33,21 @@ const Tasks = () => {
       fetchTasks();
     }
   }, [auth]);
+
+  // Prevent scrolling when modals are open
+  useEffect(() => {
+    if (isCreateModalOpen || isCreateModalOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+    } else {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, [isCreateModalOpen, isCreateModalOpen]);
 
   const fetchTasks = async () => {
     try {
@@ -165,7 +181,9 @@ const Tasks = () => {
                   }}
                 >
                   <h3 className="text-lg font-semibold text-gray-800 mb-2 truncate">{task.title}</h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{task.description}</p>
+                  <div className="text-gray-600 text-sm mb-4 line-clamp-1 description-content">
+                    {parse(task.description)}
+                  </div>
                   <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                     <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                     <span
@@ -274,6 +292,20 @@ const Tasks = () => {
           </div>
         </div>
       )}
+      <style jsx>{`
+        .description-content ul,
+        .description-content ol {
+          list-style: disc inside;
+          padding-left: 1rem;
+          margin: 0.5rem 0;
+        }
+        .description-content ol {
+          list-style: decimal inside;
+        }
+        .description-content li {
+          margin-bottom: 0.25rem;
+        }
+      `}</style>
     </div>
   );
 };

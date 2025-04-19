@@ -86,7 +86,7 @@ const ViewSubtaskDetail = ({ mainTaskId, subTaskId, onClose }) => {
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Description</h3>
-          <p className="text-gray-600">
+          <p className="text-gray-600 description-content">
             {subTask.description ? parse(subTask.description) : "No description available."}
           </p>
         </div>
@@ -99,9 +99,8 @@ const ViewSubtaskDetail = ({ mainTaskId, subTaskId, onClose }) => {
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Status</h3>
           <span
-            className={`px-2 py-1 rounded-full text-sm ${
-              subTask.status === "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-            }`}
+            className={`px-2 py-1 rounded-full text-sm ${subTask.status === "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+              }`}
           >
             {subTask.status}
           </span>
@@ -121,6 +120,20 @@ const ViewSubtaskDetail = ({ mainTaskId, subTaskId, onClose }) => {
           Close
         </button>
       </div>
+      <style jsx>{`
+    .description-content ul,
+    .description-content ol {
+      list-style: disc inside;
+      padding-left: 1rem;
+      margin: 0.5rem 0;
+    }
+    .description-content ol {
+      list-style: decimal inside;
+    }
+    .description-content li {
+      margin-bottom: 0.25rem;
+    }
+  `}</style>
     </div>
   );
 };

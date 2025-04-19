@@ -72,7 +72,7 @@ const ViewProjectDetail = ({ projectId, onClose }) => {
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Description</h3>
-          <p className="text-gray-600">{parse(project.description)}</p>
+          <div className="text-gray-600 description-content">{parse(project.description)}</div>
         </div>
 
         <div>
@@ -93,7 +93,7 @@ const ViewProjectDetail = ({ projectId, onClose }) => {
 
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Project Lead</h3>
-          <p className="text-gray-600">{project.owner?.username} ({project.owner?.email})</p>
+          <p className="text-gray-600">{project.owner?.name} ({project.owner?.email})</p>
         </div>
 
         <div>
@@ -133,6 +133,21 @@ const ViewProjectDetail = ({ projectId, onClose }) => {
           Close
         </button>
       </div>
+
+      <style jsx>{`
+        .description-content ul,
+        .description-content ol {
+          list-style: disc inside;
+          padding-left: 1rem;
+          margin: 0.5rem 0;
+        }
+        .description-content ol {
+          list-style: decimal inside;
+        }
+        .description-content li {
+          margin-bottom: 0.25rem;
+        }
+      `}</style>
     </div>
   );
 };

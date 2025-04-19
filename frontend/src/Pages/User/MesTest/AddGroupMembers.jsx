@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../../context/auth';
+import toast from 'react-hot-toast';
 
 const AddGroupMembers = ({ groupId, onClose, onMembersAdded }) => {
   const [auth] = useAuth();
@@ -9,7 +10,6 @@ const AddGroupMembers = ({ groupId, onClose, onMembersAdded }) => {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
 
   // Handle adding a single email to the list
   const handleAddEmail = () => {
@@ -35,11 +35,11 @@ const AddGroupMembers = ({ groupId, onClose, onMembersAdded }) => {
     e.preventDefault();
     if (emails.length === 0) {
       setError('Please add at least one email.');
+      toast.error('Please add at least one email.');
       return;
     }
     setLoading(true);
     setError(null);
-    setSuccessMessage(null);
 
     try {
       const response = await axios.post(
@@ -54,15 +54,24 @@ const AddGroupMembers = ({ groupId, onClose, onMembersAdded }) => {
       );
 
       if (response.data.success) {
-        setSuccessMessage(response.data.message);
-        if (onMembersAdded) onMembersAdded(response.data.group); // Update parent state
-        setEmails([]); // Clear the list after success
+        if (response.data.addedMembers === 0) {
+          // Treat as error if no members were added (e.g., unregistered emails)
+          setError(response.data.message);
+          toast.error(response.data.message);
+        } else {
+          toast.success(response.data.message || 'Members added successfully!');
+          if (onMembersAdded) onMembersAdded(response.data.group); // Update parent state
+          onClose(); // Close modal on success
+        }
       } else {
         setError(response.data.message || 'Failed to add members');
+        toast.error(response.data.message || 'Failed to add members');
       }
     } catch (err) {
       console.error('Error adding members:', err);
-      setError('An error occurred while adding members');
+      const errorMessage = err.response?.data?.message || 'An error occurred while adding members';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -100,7 +109,6 @@ const AddGroupMembers = ({ groupId, onClose, onMembersAdded }) => {
           </div>
         </div>
         {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
-        {successMessage && <p className="text-green-500 text-sm mb-2">{successMessage}</p>}
         {emails.length > 0 && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700">Members to Add</label>

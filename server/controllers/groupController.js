@@ -8,20 +8,94 @@ const mongoose = require('mongoose');
 
 exports.createGroup = async (req, res) => {
   try {
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ message: 'Group name is required' });
+    const { name, emails } = req.body;
+    const userId = req.user.id;
 
-    const group = new Group({
+    // Validate group name
+    if (!name) {
+      return res.status(400).json({ message: 'Group name is required' });
+    }
+
+    // Process emails if provided
+    let newMembers = [];
+    let failedEmails = [];
+    if (emails && Array.isArray(emails) && emails.length > 0) {
+      // Find users by their emails
+      const users = await User.find({ email: { $in: emails } });
+
+      // Identify registered and unregistered emails
+      const registeredEmails = users.map(user => user.email);
+      failedEmails = emails.filter(email => !registeredEmails.includes(email));
+
+      // If there are any unregistered emails, return an error immediately
+      if (failedEmails.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Users with emails ${failedEmails.join(', ')} not found. All provided emails must be registered.`,
+        });
+      }
+
+      // Filter out the creator (if their email is included) to avoid duplication
+      newMembers = users
+        .filter(user => user._id.toString() !== userId) // Exclude creator
+        .map(user => user._id);
+
+      // Require at least one valid member if emails are provided
+      if (newMembers.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one valid member must be added when providing emails.',
+        });
+      }
+    }
+
+    // Initialize group data with creator as the first member
+    const groupData = {
       name,
-      creator: req.user.id,
-      members: [req.user.id]
-    });
+      creator: userId,
+      members: [userId], // Creator is always a member
+    };
 
+    // Add new members to the group
+    if (newMembers.length > 0) {
+      groupData.members.push(...newMembers);
+    }
+
+    // Create and save the group
+    const group = new Group(groupData);
     await group.save();
-    res.status(201).json({ success: true, group });
+
+    // Socket.IO notification for new members (if any)
+    const io = req.app.get('io');
+    if (io && newMembers.length > 0) {
+      io.to(`group_${group._id}`).emit('memberAdded', {
+        groupId: group._id,
+        newMembers: newMembers.map(memberId => ({ _id: memberId })),
+        addedBy: userId,
+      });
+      newMembers.forEach(memberId => {
+        io.to(memberId.toString()).emit('addedToGroup', {
+          groupId: group._id,
+          groupName: group.name,
+        });
+      });
+    }
+
+    // Prepare response message
+    let message = 'Group created successfully';
+    if (newMembers.length > 0) {
+      message += `. ${newMembers.length} member(s) added.`;
+    }
+
+    res.status(201).json({
+      success: true,
+      group,
+      addedMembers: newMembers.length,
+      message,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Error creating group' });
+    console.error('Error creating group:', error);
+    res.status(500).json({ success: false, message: 'Error creating group', error: error.message });
   }
 };
 

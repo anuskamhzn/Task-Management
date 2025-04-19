@@ -72,7 +72,7 @@ const ViewTaskDetail = ({ taskId, onClose }) => {
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-700">Description</h3>
-          <p className="text-gray-600">{parse(task.description)}</p>
+          <div className="text-gray-600 description-content">{parse(task.description)}</div>
         </div>
 
         <div>
@@ -105,6 +105,20 @@ const ViewTaskDetail = ({ taskId, onClose }) => {
           Close
         </button>
       </div>
+      <style jsx>{`
+    .description-content ul,
+    .description-content ol {
+      list-style: disc inside;
+      padding-left: 1rem;
+      margin: 0.5rem 0;
+    }
+    .description-content ol {
+      list-style: decimal inside;
+    }
+    .description-content li {
+      margin-bottom: 0.25rem;
+    }
+  `}</style>
     </div>
   );
 };

@@ -1,37 +1,37 @@
-import { useState, useEffect } from "react"
-import axios from "axios"
-import { useAuth } from "../../context/auth"
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { useAuth } from "../../context/auth";
 
-export function Metrics() {
-  const [auth, setAuth] = useAuth()
-  const [activeTab, setActiveTab] = useState("task")
+export function Metrics({ refreshTrigger }) {
+  const [auth, setAuth] = useAuth();
+  const [activeTab, setActiveTab] = useState("task");
   const [taskMetrics, setTaskMetrics] = useState([
     { title: "Total Task", value: "0", color: "bg-gray-100 border-gray-200", icon: "total" },
     { title: "To Do", value: "0", color: "bg-blue-50 border-blue-200", icon: "todo" },
     { title: "In Progress", value: "0", color: "bg-amber-50 border-amber-200", icon: "progress" },
     { title: "Completed", value: "0", color: "bg-emerald-50 border-emerald-200", icon: "completed" },
-  ])
+  ]);
   const [projectMetrics, setProjectMetrics] = useState([
     { title: "Total Project", value: "0", color: "bg-gray-100 border-gray-200", icon: "total" },
     { title: "To Do", value: "0", color: "bg-blue-50 border-blue-200", icon: "todo" },
     { title: "In Progress", value: "0", color: "bg-amber-50 border-amber-200", icon: "progress" },
     { title: "Completed", value: "0", color: "bg-emerald-50 border-emerald-200", icon: "completed" },
-  ])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  ]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchMetrics = async () => {
     if (!auth.token) {
-      return
+      setLoading(false);
+      return;
     }
     try {
-      // Fetch task metrics
       const taskResponse = await axios.get(`${process.env.REACT_APP_API}/api/task/ts/status-counts`, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
-      })
-      const taskData = taskResponse.data.statusCounts
+      });
+      const taskData = taskResponse.data.statusCounts;
 
       setTaskMetrics([
         {
@@ -53,15 +53,14 @@ export function Metrics() {
           color: "bg-emerald-50 border-emerald-200",
           icon: "completed",
         },
-      ])
+      ]);
 
-      // Fetch project metrics
       const projectResponse = await axios.get(`${process.env.REACT_APP_API}/api/project/pro/total-counts`, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
-      })
-      const projectData = projectResponse.data.statusCounts
+      });
+      const projectData = projectResponse.data.statusCounts;
 
       setProjectMetrics([
         {
@@ -83,22 +82,21 @@ export function Metrics() {
           color: "bg-emerald-50 border-emerald-200",
           icon: "completed",
         },
-      ])
+      ]);
 
-      setLoading(false)
+      setLoading(false);
     } catch (err) {
-      setError(err.message || "Failed to fetch metrics")
-      setLoading(false)
+      setError(err.message || "Failed to fetch metrics");
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchMetrics()
-  }, [])
+    fetchMetrics();
+  }, [refreshTrigger]); // Refetch when refreshTrigger changes
 
-  const metrics = activeTab === "task" ? taskMetrics : projectMetrics
+  const metrics = activeTab === "task" ? taskMetrics : projectMetrics;
 
-  // Function to render the appropriate icon based on the metric type
   const renderIcon = (iconType) => {
     switch (iconType) {
       case "total":
@@ -116,7 +114,7 @@ export function Metrics() {
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
           </svg>
-        )
+        );
       case "todo":
         return (
           <svg
@@ -131,22 +129,22 @@ export function Metrics() {
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-        )
-        case "progress":
-          return (
-            <svg
-              className="w-5 h-5 text-amber-600"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 2h14M5 22h14M8 5h8v7a4 4 0 0 1-8 0V5z"/>
-              <path d="M8 19h8v-7a4 4 0 0 0-8 0v7z"/>
-            </svg>
-          )
+        );
+      case "progress":
+        return (
+          <svg
+            className="w-5 h-5 text-amber-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 2h14M5 22h14M8 5h8v7a4 4 0 0 1-8 0V5z" />
+            <path d="M8 19h8v-7a4 4 0 0 0-8 0v7z" />
+          </svg>
+        );
       case "completed":
         return (
           <svg
@@ -160,11 +158,11 @@ export function Metrics() {
           >
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-lg border">
@@ -234,7 +232,6 @@ export function Metrics() {
           </button>
         </div>
       </div>
-
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <svg
@@ -285,5 +282,5 @@ export function Metrics() {
         </div>
       )}
     </div>
-  )
+  );
 }
