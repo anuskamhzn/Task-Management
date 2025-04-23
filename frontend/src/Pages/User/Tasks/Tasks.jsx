@@ -180,7 +180,7 @@ const Tasks = () => {
                     setOpenMenu(null);
                   }}
                 >
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2 truncate">{task.title}</h3>
+                  <h3 className="text-lg font-bold text-gray-700 mb-2 truncate">{task.title}</h3>
                   <div className="text-gray-600 text-sm mb-4 line-clamp-1 description-content">
                     {parse(task.description)}
                   </div>
@@ -304,6 +304,26 @@ const Tasks = () => {
         }
         .description-content li {
           margin-bottom: 0.25rem;
+        }
+.description-content h1 {
+          font-size: 1.5rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h2 {
+          font-size: 1.25rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h3 {
+          font-size: 1.1rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h4 {
+          font-size: 1rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
         }
       `}</style>
     </div>

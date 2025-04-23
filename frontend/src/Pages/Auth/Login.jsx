@@ -9,7 +9,8 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);  
+  const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);  
   const navigate = useNavigate(); 
   const location = useLocation();
   
@@ -26,6 +27,7 @@ const Login = () => {
   
     try {
       setLoading(true);
+      setNeedsVerification(false); // Reset verification state
   
       const response = await axios.post(
         `${process.env.REACT_APP_API}/api/auth/login`,
@@ -58,8 +60,21 @@ const Login = () => {
       setLoading(false);
       console.error(error);
   
+      // Check if this is an email verification issue
+      if (error.response?.data?.needsVerification) {
+        setNeedsVerification(true);
+        setError(error.response.data.message);
+        toast.error(error.response.data.message);
+        
+        // Check if there's a redirect URL for OTP verification
+        if (error.response?.data?.redirect) {
+          setTimeout(() => {
+            navigate(`/verify-otp?email=${encodeURIComponent(email)}`);
+          }, 2000);
+        }
+      }
       // Check if the error has a response and display that specific error message
-      if (error.response && error.response.data && error.response.data.message) {
+      else if (error.response && error.response.data && error.response.data.message) {
         toast.error(error.response.data.message);
       } else {
         toast.error("Something went wrong. Please try again.");
@@ -67,7 +82,35 @@ const Login = () => {
     }
   };
   
-  
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `${process.env.REACT_APP_API}/api/auth/resend-otp`,
+        { email }
+      );
+      
+      if (response.data.success) {
+        toast.success("Verification code sent. Please check your inbox.");
+        // Redirect to OTP verification page
+        navigate(`/verify-otp?email=${encodeURIComponent(email)}`);
+      } else {
+        toast.error(response.data.message || "Failed to send verification code");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error.response?.data?.message || "Failed to send verification code"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -85,6 +128,21 @@ const Login = () => {
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Welcome Back</h2>
           <p className="text-center text-gray-600 mb-4">Please login to your account</p>
+          
+          {/* Verification Notice */}
+          {needsVerification && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+              <p className="font-medium">Email verification required</p>
+              <p className="text-sm mt-1">Please verify your email before logging in.</p>
+              <button
+                onClick={handleResendVerification}
+                className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500"
+              >
+                Resend verification code
+              </button>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Email</label>
@@ -119,8 +177,9 @@ const Login = () => {
             <button
               type="submit"
               className="w-full py-3 font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
           <div className="mt-4 text-center">

@@ -296,7 +296,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
         onClick={() => handleViewProjectDetail(project._id)}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800 group-hover:text-violet-900 transition-colors duration-200">{project.title}</h3>
+          <h3 className="text-lg font-bold text-gray-700 group-hover:text-violet-900 transition-colors duration-200">{project.title}</h3>
           {hoveredProject === project._id && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <FaEllipsisV
@@ -366,7 +366,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
         onClick={() => handleViewTaskDetail(task._id)}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800 group-hover:text-purple-800 transition-colors duration-200">{task.title}</h3>
+          <h3 className="text-lg font-bold text-gray-800 group-hover:text-purple-800 transition-colors duration-200">{task.title}</h3>
           {hoveredTask === task._id && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <FaEllipsisV
@@ -436,7 +436,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <div className="w-3 h-3 rounded-full bg-violet-500"></div>
             <h2 className="text-xl font-bold text-gray-800">To Do</h2>
             <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
               {toDoProjects.length + toDoTasks.length}
@@ -445,7 +445,7 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
           <div className="relative inline-block">
             <button
               onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors duration-200"
+              className="p-2 text-purple-600 hover:bg-blue-50 rounded-full transition-colors duration-200"
             >
               <FaPlusCircle className="text-xl" />
             </button>
@@ -631,6 +631,26 @@ const Kanban = ({ tasks, projects, setProjects, setTasks }) => {
   .description-content li {
     margin-bottom: 0.25rem;
   }
+    .description-content h1 {
+          font-size: 1.5rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h2 {
+          font-size: 1.25rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h3 {
+          font-size: 1.1rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h4 {
+          font-size: 1rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
 `}</style>
     </div>
   );

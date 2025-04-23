@@ -1,6 +1,10 @@
 const express = require('express');
-const { register, login, userInfo, forgotPassword, resetPassword, userInfoById } = require('../controllers/authController');
+const { register, login, 
+    userInfo, forgotPassword, 
+    resetPassword, userInfoById, 
+    verifyOTP, resendOTP, updateProfileController } = require('../controllers/authController');
 const { authenticate, isAdmin } = require('../middleware/authMiddleware');
+const formidable = require('express-formidable'); // for handling file uploads
 
 const router = express.Router();
 
@@ -14,13 +18,10 @@ router.post('/reset-password', resetPassword);
 router.get('/user-info',authenticate,userInfo); // Protect user info route
 router.get('/user-info/:userId',userInfoById); // Protect user info route
 
-// Authentication Check Routes
-router.get('/user-auth', authenticate, (req, res) => {
-    res.status(200).send({ ok: true });
-});
+// Middleware order: First parse the form data (file uploads, fields), then authenticate the user
+router.put('/update-profile', formidable(), authenticate, updateProfileController );
 
-router.get('/admin-auth', authenticate, isAdmin, (req, res) => {
-    res.status(200).send({ ok: true });
-});
+router.post('/verify-otp', verifyOTP); // New OTP verification route
+router.post('/resend-otp', resendOTP); // New route to resend OTP
 
 module.exports = router;

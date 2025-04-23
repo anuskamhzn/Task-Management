@@ -6,12 +6,19 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   confirmPassword : {type: String, required:true},
   phone: { type: String, required: true},
+  location: { type: String, required: true},
   photo: {
     data: Buffer, 
     contentType: String, 
   },
   initials: { type: String }, // New field for initials
   contacts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // List of added users
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationOTP: { type: String },
+  verificationOTPExpires: { type: Date },
   role: {
     type: String,
     default: 'User',

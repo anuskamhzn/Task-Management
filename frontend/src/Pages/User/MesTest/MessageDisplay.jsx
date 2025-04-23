@@ -89,7 +89,7 @@ const MessageDisplay = ({
   let lastMessageDate = '';
 
   return (
-    <div className="flex-1 bg-gradient-to-b from-gray-100 to-white p-4 rounded-lg shadow-lg overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+    <div className="flex-1 bg-gradient-to-b from-white to-white p-4 rounded-lg shadow-lg overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
       {currentChat ? (
         messages.length === 0 ? (
           <p className="text-center text-gray-500 italic text-lg">No messages yet. Start the conversation!</p>

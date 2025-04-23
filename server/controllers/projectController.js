@@ -264,7 +264,7 @@ exports.getAllProjects = async (req, res) => {
         transform: (doc) => {
           if (!doc) return null;
           return {
-            ...doc, // Use doc directly since it's a plain object due to .lean()
+            ...doc,
             initials: doc.initials || getInitials(doc.name),
             photo: doc.photo && doc.photo.data
               ? {
@@ -275,20 +275,21 @@ exports.getAllProjects = async (req, res) => {
           };
         },
       },
-    }).lean(); // Use lean to get plain objects
+    }).lean();
 
     if (!projects || projects.length === 0) {
       return res.status(200).json([]);
     }
 
-    // Ensure description is returned as-is (HTML content)
     const formattedProjects = projects.map(project => ({
       ...project,
-      description: project.description, // Preserve HTML content
-      members: project.members.map(member => ({
-        ...member,
-        initials: member.initials || getInitials(member.name) || 'U'
-      }))
+      description: project.description,
+      members: project.members
+        .filter(member => member != null) // Filter out null members
+        .map(member => ({
+          ...member,
+          initials: member.initials || getInitials(member.name) || 'U'
+        }))
     }));
 
     res.status(200).json(formattedProjects);
@@ -1070,7 +1071,7 @@ exports.getProjectById = async (req, res) => {
           transform: (doc) => {
             if (!doc) return null;
             return {
-              ...doc, // Use doc directly since it's a plain object
+              ...doc,
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
@@ -1089,7 +1090,7 @@ exports.getProjectById = async (req, res) => {
           transform: (doc) => {
             if (!doc) return null;
             return {
-              ...doc, // Use doc directly since it's a plain object
+              ...doc,
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
@@ -1112,11 +1113,13 @@ exports.getProjectById = async (req, res) => {
     // Ensure description is returned as-is (HTML content)
     const formattedProject = {
       ...project,
-      description: project.description, // Preserve HTML content
-      members: project.members.map(member => ({
-        ...member,
-        initials: member.initials || getInitials(member.name) || 'U'
-      }))
+      description: project.description,
+      members: project.members
+        .filter(member => member != null) // Filter out null members
+        .map(member => ({
+          ...member,
+          initials: member.initials || getInitials(member.name) || 'U'
+        }))
     };
 
     res.status(200).json(formattedProject);

@@ -25,11 +25,11 @@ const GroupChat = ({
           const response = await axios.get(`${process.env.REACT_APP_API}/api/group-chat/messages/${currentChat.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          console.log('Fetched group messages:', response.data.messages.map(m => ({
+          response.data.messages.map(m => ({
             id: m._id,
             groupId: m.group?._id,
             senderId: m.sender?._id,
-          })));
+          }));
           setMessages(response.data.messages || []);
         } catch (error) {
           console.error('Error fetching group messages:', error);

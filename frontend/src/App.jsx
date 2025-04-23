@@ -3,6 +3,7 @@ import { Route, Routes, NavLink } from 'react-router-dom';
 import { Toaster } from "react-hot-toast";
 import ProjectGantt from './Components/Dashboard/SubProject/GanttChart';
 import TaskGanttChart from './Components/Dashboard/SubTask/TaskGanttChart';
+import VerifyOTP from './Pages/Auth/VerifyOTP';
 
 // Lazy load components
 const Login = React.lazy(() => import('./Pages/Auth/Login'));
@@ -51,6 +52,7 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/forget-pass" element={<ForgetPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
 
           {/* User Routes */}
           <Route path="/dashboard" element={<UserRoutes />}>

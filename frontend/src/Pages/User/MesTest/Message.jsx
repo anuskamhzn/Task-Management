@@ -576,13 +576,6 @@ const Message = () => {
         toast.error('File exceeds 7.5MB limit');
         return;
       }
-
-      // if (chatType === 'private') {
-      //   socket.emit(replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage', payload);
-      // } else if (chatType === 'group') {
-      //   socket.emit(replyToMessageId ? 'sendGroupMessageReply' : 'sendGroupMessage', payload);
-      // }
-
       // Emit the message via socket and listen for response
       const event = chatType === 'private'
         ? (replyToMessageId ? 'sendPrivateMessageReply' : 'sendPrivateMessage')
@@ -640,14 +633,14 @@ const Message = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-100">
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 bg-gray-800 text-white shrink-0">
           <Sidebar onLogout={handleLogout} />
         </aside>
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-gray-50">
           <Navbar />
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden ">
             {isDataLoaded ? (
               <ChatList
                 key={users.map(u => u.id).join('-')}
@@ -667,11 +660,11 @@ const Message = () => {
               />
             ) : (
               <div className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
-                <p className="text-sm text-gray-500">Loading chats...</p>
+                {/* <p className="text-sm text-gray-500">Loading chats...</p> */}
               </div>
             )}
             <div className="flex-1 flex flex-col p-6">
-              <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
+              <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2 ">
                 <h2 className="text-xl font-semibold text-gray-800">
                   {currentChat ? (
                     <>
@@ -679,7 +672,7 @@ const Message = () => {
                       {chatType !== 'group' ? (
                         <button
                           onClick={handleUserInfoClick}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-violet-700 hover:text-violet-800"
                         >
                           {currentChat.name || currentChat.name}
                         </button>
@@ -693,8 +686,8 @@ const Message = () => {
                 </h2>
                 <h2 className="text-xl font-semibold text-gray-800">
                   {currentChat && chatType === 'group' ? (
-                    <NavLink to="" className="inline-flex items-center text-blue-600 hover:text-blue-800">
-                      <button onClick={handleGroupInfoClick} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <NavLink to="" className="inline-flex items-center text-violet-700 hover:text-violet-800">
+                      <button onClick={handleGroupInfoClick} className="px-4 py-2 bg-violet-700 text-white rounded-lg hover:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Manage
                       </button>
                     </NavLink>

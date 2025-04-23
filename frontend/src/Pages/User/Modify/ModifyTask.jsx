@@ -15,12 +15,24 @@ const ModifyTask = ({ auth, setTasks, taskId, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Get today's date in YYYY-MM-DD format for min attribute
+  const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     if (auth && auth.user && taskId) {
       fetchTask();
     }
   }, [auth, taskId]);
+
+    // Prevent scrolling when modal is open
+    useEffect(() => {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+      return () => {
+        document.body.style.overflow = "auto";
+        document.body.style.height = "auto";
+      };
+    }, []);
 
   const fetchTask = async () => {
     if (!taskId) return;
@@ -162,6 +174,7 @@ const ModifyTask = ({ auth, setTasks, taskId, onClose }) => {
               name="dueDate"
               value={task.dueDate || ""}
               onChange={handleChange}
+              min={today}
               className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>

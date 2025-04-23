@@ -16,6 +16,9 @@ const CreateTask = ({ onClose, onTaskCreated }) => {
     status: "To Do",
   });
 
+  // Get today's date in YYYY-MM-DD format for min attribute
+  const today = new Date().toISOString().split("T")[0];
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setTaskData({ ...taskData, [name]: value });
@@ -116,6 +119,7 @@ const CreateTask = ({ onClose, onTaskCreated }) => {
               name="dueDate"
               value={taskData.dueDate}
               onChange={handleChange}
+              min={today}
               className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>

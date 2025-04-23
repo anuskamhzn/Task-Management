@@ -13,7 +13,10 @@ exports.setupSocket = (io) => {
     // Private message handler (unchanged, still using Message model)
     socket.on('sendPrivateMessage', async ({ recipientId, content, photo, file }) => {
       try {
-        if (!socket.user?.id) throw new Error('No sender ID');
+        // Validate sender ID
+        if (!socket.user?.id || !mongoose.isValidObjectId(socket.user.id)) {
+          throw new Error('Invalid or missing sender ID');
+        }
         if (!recipientId) throw new Error('No recipient ID');
 
         const messageData = {
@@ -93,68 +96,14 @@ exports.setupSocket = (io) => {
       }
     });
 
-    // socket.on('sendPrivateMessage', async ({ recipientId, content, photo, file }, callback) => {
-    //   try {
-    //     const userId = socket.user.id;
-    //     if (!userId || !recipientId) throw new Error('User ID or recipient ID missing');
-
-    //     const messageData = {
-    //       sender: userId,
-    //       recipient: recipientId,
-    //       content: content || '',
-    //       type: photo ? 'photo' : file ? 'file' : 'text',
-    //     };
-
-    //     if (photo) messageData.photo = photo;
-    //     if (file) messageData.file = file;
-
-    //     const message = new Message(messageData);
-    //     await message.save();
-
-    //     const populatedMessage = await Message.findById(message._id)
-    //       .populate('sender', 'name email')
-    //       .populate('recipient', 'name email');
-
-    //     io.to(recipientId).emit('newMessage', populatedMessage);
-    //     socket.emit('newMessage', populatedMessage);
-
-    //     // Update for recipient (as before)
-    //     const recipientUpdate = {
-    //       senderId: userId,
-    //       name: populatedMessage.sender.name,
-    //       email: populatedMessage.sender.email,
-    //       latestTimestamp: populatedMessage.timestamp,
-    //       unreadCount: 1,
-    //       totalCount: 1, // Will be adjusted on frontend if sender exists
-    //     };
-    //     // console.log(`Emitting recentSenderUpdate to recipient ${recipientId}:`, recipientUpdate);
-    //     io.to(recipientId).emit('recentSenderUpdate', recipientUpdate);
-
-    //     // Update for sender (new addition)
-    //     const senderUpdate = {
-    //       senderId: recipientId, // For sender, the "recent contact" is the recipient
-    //       name: populatedMessage.recipient.name,
-    //       email: populatedMessage.recipient.email,
-    //       latestTimestamp: populatedMessage.timestamp,
-    //       unreadCount: 0, // Sender’s messages are read by themselves
-    //       totalCount: 1, // Will be adjusted on frontend
-    //     };
-    //     // console.log(`Emitting recentSenderUpdate to sender ${userId}:`, senderUpdate);
-    //     io.to(userId).emit('recentSenderUpdate', senderUpdate);
-
-    //     if (callback) callback({ success: true, message: populatedMessage });
-    //   } catch (error) {
-    //     console.error('Error sending private message:', error);
-    //     socket.emit('error', { message: 'Error sending private message', error: error.message });
-    //     if (callback) callback({ success: false, message: error.message });
-    //   }
-    // });
-
-
     // New reply handler for private messages
     socket.on('sendPrivateMessageReply', async ({ recipientId, content, photo, file, parentMessageId }) => {
       try {
-        if (!socket.user?.id) throw new Error('No sender ID');
+        // if (!socket.user?.id) throw new Error('No sender ID');
+        // Validate sender ID
+        if (!socket.user?.id || !mongoose.isValidObjectId(socket.user.id)) {
+          throw new Error('Invalid or missing sender ID');
+        }
         if (!recipientId) throw new Error('No recipient ID');
         if (!parentMessageId) throw new Error('No parent message ID specified');
 
@@ -234,118 +183,6 @@ exports.setupSocket = (io) => {
         socket.emit('error', { message: 'Error sending reply', error: error.message });
       }
     });
-
-    // socket.on('sendPrivateMessageReply', async ({ recipientId, content, photo, file, parentMessageId }, callback) => {
-    //   try {
-    //     const userId = socket.user.id;
-    //     if (!userId) throw new Error('No sender ID');
-    //     if (!recipientId) throw new Error('No recipient ID');
-    //     if (!parentMessageId) throw new Error('No parent message ID specified');
-
-    //     const parentMessage = await Message.findById(parentMessageId);
-    //     if (!parentMessage) throw new Error('Parent message not found');
-
-    //     const isSenderOrRecipient = (
-    //       (parentMessage.sender.toString() === userId && parentMessage.recipient.toString() === recipientId) ||
-    //       (parentMessage.sender.toString() === recipientId && parentMessage.recipient.toString() === userId)
-    //     );
-    //     if (!isSenderOrRecipient) {
-    //       throw new Error('Parent message is not part of this conversation');
-    //     }
-
-    //     const messageData = {
-    //       sender: userId,
-    //       recipient: recipientId,
-    //       content: content || "",
-    //       type: "text",
-    //       replies: [parentMessageId], // Consistent with your controller naming
-    //     };
-
-    //     const MAX_SIZE = 10 * 1024 * 1024;
-    //     if (photo) {
-    //       const photoBuffer = Buffer.from(photo.data, 'base64');
-    //       if (photoBuffer.length > MAX_SIZE) throw new Error('Photo exceeds 10MB limit');
-    //       messageData.photo = { data: photoBuffer, contentType: photo.contentType || 'image/jpeg' };
-    //       messageData.type = "photo";
-    //     } else if (file) {
-    //       const fileBuffer = Buffer.from(file.data, 'base64');
-    //       if (fileBuffer.length > MAX_SIZE) throw new Error('File exceeds 10MB limit');
-    //       messageData.file = { data: fileBuffer, contentType: file.contentType || 'application/octet-stream', fileName: file.fileName || 'uploaded_file' };
-    //       messageData.type = "file";
-    //     } else if (!content || content.trim() === "") {
-    //       throw new Error('Message content cannot be empty when no file or photo is provided');
-    //     }
-
-    //     const message = new Message(messageData);
-    //     await message.save();
-
-    //     await Message.findByIdAndUpdate(parentMessageId, { $push: { replies: message._id } });
-
-    //     const populatedMessage = await Message.findById(message._id)
-    //       .populate('sender', 'name email')
-    //       .populate('recipient', 'name email');
-
-    //     // Emit new reply to both sender and recipient
-    //     io.to(recipientId).emit('newMessageReply', populatedMessage);
-    //     socket.emit('newMessageReply', populatedMessage);
-
-    //     // Update recentSenderUpdate for recipient
-    //     const recipientUpdate = {
-    //       senderId: userId,
-    //       name: populatedMessage.sender.name,
-    //       email: populatedMessage.sender.email,
-    //       latestTimestamp: populatedMessage.timestamp,
-    //       unreadCount: 1, // Increment unread count for recipient
-    //       totalCount: 1,  // Will be adjusted on frontend if sender exists
-    //     };
-    //     io.to(recipientId).emit('recentSenderUpdate', recipientUpdate);
-
-    //     // Update recentSenderUpdate for sender
-    //     const senderUpdate = {
-    //       senderId: recipientId, // For sender, the "recent contact" is the recipient
-    //       name: populatedMessage.recipient.name,
-    //       email: populatedMessage.recipient.email,
-    //       latestTimestamp: populatedMessage.timestamp,
-    //       unreadCount: 0, // Sender’s messages are read by themselves
-    //       totalCount: 1,  // Will be adjusted on frontend
-    //     };
-    //     io.to(userId).emit('recentSenderUpdate', senderUpdate);
-
-    //     if (callback) callback({ success: true, message: populatedMessage });
-    //   } catch (error) {
-    //     console.error('Error sending reply:', error);
-    //     socket.emit('error', { message: 'Error sending reply', error: error.message });
-    //     if (callback) callback({ success: false, message: error.message });
-    //   }
-    // });
-
-    // Delete private message (updated to handle replies)
-    // socket.on('deletePrivateMessage', async ({ messageId }) => {
-    //   try {
-    //     if (!socket.user?.id) throw new Error('No sender ID');
-    //     if (!messageId) throw new Error('No message ID provided');
-
-    //     const message = await Message.findById(messageId);
-    //     if (!message) throw new Error('Message not found');
-    //     if (message.sender.toString() !== socket.user.id) {
-    //       throw new Error('You can only delete your own messages');
-    //     }
-    //     if (message.deletedAt) throw new Error('Message already deleted');
-
-    //     message.deletedAt = new Date();
-    //     await message.save();
-
-    //     const updatedMessage = await Message.findById(messageId)
-    //       .populate('sender', 'name photo')
-    //       .populate('recipient', 'name photo');
-
-    //     io.to(message.recipient.toString()).emit('messageDeleted', updatedMessage);
-    //     socket.emit('messageDeleted', updatedMessage); // Send full updated message
-    //   } catch (error) {
-    //     console.error('Error deleting private message:', error);
-    //     socket.emit('error', { message: 'Error deleting private message', error: error.message });
-    //   }
-    // });
 
     socket.on('deletePrivateMessage', async ({ messageId }, callback) => {
       try {
@@ -566,7 +403,6 @@ exports.setupSocket = (io) => {
       }
     });
 
-    // Group message handler using GrpMsg model
     // Group message handler (updated to emit recentGroupUpdate)
     socket.on('sendGroupMessage', async ({ groupId, content, photo, file }) => {
       try {
@@ -650,7 +486,6 @@ exports.setupSocket = (io) => {
       }
     });
 
-    // Send group message reply
     // Group message reply handler (updated to emit recentGroupUpdate)
     socket.on('sendGroupMessageReply', async ({ groupId, content, photo, file, parentMessageId }) => {
       try {
@@ -738,45 +573,6 @@ exports.setupSocket = (io) => {
         socket.emit('error', { message: 'Error sending group message reply', error: error.message });
       }
     });
-
-    // Delete group message (updated to handle replies)
-    // socket.on('deleteGroupMessage', async ({ messageId }) => {
-    //   try {
-    //     if (!socket.user?.id) throw new Error('No sender ID');
-    //     if (!messageId) throw new Error('No message ID provided');
-
-    //     const message = await GrpMsg.findById(messageId);
-    //     if (!message) throw new Error('Message not found');
-    //     if (message.sender.toString() !== socket.user.id) {
-    //       throw new Error('You can only delete your own messages');
-    //     }
-    //     if (message.deletedAt) throw new Error('Message already deleted');
-
-    //     // Soft delete the message
-    //     message.deletedAt = new Date();
-    //     await message.save();
-
-    //     // If this message is a reply, remove it from the parent's replies array
-    //     if (message.replies && message.replies.length > 0) {
-    //       const parentMessageId = message.replies[0]; // Assuming one parent per reply
-    //       await GrpMsg.findByIdAndUpdate(parentMessageId, {
-    //         $pull: { replies: messageId },
-    //       });
-    //     }
-
-    //     const updatedMessage = await GrpMsg.findById(messageId)
-    //       .populate('sender', 'name photo')
-    //       .populate('recipient', 'name photo');
-
-    //     // Notify all group members
-    //     // io.to(`group_${message.group.toString()}`).emit('groupMessageDeleted', { messageId });
-    //     io.to(`group_${message.group.toString()}`).emit('groupMessageDeleted', updatedMessage);
-    //     socket.emit('groupMessageDeleted', { messageId });
-    //   } catch (error) {
-    //     console.error('Error deleting group message:', error);
-    //     socket.emit('error', { message: 'Error deleting group message', error: error.message });
-    //   }
-    // });
 
     socket.on('deleteGroupMessage', async ({ messageId }) => {
       try {
@@ -1214,107 +1010,6 @@ exports.setupSocket = (io) => {
       }
     });
 
-    // socket.on('markMessagesAsRead', async ({ conversationId, type }) => {
-    //   try {
-    //     const userId = socket.user.id;
-    //     if (!userId) throw new Error('No user ID');
-
-    //     if (type === 'private') {
-    //       const updated = await Message.updateMany(
-    //         {
-    //           recipient: userId,
-    //           sender: conversationId,
-    //           isRead: false,
-    //           deletedAt: null,
-    //         },
-    //         { $set: { isRead: true } }
-    //       );
-    //       // console.log(`Marked ${updated.modifiedCount} messages as read for user ${userId} from ${conversationId}`);
-
-    //       io.to(conversationId).emit('messagesRead', { recipientId: userId, updatedCount: updated.modifiedCount });
-
-    //       const recentSender = await Message.aggregate([
-    //         {
-    //           $match: {
-    //             recipient: userId,
-    //             sender: conversationId,
-    //             deletedAt: null,
-    //           },
-    //         },
-    //         {
-    //           $group: {
-    //             _id: '$sender',
-    //             latestTimestamp: { $max: '$timestamp' }, // Use last message timestamp
-    //             unreadCount: { $sum: { $cond: [{ $eq: ['$isRead', false] }, 1, 0] } },
-    //             totalCount: { $sum: 1 },
-    //           },
-    //         },
-    //         {
-    //           $lookup: {
-    //             from: 'users',
-    //             localField: '_id',
-    //             foreignField: '_id',
-    //             as: 'senderInfo',
-    //           },
-    //         },
-    //         { $unwind: '$senderInfo' },
-    //         {
-    //           $project: {
-    //             senderId: '$_id',
-    //             name: '$senderInfo.name',
-    //             email: '$senderInfo.email',
-    //             latestTimestamp: 1,
-    //             unreadCount: 1,
-    //             totalCount: 1,
-    //           },
-    //         },
-    //       ]);
-
-    //       if (recentSender.length > 0) {
-    //         // console.log(`Emitting recentSenderUpdate to ${userId}:`, recentSender[0]);
-    //         io.to(userId).emit('recentSenderUpdate', recentSender[0]);
-    //       } else {
-    //         // Fetch last known timestamp or keep it stable
-    //         const lastMessage = await Message.findOne(
-    //           { recipient: userId, sender: conversationId, deletedAt: null },
-    //           { timestamp: 1 },
-    //           { sort: { timestamp: -1 } }
-    //         );
-    //         const senderInfo = await User.findById(conversationId, 'name email');
-    //         if (senderInfo) {
-    //           const update = {
-    //             senderId: conversationId,
-    //             name: senderInfo.name,
-    //             email: senderInfo.email,
-    //             latestTimestamp: lastMessage ? lastMessage.timestamp : new Date(0), // Use last message or epoch
-    //             unreadCount: 0,
-    //             totalCount: 0,
-    //           };
-    //           // console.log(`Emitting recentSenderUpdate (no messages) to ${userId}:`, update);
-    //           io.to(userId).emit('recentSenderUpdate', update);
-    //         }
-    //       }
-    //     }
-    //     else if (type === 'group') {
-    //       // Mark group messages as read
-    //       await GrpMsg.updateMany(
-    //         {
-    //           group: conversationId,
-    //           sender: { $ne: userId },
-    //           isRead: false,
-    //           deletedAt: null,
-    //         },
-    //         { $set: { isRead: true } }
-    //       );
-    //       io.to(`group_${conversationId}`).emit('groupMessagesRead', { userId });
-    //     }
-
-    //     socket.emit('markAsReadSuccess', { conversationId, type });
-    //   } catch (error) {
-    //     console.error('Error marking messages as read:', error);
-    //     socket.emit('error', { message: 'Error marking messages as read', error: error.message });
-    //   }
-    // });
   });
 };
 

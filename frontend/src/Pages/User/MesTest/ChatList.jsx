@@ -21,7 +21,7 @@ const ChatList = ({
     <aside className="w-64 text-gray-900 p-4 shrink-0 border-r border-gray-300">
       <div className="flex justify-between items-center mb-4">
         <h2
-          className="text-xl font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors"
+          className="text-xl font-semibold text-gray-800 cursor-pointer hover:text-blue-800 transition-colors"
           onClick={() => { handleChatClick(null, null); setMessages([]); }}
           title="Reset to initial state"
         >

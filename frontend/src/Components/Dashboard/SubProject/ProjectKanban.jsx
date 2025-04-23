@@ -327,6 +327,26 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   .description-content li {
     margin-bottom: 0.25rem;
   }
+    .description-content h1 {
+          font-size: 1.5rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h2 {
+          font-size: 1.25rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h3 {
+          font-size: 1.1rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        .description-content h4 {
+          font-size: 1rem;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
 `}</style>
     </div>
   );

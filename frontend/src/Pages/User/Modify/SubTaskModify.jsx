@@ -15,6 +15,8 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
     dueDate: "",
     status: "",
   });
+  // Get today's date in YYYY-MM-DD format for min attribute
+  const today = new Date().toISOString().split("T")[0];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -23,6 +25,16 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
       fetchSubtask();
     }
   }, [auth, taskId, subTaskId]);
+
+    // Prevent scrolling when modal is open
+    useEffect(() => {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+      return () => {
+        document.body.style.overflow = "auto";
+        document.body.style.height = "auto";
+      };
+    }, []);
 
   const fetchSubtask = async () => {
     if (!taskId || !subTaskId) {
@@ -179,11 +191,12 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
               name="dueDate"
               value={subtask.dueDate || ""}
               onChange={handleChange}
+              min={today}
               className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               name="status"
@@ -196,7 +209,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
-          </div>
+          </div> */}
 
           <button
             type="submit"

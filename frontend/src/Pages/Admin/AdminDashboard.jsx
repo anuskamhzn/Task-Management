@@ -30,9 +30,9 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-navy text-white p-6 space-y-6">
+      <aside className="w-64 bg-navy text-white p-6 space-y-6 bg-gray-700">
         <div className="flex items-center space-x-2 text-xl font-bold pb-4 border-b border-white/20">
-          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-navy">SB</div>
+          <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center text-navy">A</div>
           <span>ADMIN</span>
         </div>
 
@@ -94,9 +94,6 @@ export default function AdminDashboard() {
 
             {/* Profile */}
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                <FaBell className="h-5 w-5 text-gray-600" />
-              </button>
               <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg">
                 <img src="https://static.vecteezy.com/system/resources/thumbnails/008/442/086/small/illustration-of-human-icon-user-symbol-icon-modern-design-on-blank-background-free-vector.jpg" alt="Avatar" className="h-6 w-6 rounded-full" />
                 <span className="text-gray-700">Admin</span>
