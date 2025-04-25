@@ -4,6 +4,9 @@ import Sidebar from '../../Components/Navigation/Sidebar';
 import { useAuth } from '../../context/auth';
 
 import GeneralSetting from './Settings/GeneralSetting';
+import EmailSetting from './Settings/EmailSetting';
+import DeleteAccount from './Settings/DeleteAccount';
+import Notifications from './Settings/Notifications';
 
 const Setting = () => {
   const { user } = useAuth();
@@ -18,7 +21,6 @@ const Setting = () => {
   const settingsMenu = [
     { id: 'general', label: 'General', icon: 'cog' },
     { id: 'email', label: 'Email', icon: 'envelope' },
-    // { id: 'preferences', label: 'Preferences', icon: 'sliders' },
     { id: 'notifications', label: 'Notifications', icon: 'bell' },
     { id: 'delete', label: 'Delete Account', icon: 'trash' },
   ];
@@ -139,37 +141,28 @@ const Setting = () => {
               <div className="space-y-6">
                 {activeTab === 'general' && (
                   <div >
-                    {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">General Settings</h2>
-                    <p className="text-gray-600">Configure your account's general settings here.</p> */}
                     <GeneralSetting />
                   </div>
                 )}
                 {activeTab === 'email' && (
-                  <div className="p-6 bg-gray-50 rounded-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">Email Settings</h2>
-                    <p className="text-gray-600">Manage your email preferences and notifications.</p>
-                    {/* Add email settings form/content here */}
+                  <div className="p-6">
+                    {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">Email Settings</h2>
+                    <p className="text-gray-600">Manage your email preferences and notifications.</p> */}
+                    <EmailSetting/>
                   </div>
                 )}
-                {/* {activeTab === 'preferences' && (
-                  <div className="p-6 bg-gray-50 rounded-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">Preferences</h2>
-                    <p className="text-gray-600">Customize your user experience.</p>
-                    
-                  </div>
-                )} */}
                 {activeTab === 'notifications' && (
-                  <div className="p-6 bg-gray-50 rounded-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">Notifications</h2>
-                    <p className="text-gray-600">Configure your notification settings.</p>
-                    {/* Add notifications form/content here */}
+                  <div className="p-6">
+                    {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">Notifications</h2>
+                    <p className="text-gray-600">Configure your notification settings.</p> */}
+                    <Notifications/>
                   </div>
                 )}
                 {activeTab === 'delete' && (
-                  <div className="p-6 bg-gray-50 rounded-lg">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">Delete Account</h2>
-                    <p className="text-gray-600">Permanently delete your account and data.</p>
-                    {/* Add delete account form/content here */}
+                  <div className="p-6 ">
+                    {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">Delete Account</h2>
+                    <p className="text-gray-600">Permanently delete your account and data.</p> */}
+                    <DeleteAccount/>
                   </div>
                 )}
               </div>

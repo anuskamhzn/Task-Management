@@ -43,6 +43,7 @@ connectDB();
 
 // Middleware
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); // Add URL-encoded parser
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -4,7 +4,8 @@ const Project = require('../models/Project');
 const JWT = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const authenticate = require('../middleware/authMiddleware');
+const mongoose = require('mongoose');
+const fs = require ('fs');
 
 // Function to compute initials from full name
 const getInitials = (fullName) => {
@@ -490,17 +491,11 @@ exports.resetPassword = async (req, res) => {
 exports.updateProfileController = async (req, res) => {
   try {
     const { name, email, phone, location } = req.fields;
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-    const user = await userModel.findById(req.user._id);
+    const user = await userModel.findById(req.user.id);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    // Check if a photo was uploaded
-    const photo = req.files ? req.files.photo : undefined;
 
     // Update user information
     const updatedFields = {
@@ -509,7 +504,13 @@ exports.updateProfileController = async (req, res) => {
       location: location || user.location,
     };
 
+    // Update initials if name is provided
+    if (name) {
+      updatedFields.initials = getInitials(name);
+    }
+
     // If a photo is uploaded, update user's photo
+    const photo = req.files?.photo;
     if (photo) {
       updatedFields.photo = {
         data: fs.readFileSync(photo.path),
@@ -518,21 +519,27 @@ exports.updateProfileController = async (req, res) => {
     }
 
     const updatedUser = await userModel.findByIdAndUpdate(
-      req.user._id,
+      req.user.id,
       updatedFields,
-      { new: true }
-    );
+      { new: true, runValidators: true }
+    ).select('-password');
 
+    if (!updatedUser) {
+      console.log('Failed to update user for ID:', req.user.id);
+      return res.status(500).json({ success: false, message: 'Failed to update user' });
+    }
+
+    // console.log('Updated user:', updatedUser);
     res.status(200).json({
       success: true,
-      message: "Profile updated successfully",
+      message: 'Profile updated successfully',
       updatedUser,
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error in updateProfileController:', error);
     res.status(500).json({
       success: false,
-      message: "Error while updating profile",
+      message: 'Error while updating profile',
       error: error.message,
     });
   }

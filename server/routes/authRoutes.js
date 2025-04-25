@@ -19,7 +19,7 @@ router.get('/user-info',authenticate,userInfo); // Protect user info route
 router.get('/user-info/:userId',userInfoById); // Protect user info route
 
 // Middleware order: First parse the form data (file uploads, fields), then authenticate the user
-router.put('/update-profile', formidable(), authenticate, updateProfileController );
+router.put('/updateProfile', formidable(), authenticate, updateProfileController );
 
 router.post('/verify-otp', verifyOTP); // New OTP verification route
 router.post('/resend-otp', resendOTP); // New route to resend OTP
