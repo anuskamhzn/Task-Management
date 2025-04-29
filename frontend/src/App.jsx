@@ -4,6 +4,10 @@ import { Toaster } from "react-hot-toast";
 import ProjectGantt from './Components/Dashboard/SubProject/GanttChart';
 import TaskGanttChart from './Components/Dashboard/SubTask/TaskGanttChart';
 import VerifyOTP from './Pages/Auth/VerifyOTP';
+import Users from './Pages/Admin/Users';
+import Analytics from './Pages/Admin/Analytics';
+import Settings from './Pages/Admin/Settings';
+import AProfile from './Pages/Admin/AdminProfile';
 
 // Lazy load components
 const Login = React.lazy(() => import('./Pages/Auth/Login'));
@@ -82,6 +86,10 @@ const App = () => {
           {/* Admin Routes */}
           <Route path="/dashboard" element={<AdminRoutes />}>
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin-profile" element={<AProfile />} />
+            <Route path="users" element={<Users />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="admin-settings" element={<Settings />} />
           </Route>
         </Routes>
       </Suspense>

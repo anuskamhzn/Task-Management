@@ -13,17 +13,20 @@ import homeImg from '../img/home.png';
 const Homepage = () => {
     const navigate = useNavigate();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [auth, setAuth] = useAuth();
 
     // Check if token exists in localStorage
     useEffect(() => {
         const storedData = localStorage.getItem('auth');
         if (storedData) {
             const parsedData = JSON.parse(storedData);
-            if (parsedData.token) {
+            if (parsedData.token && parsedData.user) {
                 setIsLoggedIn(true);
+                setAuth(parsedData); // This sets auth.user.role
             }
         }
     }, []);
+
 
     // Handle navigation to the register page
     const handleSignUpClick = () => {
@@ -60,9 +63,12 @@ const Homepage = () => {
                             Features
                         </a>
                     </li>
-                    {isLoggedIn && (
+                    {isLoggedIn && auth?.user?.role && (
                         <li>
-                            <a href="/dashboard/user" className="text-gray-600 hover:text-purple-600 transition-colors">
+                            <a
+                                href={auth.user.role === 'Admin' ? '/dashboard/admin' : '/dashboard/user'}
+                                className="text-gray-600 hover:text-purple-600 transition-colors"
+                            >
                                 Dashboard
                             </a>
                         </li>

@@ -25,7 +25,11 @@ const userSchema = new mongoose.Schema({
   },
   resetPasswordToken: String,
     resetPasswordExpires: Date,
-});
+},
+{
+  timestamps: true, // Add this option to enable createdAt and updatedAt fields
+}
+);
 
 userSchema.methods.generateAuthToken = function () {
   return jwt.sign({ _id: this._id, email: this.email }, process.env.JWT_SECRET, {

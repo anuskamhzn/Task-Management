@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./config/db');
 require('dotenv').config();
+const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const projectRoute = require('./routes/projectRoute');
 const taskRoute = require('./routes/taskRoute');
@@ -46,6 +47,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true })); // Add URL-encoded parser
 
 // Routes
+app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoute);
 app.use('/api/task', taskRoute);

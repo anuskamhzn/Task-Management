@@ -25,11 +25,11 @@ export default function Statistics({ refreshTrigger }) {
   const [error, setError] = useState(null);
 
   const fetchAnalytics = async () => {
-    if (!auth.token) {
-      setError("No authentication token available");
-      setLoading(false);
-      return;
-    }
+    // if (!auth.token) {
+    //   setError("No authentication token available");
+    //   setLoading(false);
+    //   return;
+    // }
     try {
       const taskResponse = await axios.get(`${process.env.REACT_APP_API}/api/task/ts/analytics`, {
         headers: { Authorization: `Bearer ${auth.token}` },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/auth';
+import { FiUser } from "react-icons/fi";
 
 export default function AdminHeader() {
     const [auth, setAuth] = useAuth();
@@ -20,7 +21,7 @@ export default function AdminHeader() {
             <div className="flex flex-col">
                 <h1 className="text-lg font-semibold text-gray-800">Admin Dashboard</h1>
                 <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <NavLink to="/admin/dashboard" className="hover:text-indigo-600 transition-colors duration-200">
+                    <NavLink to="/dashboard/admin" className="hover:text-indigo-600 transition-colors duration-200">
                         Dashboard
                     </NavLink>
                     <span className="mx-2">/</span>
@@ -41,10 +42,9 @@ export default function AdminHeader() {
                     {/* Dropdown Menu */}
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                         <NavLink
-                            to="/admin/profile"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
-                        >
-                            Profile
+                            to="/dashboard/admin-profile"
+                            className="flex items-center gap-3 w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors duration-150 ease-in-out"                        >
+                            <FiUser className="text-lg" /> Profile
                         </NavLink>
                     </div>
                 </div>
