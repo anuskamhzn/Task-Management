@@ -2,7 +2,7 @@ const express = require('express');
 const { register, login, 
     userInfo, forgotPassword, 
     resetPassword, userInfoById, 
-    verifyOTP, resendOTP, updateProfileController } = require('../controllers/authController');
+    verifyOTP, resendOTP, updateProfileController, updatePasswordController } = require('../controllers/authController');
 const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 const formidable = require('express-formidable'); // for handling file uploads
 
@@ -20,6 +20,7 @@ router.get('/user-info/:userId',userInfoById); // Protect user info route
 
 // Middleware order: First parse the form data (file uploads, fields), then authenticate the user
 router.put('/updateProfile', formidable(), authenticate, updateProfileController );
+router.put('/updatePass',  authenticate, updatePasswordController );
 
 router.post('/verify-otp', verifyOTP); // New OTP verification route
 router.post('/resend-otp', resendOTP); // New route to resend OTP

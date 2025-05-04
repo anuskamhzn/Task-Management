@@ -10,6 +10,7 @@ const taskRoute = require('./routes/taskRoute');
 const messageRoute = require('./routes/messageRoute');
 const chatRoute = require('./routes/chatRoute');
 const groupChatRoute = require('./routes/groupChatRoute');
+const notificationRoutes = require('./routes/notificationRoutes');
 const socketController = require('./controllers/socketController');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -54,6 +55,7 @@ app.use('/api/task', taskRoute);
 app.use('/api/message', messageRoute);
 app.use('/api/chat', chatRoute);
 app.use('/api/group-chat', groupChatRoute);
+app.use('/api/notification', notificationRoutes);
 
 // Catch-all route for unmatched routes
 app.use('*', (req, res) => {

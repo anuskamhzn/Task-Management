@@ -546,40 +546,74 @@ exports.updateProfileController = async (req, res) => {
 };
 
 //Update Password
+// Fixed Password Change Controller
 exports.updatePasswordController = async (req, res) => {
   try {
-    const { newPassword, confirmNewPassword } = req.body; // Access req.body instead of req.fields
-    const user = await userModel.findById(req.user._id);
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+    
+    // Input validation
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+      return res.status(400).json({ 
+        success: false,
+        message: "All fields are required" 
+      });
+    }
+    
+    // Find the user with complete password field
+    const user = await userModel.findById(req.user.id); // Using req.user.id instead of req.user._id
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
+      });
+    }
+
+    // Verify old password
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Current password is incorrect" 
+      });
+    }
 
     // Validate new password
     if (newPassword.length < 6) {
-      return res.status(400).json({ error: "New password must be at least 6 characters long" });
+      return res.status(400).json({ 
+        success: false,
+        message: "New password must be at least 6 characters long" 
+      });
     }
+    
     if (newPassword !== confirmNewPassword) {
-      return res.status(400).json({ error: "Passwords do not match" });
+      return res.status(400).json({ 
+        success: false,
+        message: "New passwords do not match" 
+      });
     }
 
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update user's password
-    const updatedUser = await userModel.findByIdAndUpdate(
-      req.user._id,
-      { password: hashedPassword },
-      { new: true }
-    );
+    // Update user's password directly on the found user object
+    user.password = hashedPassword;
+    await user.save(); // Use save() instead of findByIdAndUpdate()
+    
+    // Return user without password field
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     res.status(200).json({
       success: true,
       message: "Password updated successfully",
-      updatedUser,
+      user: userResponse
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error updating password:", error);
     res.status(500).json({
       success: false,
       message: "Error while updating password",
-      error: error.message,
+      error: error.message || "Internal server error"
     });
   }
 };

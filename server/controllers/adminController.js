@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
+const mongoose = require('mongoose');
 
 // Nodemailer setup (unchanged)
 const transporter = nodemailer.createTransport({
@@ -113,6 +114,29 @@ exports.getAllUsers = async (req, res) => {
   } catch (error) {
     console.error("Error fetching recent users and counts:", error);
     res.status(500).json({ message: "Error fetching data", error: error.message });
+  }
+};
+
+// Get user by ID
+exports.getUserByIdController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate the ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    // Find user by ID
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    
+    res.status(200).json({ success: true, message: "User found", user });
+  } catch (error) {
+    console.error('Error fetching user:', error); // Log the error
+    res.status(500).json({ success: false, message: "Error in fetching user", error });
   }
 };
 

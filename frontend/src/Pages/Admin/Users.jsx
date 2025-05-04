@@ -16,23 +16,27 @@ export default function Users() {
     userId: null,
     userName: "",
   });
+  const [userPopup, setUserPopup] = useState({
+    isOpen: false,
+    user: null,
+    loading: false,
+    error: null,
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUsers = async () => {
       if (!auth?.token) {
-        // setError("No authentication token found. Please log in.");
         setLoading(false);
         navigate("/login");
         return;
       }
 
       try {
-        setLoading(true);
+        // setLoading(true);
         const response = await axios.get(`${process.env.REACT_APP_API}/api/admin/users`, {
           headers: { Authorization: `Bearer ${auth.token}` },
         });
-        console.log('API response:', response.data);
         setUsers(response.data);
       } catch (err) {
         if (err.response?.status === 401) {
@@ -89,32 +93,52 @@ export default function Users() {
     }
   };
 
+  const openUserPopup = async (userId) => {
+    setUserPopup({ isOpen: true, user: null, error: null });
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API}/api/admin/users-info/${userId}`, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      setUserPopup({ isOpen: true, user: response.data.user, loading: false, error: null });
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setAuth({ token: null, user: null });
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+      } else {
+        setUserPopup({
+          isOpen: true,
+          user: null,
+          loading: false,
+          error: err.response?.data?.message || "Error fetching user details",
+        });
+      }
+    }
+  };
+
+  const closeUserPopup = () => {
+    setUserPopup({ isOpen: false, user: null, loading: false, error: null });
+  };
+
   const filteredUsers = (users || []).filter(
     (user) =>
       user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <div className="text-gray-600">Loading...</div>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-red-600">{error}</div>
-      </div>
-    );
-  }
-
-  if (!filteredUsers.length) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">No users found.</div>
       </div>
     );
   }
@@ -152,7 +176,10 @@ export default function Users() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredUsers.map((user) => (
                   <tr key={user._id} className="hover:bg-gray-50 transition-colors duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                      onClick={() => openUserPopup(user._id)}
+                    >
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
                           {user.initials || "U"}
@@ -171,9 +198,6 @@ export default function Users() {
                         : "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {/* <button className="text-blue-600 hover:text-blue-800 mr-3 transition-colors duration-150">
-                        Edit
-                      </button> */}
                       <button
                         onClick={() => openConfirmDialog(user._id, user.username || "Unknown")}
                         className="text-red-600 hover:text-red-800 transition-colors duration-150"
@@ -207,6 +231,50 @@ export default function Users() {
                   className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition focus:outline-none focus:ring-2 focus:ring-red-300"
                 >
                   Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {userPopup.isOpen && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">User Details</h2>
+              {userPopup.loading ? (
+                <div className="text-gray-600">Loading...</div>
+              ) : userPopup.error ? (
+                <div className="text-red-600">{userPopup.error}</div>
+              ) : userPopup.user ? (
+                <div className="space-y-4">
+                  <div>
+                    <span className="font-medium text-gray-700">Name:</span>{" "}
+                    {userPopup.user.name || "Unknown"}
+                  </div>
+                  {/* <div>
+                    <span className="font-medium text-gray-700">Username:</span>{" "}
+                    {userPopup.user.username || "N/A"}
+                  </div> */}
+                  <div>
+                    <span className="font-medium text-gray-700">Email:</span>{" "}
+                    {userPopup.user.email || "N/A"}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Joined Date:</span>{" "}
+                    {userPopup.user.createdAt && !isNaN(new Date(userPopup.user.createdAt).getTime())
+                      ? new Date(userPopup.user.createdAt).toLocaleDateString()
+                      : "N/A"}
+                  </div>
+                  {/* Add more fields as needed */}
+                </div>
+              ) : (
+                <div className="text-gray-600">No user data available.</div>
+              )}
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={closeUserPopup}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  Close
                 </button>
               </div>
             </div>

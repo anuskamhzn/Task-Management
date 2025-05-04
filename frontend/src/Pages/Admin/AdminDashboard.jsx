@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       if (!auth?.token) {
-        setError("No authentication token found. Please log in.");
+        // setError("No authentication token found. Please log in.");
         setLoading(false);
         navigate("/login");
         return;
@@ -56,13 +56,13 @@ export default function AdminDashboard() {
     fetchData();
   }, [auth, setAuth, navigate]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <div className="text-gray-600">Loading...</div>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (

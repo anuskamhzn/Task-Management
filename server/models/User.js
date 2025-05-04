@@ -6,13 +6,19 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   confirmPassword : {type: String, required:true},
   phone: { type: String, required: true},
-  location: { type: String, required: true},
+  location: { type: String},
   photo: {
     data: Buffer, 
     contentType: String, 
   },
   initials: { type: String }, // New field for initials
   contacts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // List of added users
+  notificationPreferences: {
+    PROJECT_INVITE: { type: Boolean, default: true },
+    DUE_DATE_PROJECT: { type: Boolean, default: true },
+    DUE_DATE_TASK: { type: Boolean, default: true },
+    GROUP_CHAT_CREATED: { type: Boolean, default: true },
+  },
   isVerified: {
     type: Boolean,
     default: false

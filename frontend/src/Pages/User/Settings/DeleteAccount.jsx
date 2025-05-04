@@ -49,7 +49,7 @@ const DeleteAccount = () => {
         </div>
 
         {/* Delete Account Card */}
-        <div className="p-6 md:p-8 space-y-6 bg-red-50">
+        {/* <div className="p-6 md:p-8 space-y-6 bg-red-50">
           <h3 className="text-lg font-semibold text-gray-800">Delete Account</h3>
           <p className="mt-2 text-sm text-gray-600 leading-relaxed">
             Permanently remove your account and all associated content, including articles, comments, reading lists, and chat messages.{' '}
@@ -64,7 +64,7 @@ const DeleteAccount = () => {
               Delete
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Deactivate Confirmation Modal */}
@@ -96,7 +96,7 @@ const DeleteAccount = () => {
         </div>
       )}
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
+      {/* {showDeleteModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 animate-slide-up">
             <h3 className="text-lg font-semibold text-gray-900">Confirm Account Deletion</h3>
@@ -122,7 +122,7 @@ const DeleteAccount = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

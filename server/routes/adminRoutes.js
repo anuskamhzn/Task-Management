@@ -7,6 +7,7 @@ const formidable = require('express-formidable'); // for handling file uploads
 router.get('/users', isAdmin, adminController.users);
 router.get('/recent-users', isAdmin, adminController.getRecentUsers);
 router.get('/all-users', isAdmin, adminController.getAllUsers);
+router.get('/users-info/:id', isAdmin, adminController.getUserByIdController);
 router.get('/analytics', isAdmin, adminController.getWebsiteAnalytics);
 router.get('/chartTask', isAdmin, adminController.getTasksPerMonth);
 router.get('/chartProject', isAdmin, adminController.getProjectsPerMonth);

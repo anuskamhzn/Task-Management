@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 require('dotenv').config();
+const { createNotification } = require('../utils/notificationUtils');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -66,6 +67,32 @@ exports.createProject = async (req, res) => {
     });
 
     await newProject.save();
+
+    // Create a single PROJECT_INVITE notification for all registered members
+    if (registeredMembers.length > 0) {
+      await createNotification(
+        registeredMembers,
+        'PROJECT_INVITE',
+        `You have been invited to the project "${title}"`,
+        newProject._id,
+        'Project',
+        null,
+        req.app.get('io')
+      );
+    }
+
+    // Create a single DUE_DATE_PROJECT notification for all recipients
+    if (dueDate) {
+      await createNotification(
+        [owner, ...registeredMembers],
+        'DUE_DATE_PROJECT',
+        `The project "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
+        newProject._id,
+        'Project',
+        dueDate,
+        req.app.get('io')
+      );
+    }
 
     // Populate members with full user details
     const populatedProject = await Project.findById(newProject._id)
@@ -215,36 +242,6 @@ exports.approveInvitation = async (req, res) => {
   }
 };
 
-// Approve invitation
-// exports.approveInvitation = async (req, res) => {
-//   try {
-//     const { token } = req.query;
-//     if (!token) return res.status(400).json({ message: 'Invalid token' });
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const { email, projectId } = decoded;
-
-//     let user = await User.findOne({ email });
-
-//     if (!user) {
-//       return res.redirect(`${process.env.FRONTEND_URL}/register?redirect=approve-invite&token=${token}`);
-//     }
-
-//     const project = await Project.findById(projectId);
-//     if (!project) return res.status(404).json({ message: 'Project not found' });
-
-//     if (!project.members.includes(user._id)) {
-//       project.members.push(user._id);
-//       project.pendingInvites = project.pendingInvites.filter(e => e !== email);
-//       await project.save();
-//     }
-
-//     res.redirect(`${process.env.FRONTEND_URL}/login`);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Error approving invitation', error });
-//   }
-// };
 
 // Get all projects
 exports.getAllProjects = async (req, res) => {
@@ -268,9 +265,9 @@ exports.getAllProjects = async (req, res) => {
             initials: doc.initials || getInitials(doc.name),
             photo: doc.photo && doc.photo.data
               ? {
-                  data: doc.photo.data.toString('base64'),
-                  contentType: doc.photo.contentType,
-                }
+                data: doc.photo.data.toString('base64'),
+                contentType: doc.photo.contentType,
+              }
               : null,
           };
         },
@@ -457,6 +454,17 @@ exports.updateProject = async (req, res) => {
         return res.status(400).json({ message: "Invalid due date" });
       }
       project.dueDate = dueDate;
+      // Create a single DUE_DATE_PROJECT notification for all recipients
+      const recipients = [project.owner, ...project.members];
+      await createNotification(
+        recipients,
+        'DUE_DATE_PROJECT',
+        `The project "${project.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
+        project._id,
+        'Project',
+        dueDate,
+        req.app.get('io')
+      );
     }
 
     if (members !== undefined) {
@@ -731,9 +739,9 @@ exports.getSubProjectsByMainProject = async (req, res) => {
             initials: doc.initials || getInitials(doc.name),
             photo: doc.photo && doc.photo.data
               ? {
-                  data: doc.photo.data.toString('base64'),
-                  contentType: doc.photo.contentType,
-                }
+                data: doc.photo.data.toString('base64'),
+                contentType: doc.photo.contentType,
+              }
               : null,
           };
         },
@@ -1018,9 +1026,9 @@ exports.getSubProjectById = async (req, res) => {
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
-                    data: doc.photo.data.toString('base64'),
-                    contentType: doc.photo.contentType,
-                  }
+                  data: doc.photo.data.toString('base64'),
+                  contentType: doc.photo.contentType,
+                }
                 : null,
             };
           },
@@ -1075,9 +1083,9 @@ exports.getProjectById = async (req, res) => {
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
-                    data: doc.photo.data.toString('base64'),
-                    contentType: doc.photo.contentType,
-                  }
+                  data: doc.photo.data.toString('base64'),
+                  contentType: doc.photo.contentType,
+                }
                 : null,
             };
           },
@@ -1094,9 +1102,9 @@ exports.getProjectById = async (req, res) => {
               initials: doc.initials || getInitials(doc.name),
               photo: doc.photo && doc.photo.data
                 ? {
-                    data: doc.photo.data.toString('base64'),
-                    contentType: doc.photo.contentType,
-                  }
+                  data: doc.photo.data.toString('base64'),
+                  contentType: doc.photo.contentType,
+                }
                 : null,
             };
           },

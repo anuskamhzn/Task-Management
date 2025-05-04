@@ -1,6 +1,7 @@
 const Task = require('../models/Task');
-const SubTask = require('../models/SubTask');  
+const SubTask = require('../models/SubTask');
 const mongoose = require('mongoose');
+const { createNotification } = require('../utils/notificationUtils');
 
 // Create a new task
 exports.createTask = async (req, res) => {
@@ -24,6 +25,15 @@ exports.createTask = async (req, res) => {
     });
 
     await newTask.save();
+    // Create DUE_DATE_TASK notification for the owner
+    await createNotification(
+      owner,
+      'DUE_DATE_TASK',
+      `The task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
+      newTask._id,
+      'Task',
+      dueDate
+    );
     res.status(201).json({ message: 'Task created successfully', task: { ...newTask.toObject(), description } });
   } catch (error) {
     res.status(500).json({ message: 'Error creating task', error: error.message });
@@ -70,7 +80,7 @@ exports.updateTaskStatus = async (req, res) => {
     res.status(200).json({ message: 'Task status updated', task: updateTask });
   } catch (error) {
     res.status(500).json({ message: 'Error updating task status', error: error.message });
-  } 
+  }
 };
 
 // Delete a main task and its associated subtasks
@@ -194,6 +204,18 @@ exports.updateTask = async (req, res) => {
     task.dueDate = dueDate ?? task.dueDate;
     task.status = status ?? task.status;
 
+    if (dueDate) {
+      // Create DUE_DATE_TASK notification for the owner if dueDate changes
+      await createNotification(
+        ownerId,
+        'DUE_DATE_TASK',
+        `The task "${task.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
+        task._id,
+        'Task',
+        dueDate
+      );
+    }
+
     // Save the updated task
     await task.save();
 
@@ -260,8 +282,8 @@ exports.createSubTask = async (req, res) => {
 exports.getSubTasksByMainTask = async (req, res) => {
   try {
     const { mainTaskId } = req.params;
-    const ownerId = req.user.id; 
-    
+    const ownerId = req.user.id;
+
     const subTasks = await SubTask.find({
       owner: ownerId,
       mainTask: mainTaskId,
@@ -362,8 +384,8 @@ exports.restoreSubTask = async (req, res) => {
     const { subTaskId } = req.params;
 
     const subTask = await SubTask.findByIdAndUpdate(
-      subTaskId, 
-      { deletedAt: null }, 
+      subTaskId,
+      { deletedAt: null },
       { new: true }
     );
 
@@ -382,7 +404,7 @@ exports.getDeletedSubTasks = async (req, res) => {
   try {
     const { mainTaskId } = req.params;
     const ownerId = req.user.id; // Assuming you're using user authentication
-    
+
     const deletedSubTasks = await SubTask.find({
       owner: ownerId,
       mainTask: mainTaskId,
@@ -411,7 +433,7 @@ exports.updateSubTask = async (req, res) => {
       mainTask: mainTaskId,
       owner: ownerId,
     };
-    
+
     // Check if the subtask exists and belongs to the logged-in user and the main task
     const subTask = await SubTask.findOne(query);
 
@@ -446,12 +468,12 @@ exports.getTaskById = async (req, res) => {
       owner: ownerId,
       $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
     })
-    .populate('owner', 'name email initials')
-    .lean();
+      .populate('owner', 'name email initials')
+      .lean();
 
     if (!task) {
-      return res.status(404).json({ 
-        message: 'Task not found or you do not have permission to access it' 
+      return res.status(404).json({
+        message: 'Task not found or you do not have permission to access it'
       });
     }
 
@@ -463,9 +485,9 @@ exports.getTaskById = async (req, res) => {
 
     res.status(200).json(formattedTask);
   } catch (error) {
-    res.status(500).json({ 
-      message: 'Error fetching task', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Error fetching task',
+      error: error.message
     });
   }
 };

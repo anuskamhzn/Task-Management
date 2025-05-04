@@ -20,9 +20,9 @@ const Setting = () => {
   // Settings menu items for the secondary sidebar
   const settingsMenu = [
     { id: 'general', label: 'General', icon: 'cog' },
-    { id: 'email', label: 'Email', icon: 'envelope' },
+    { id: 'password', label: 'Password', icon: 'lock' },
     { id: 'notifications', label: 'Notifications', icon: 'bell' },
-    { id: 'delete', label: 'Delete Account', icon: 'trash' },
+    // { id: 'deactivate', label: 'Deactivate Account', icon: 'cancel' },
   ];
 
   return (
@@ -144,7 +144,7 @@ const Setting = () => {
                     <GeneralSetting />
                   </div>
                 )}
-                {activeTab === 'email' && (
+                {activeTab === 'password' && (
                   <div className="p-6">
                     {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">Email Settings</h2>
                     <p className="text-gray-600">Manage your email preferences and notifications.</p> */}
@@ -158,10 +158,10 @@ const Setting = () => {
                     <Notifications/>
                   </div>
                 )}
-                {activeTab === 'delete' && (
+                {activeTab === 'deactivate' && (
                   <div className="p-6 ">
-                    {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">Delete Account</h2>
-                    <p className="text-gray-600">Permanently delete your account and data.</p> */}
+                    {/* <h2 className="text-2xl font-semibold text-gray-800 mb-4">deactivate Account</h2>
+                    <p className="text-gray-600">Permanently deactivate your account and data.</p> */}
                     <DeleteAccount/>
                   </div>
                 )}
