@@ -3,12 +3,254 @@ const GrpMsg = require('../models/GrpMsg');
 const Project = require('../models/Project');
 const Group = require('../models/GroupChat');
 const User = require('../models/User');
+const Notification = require('../models/Notifications');
 const fs = require('fs');
 const mongoose = require('mongoose');
 
 exports.setupSocket = (io) => {
   io.on('connection', (socket) => {
     socket.join(socket.user?.id || socket.id);
+
+    // Notification handler: Join notification room
+    socket.on('joinNotificationRoom', async () => {
+      try {
+        if (!socket.user?.id || !mongoose.isValidObjectId(socket.user.id)) {
+          throw new Error('Invalid or missing user ID');
+        }
+        socket.join(`notification_${socket.user.id}`);
+
+        // Fetch initial notifications for the user
+        const notifications = await Notification.find({ recipients: socket.user.id })
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .populate('recipients', 'name email')
+          .lean();
+
+        const transformedNotifications = notifications.map(notification => {
+          const userReadStatus = notification.isRead.find(status => status.userId.toString() === socket.user.id);
+          return {
+            ...notification,
+            isRead: userReadStatus ? userReadStatus.isRead : false,
+          };
+        });
+
+        const unreadCount = await Notification.countDocuments({
+          recipients: socket.user.id,
+          isRead: { $elemMatch: { userId: socket.user.id, isRead: false } },
+        });
+
+        socket.emit('initialNotifications', {
+          notifications: transformedNotifications,
+          unreadCount,
+        });
+
+        socket.emit('joinedNotificationRoom', { userId: socket.user.id });
+      } catch (error) {
+        console.error('Error joining notification room:', error);
+        socket.emit('error', { message: 'Error joining notification room', error: error.message });
+      }
+    });
+
+    // Mark notification as read
+    socket.on('markNotificationAsRead', async ({ notificationId }, callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+        if (!notificationId || !mongoose.Types.ObjectId.isValid(notificationId)) {
+          throw new Error('Invalid notification ID');
+        }
+
+        const notification = await Notification.findOne({ _id: notificationId, recipients: userId });
+        if (!notification) {
+          throw new Error('Notification not found or you do not have access');
+        }
+
+        const userReadStatus = notification.isRead.find(status => status.userId.toString() === userId);
+        if (userReadStatus && userReadStatus.isRead) {
+          throw new Error('Notification is already marked as read');
+        }
+
+        if (userReadStatus) {
+          userReadStatus.isRead = true;
+        } else {
+          notification.isRead.push({ userId, isRead: true });
+        }
+
+        await notification.save();
+
+        const updatedNotification = await Notification.findById(notificationId)
+          .populate('recipients', 'name email')
+          .lean();
+
+        const transformedNotification = {
+          ...updatedNotification,
+          isRead: updatedNotification.isRead.find(status => status.userId.toString() === userId).isRead,
+        };
+
+        io.to(userId).emit('notificationRead', transformedNotification);
+
+        // Update notification count
+        const unreadCount = await Notification.countDocuments({
+          recipients: userId,
+          isRead: { $elemMatch: { userId, isRead: false } },
+        });
+        io.to(userId).emit('notificationCountUpdate', { unreadCount });
+
+        if (callback) callback({ success: true, notificationId });
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+        socket.emit('error', { message: 'Error marking notification as read', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
+
+    // Mark all notifications as read
+    socket.on('markAllNotificationsAsRead', async (callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+
+        await Notification.updateMany(
+          { recipients: userId, 'isRead': { $elemMatch: { userId, isRead: false } } },
+          { $set: { 'isRead.$[elem].isRead': true } },
+          { arrayFilters: [{ 'elem.userId': userId }] }
+        );
+
+        io.to(userId).emit('allNotificationsRead', { userId });
+
+        // Update notification count
+        io.to(userId).emit('notificationCountUpdate', { unreadCount: 0 });
+
+        if (callback) callback({ success: true });
+      } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        socket.emit('error', { message: 'Error marking all notifications as read', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
+
+    // Delete a notification
+    socket.on('deleteNotification', async ({ notificationId }, callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+        if (!notificationId || !mongoose.Types.ObjectId.isValid(notificationId)) {
+          throw new Error('Invalid notification ID');
+        }
+
+        const notification = await Notification.findOne({ _id: notificationId, recipients: userId });
+        if (!notification) {
+          throw new Error('Notification not found or you do not have access');
+        }
+
+        // Remove the user from the recipients list
+        notification.recipients = notification.recipients.filter(recipient => recipient.toString() !== userId);
+        notification.isRead = notification.isRead.filter(status => status.userId.toString() !== userId);
+
+        // If no recipients remain, delete the notification entirely
+        if (notification.recipients.length === 0) {
+          await Notification.deleteOne({ _id: notificationId });
+        } else {
+          await notification.save();
+        }
+
+        // Emit Socket.IO event to update the client
+        io.to(userId).emit('notificationDeleted', { notificationId });
+
+        // Update notification count
+        const unreadCount = await Notification.countDocuments({
+          recipients: userId,
+          isRead: { $elemMatch: { userId, isRead: false } },
+        });
+        io.to(userId).emit('notificationCountUpdate', { unreadCount });
+
+        if (callback) callback({ success: true, notificationId });
+      } catch (error) {
+        console.error('Error deleting notification:', error);
+        socket.emit('error', { message: 'Error deleting notification', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
+
+    // Update notification preferences
+    socket.on('updateNotificationPreferences', async ({ preferences }, callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+        if (!preferences || typeof preferences !== 'object') {
+          throw new Error('Invalid preferences data');
+        }
+
+        const user = await User.findByIdAndUpdate(
+          userId,
+          { notificationPreferences: preferences },
+          { new: true }
+        );
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        io.to(userId).emit('notificationPreferencesUpdated', {
+          preferences: user.notificationPreferences,
+        });
+        if (callback) callback({ success: true });
+      } catch (error) {
+        console.error('Error updating notification preferences:', error);
+        socket.emit('error', { message: 'Error updating notification preferences', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
+
+    // Fetch more notifications (for pagination)
+    socket.on('fetchMoreNotifications', async ({ page = 1, limit = 10, isRead }, callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+
+        const query = { recipients: userId };
+        if (isRead !== undefined) {
+          query['isRead'] = {
+            $elemMatch: { userId: userId, isRead: isRead === 'true' },
+          };
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const notifications = await Notification.find(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(parseInt(limit))
+          .populate('recipients', 'name email')
+          .lean();
+
+        const transformedNotifications = notifications.map(notification => {
+          const userReadStatus = notification.isRead.find(status => status.userId.toString() === userId);
+          return {
+            ...notification,
+            isRead: userReadStatus ? userReadStatus.isRead : false,
+          };
+        });
+
+        const totalNotifications = await Notification.countDocuments(query);
+
+        if (callback) {
+          callback({
+            success: true,
+            notifications: transformedNotifications,
+            pagination: {
+              currentPage: parseInt(page),
+              totalPages: Math.ceil(totalNotifications / parseInt(limit)),
+              totalNotifications,
+              limit: parseInt(limit),
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching more notifications:', error);
+        socket.emit('error', { message: 'Error fetching more notifications', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
 
     // Private message handler (unchanged, still using Message model)
     socket.on('sendPrivateMessage', async ({ recipientId, content, photo, file }) => {
@@ -756,6 +998,117 @@ exports.setupSocket = (io) => {
       } catch (error) {
         console.error('Error removing group member:', error);
         socket.emit('error', { message: 'Error removing group member', error: error.message });
+      }
+    });
+
+    // Mark notification as read
+    socket.on('markNotificationAsRead', async ({ notificationId }, callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+        if (!notificationId || !mongoose.Types.ObjectId.isValid(notificationId)) {
+          throw new Error('Invalid notification ID');
+        }
+
+        const notification = await Notification.findOne({ _id: notificationId, recipients: userId });
+        if (!notification) {
+          throw new Error('Notification not found or you do not have access');
+        }
+
+        const userReadStatus = notification.isRead.find(status => status.userId.toString() === userId);
+        if (userReadStatus && userReadStatus.isRead) {
+          throw new Error('Notification is already marked as read');
+        }
+
+        if (userReadStatus) {
+          userReadStatus.isRead = true;
+        } else {
+          notification.isRead.push({ userId, isRead: true });
+        }
+
+        await notification.save();
+
+        const updatedNotification = await Notification.findById(notificationId)
+          .populate('recipients', 'name email')
+          .lean();
+
+        // Transform isRead to reflect the user's status
+        const userReadStatusUpdated = updatedNotification.isRead.find(status => status.userId.toString() === userId);
+        const transformedNotification = {
+          ...updatedNotification,
+          isRead: userReadStatusUpdated ? userReadStatusUpdated.isRead : false,
+        };
+
+        io.to(userId).emit('notificationRead', transformedNotification);
+        if (callback) callback({ success: true, notificationId });
+
+        // Update notification count
+        const unreadCount = await Notification.countDocuments({
+          recipients: userId,
+          isRead: { $elemMatch: { userId, isRead: false } },
+        });
+        io.to(userId).emit('notificationCountUpdate', { unreadCount });
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+        socket.emit('error', { message: 'Error marking notification as read', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
+
+    // Mark all notifications as read
+    socket.on('markAllNotificationsAsRead', async (callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+
+        await Notification.updateMany(
+          { recipients: userId, 'isRead': { $elemMatch: { userId, isRead: false } } },
+          { $set: { 'isRead.$[elem].isRead': true } },
+          { arrayFilters: [{ 'elem.userId': userId }] }
+        );
+
+        io.to(userId).emit('allNotificationsRead', { userId });
+        if (callback) callback({ success: true });
+
+        // Update notification count
+        const unreadCount = await Notification.countDocuments({
+          recipients: userId,
+          isRead: { $elemMatch: { userId, isRead: false } },
+        });
+        io.to(userId).emit('notificationCountUpdate', { unreadCount: 0 });
+      } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        socket.emit('error', { message: 'Error marking all notifications as read', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
+      }
+    });
+
+    // Update notification preferences
+    socket.on('updateNotificationPreferences', async ({ preferences }, callback) => {
+      try {
+        const userId = socket.user.id;
+        if (!userId) throw new Error('No user ID');
+        if (!preferences || typeof preferences !== 'object') {
+          throw new Error('Invalid preferences data');
+        }
+
+        const user = await User.findByIdAndUpdate(
+          userId,
+          { notificationPreferences: preferences },
+          { new: true }
+        );
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        io.to(userId).emit('notificationPreferencesUpdated', {
+          preferences: user.notificationPreferences,
+        });
+        if (callback) callback({ success: true });
+      } catch (error) {
+        console.error('Error updating notification preferences:', error);
+        socket.emit('error', { message: 'Error updating notification preferences', error: error.message });
+        if (callback) callback({ success: false, message: error.message });
       }
     });
 

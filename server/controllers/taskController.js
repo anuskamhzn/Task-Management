@@ -32,7 +32,8 @@ exports.createTask = async (req, res) => {
       `The task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
       newTask._id,
       'Task',
-      dueDate
+      dueDate,
+      req.app.get('io')
     );
     res.status(201).json({ message: 'Task created successfully', task: { ...newTask.toObject(), description } });
   } catch (error) {
@@ -198,21 +199,25 @@ exports.updateTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found or you do not have permission to update it' });
     }
 
+    // Store the original dueDate for comparison
+    const originalDueDate = task.dueDate;
+
     // Update task fields
     task.title = title ?? task.title;
     task.description = description ?? task.description; // Store HTML description from rich text editor
     task.dueDate = dueDate ?? task.dueDate;
     task.status = status ?? task.status;
 
-    if (dueDate) {
-      // Create DUE_DATE_TASK notification for the owner if dueDate changes
+    // if (task.dueDate) {
+      if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
       await createNotification(
         ownerId,
         'DUE_DATE_TASK',
         `The task "${task.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
         task._id,
         'Task',
-        dueDate
+        dueDate,
+        req.app.get('io')
       );
     }
 
@@ -271,6 +276,16 @@ exports.createSubTask = async (req, res) => {
     // Add the new subtask to the parent task's subTasks array
     mainTask.subTasks.push(newSubTask._id);
     await mainTask.save();
+    // Create DUE_DATE_TASK notification for the owner
+    await createNotification(
+      owner,
+      'DUE_DATE_SUBTASK',
+      `The sub task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
+      newSubTask._id,
+      'SubTask',
+      dueDate,
+      req.app.get('io')
+    );
     res.status(201).json({ message: "Subtask created successfully", subTask: { ...newSubTask.toObject(), description } });
   } catch (error) {
     console.error("Error creating subtask:", error);
@@ -441,11 +456,27 @@ exports.updateSubTask = async (req, res) => {
       return res.status(404).json({ message: 'Subtask not found or you do not have permission to update it' });
     }
 
+    // Store the original dueDate for comparison
+    const originalDueDate = subTask.dueDate;
+
     // Update subtask fields only if the fields are provided
     subTask.title = title || subTask.title;
     subTask.description = description || subTask.description; // Store HTML description from rich text editor
     subTask.dueDate = dueDate || subTask.dueDate;
     subTask.status = status || subTask.status;
+
+    // if (subTask.dueDate) {
+      if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
+      await createNotification(
+        ownerId,
+        'DUE_DATE_SUBTASK',
+        `The sub task "${subTask.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
+        subTask._id,
+        'SubTask',
+        dueDate,
+        req.app.get('io')
+      );
+    }
 
     // Save the updated subtask
     await subTask.save();

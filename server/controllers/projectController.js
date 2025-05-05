@@ -442,6 +442,8 @@ exports.updateProject = async (req, res) => {
     if (project.owner.toString() !== userId && !project.members.some(id => id.toString() === userId)) {
       return res.status(403).json({ message: "You do not have permission to update this project" });
     }
+    // Store the original dueDate for comparison
+    const originalDueDate = project.dueDate;
 
     let newMembers = [];
     let newPendingInvites = [];
@@ -455,6 +457,7 @@ exports.updateProject = async (req, res) => {
       }
       project.dueDate = dueDate;
       // Create a single DUE_DATE_PROJECT notification for all recipients
+      if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
       const recipients = [project.owner, ...project.members];
       await createNotification(
         recipients,
@@ -466,6 +469,7 @@ exports.updateProject = async (req, res) => {
         req.app.get('io')
       );
     }
+  }
 
     if (members !== undefined) {
       for (const email of members) {
@@ -677,6 +681,29 @@ exports.createSubProject = async (req, res) => {
     });
 
     await newSubProject.save();
+
+    // Create a single DUE_DATE_SUBPROJECT notification for all recipients
+    if (dueDate) {
+      const recipients = [...new Set([newSubProject.owner.toString(), ...newSubProject.members.map(id => id.toString())])];
+      try {
+        await createNotification(
+          recipients,
+          'DUE_DATE_SUBPROJECT',
+          `Sub-project "${title}" created with due date ${new Date(dueDate).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}`,
+          newSubProject._id,
+          'SubProject',
+          dueDate,
+          req.app.get('io')
+        );
+      } catch (notificationError) {
+        console.error('Error creating due date notification:', notificationError);
+        // Continue with sub-project creation even if notification fails
+      }
+    }
 
     // Populate members with full user details
     const populatedSubProject = await SubProject.findById(newSubProject._id)
@@ -930,8 +957,34 @@ exports.updateSubProject = async (req, res) => {
       if (isNaN(new Date(dueDate).getTime())) {
         return res.status(400).json({ message: "Invalid due date" });
       }
+      // Store the original dueDate for comparison
+    const originalDueDate = subProject.dueDate;
+
       subProject.dueDate = dueDate;
+      // Create a single DUE_DATE_SUBPROJECT notification for all recipients
+      if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
+      const recipients = [subProject.owner, ...subProject.members].map(id => id.toString());
+      try {
+        await createNotification(
+          recipients,
+          'DUE_DATE_SUBPROJECT',
+          `Due date for sub-project "${subProject.title}" updated to ${new Date(dueDate).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}`,
+          subProject._id,
+          'SubProject',
+          dueDate,
+          req.app.get('io')
+        );
+      } catch (notificationError) {
+        console.error('Error creating due date notification:', notificationError);
+        // Continue with the update even if notification fails
+      }
     }
+  }
+
     if (status) {
       const validStatuses = ["To Do", "In Progress", "Completed"];
       if (!validStatuses.includes(status)) {

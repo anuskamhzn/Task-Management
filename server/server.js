@@ -40,6 +40,9 @@ const io = socketIo(server, {
 // Attach Socket.IO instance to the Express app
 app.set('io', io); // This is the key fix!
 
+// Make io globally available
+global.io = io;
+
 // Connect to MongoDB
 connectDB();
 

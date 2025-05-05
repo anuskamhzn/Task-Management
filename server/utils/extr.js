@@ -9,7 +9,7 @@ const createNotification = async (recipientIds, type, message, entityId, entityM
     // Fetch users and check preferences
     const users = await User.find({ _id: { $in: recipients } });
     const validRecipients = users
-      .filter(user => user.notificationPreferences?.[type] !== false)
+      .filter(user => user.notificationPreferences[type])
       .map(user => user._id);
 
     if (validRecipients.length === 0) {
@@ -36,24 +36,8 @@ const createNotification = async (recipientIds, type, message, entityId, entityM
 
     // Emit Socket.IO event to all recipients
     if (io) {
-      const populatedNotification = await Notification.findById(notification._id)
-        .populate('recipients', 'name email')
-        .lean();
-
       validRecipients.forEach(recipientId => {
-        const userReadStatus = populatedNotification.isRead.find(status => status.userId.toString() === recipientId.toString());
-        io.to(recipientId.toString()).emit('newNotification', {
-          ...populatedNotification,
-          isRead: userReadStatus ? userReadStatus.isRead : false,
-        });
-
-        // Update notification count
-        Notification.countDocuments({
-          recipients: recipientId,
-          isRead: { $elemMatch: { userId: recipientId, isRead: false } },
-        }).then(unreadCount => {
-          io.to(recipientId.toString()).emit('notificationCountUpdate', { unreadCount });
-        });
+        io.to(recipientId.toString()).emit('newNotification', notification);
       });
     }
 

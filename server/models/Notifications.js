@@ -61,6 +61,7 @@ const notificationSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     isRead: { type: Boolean, default: false },
   }], // Array of read statuses per user
+  deletedAt: { type: Date },
 }, {
   timestamps: true,
 });
