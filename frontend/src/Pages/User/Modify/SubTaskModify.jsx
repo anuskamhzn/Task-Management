@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useParams } from "react-router-dom";
-import { useAuth } from "../../../context/auth";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import sanitizeHtml from "sanitize-html";
@@ -13,30 +12,17 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
     title: "",
     description: "",
     dueDate: "",
-    status: "",
+    status: "To Do",
+    members: [],
+    createdAt: "",
   });
-  // Get today's date in YYYY-MM-DD format for min attribute
+  const [initialSubtask, setInitialSubtask] = useState(null);
   const today = new Date().toISOString().split("T")[0];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (auth && auth.user && taskId && subTaskId) {
-      fetchSubtask();
-    }
-  }, [auth, taskId, subTaskId]);
-
-    // Prevent scrolling when modal is open
-    useEffect(() => {
-      document.body.style.overflow = "hidden";
-      document.body.style.height = "100vh";
-      return () => {
-        document.body.style.overflow = "auto";
-        document.body.style.height = "auto";
-      };
-    }, []);
-
-  const fetchSubtask = async () => {
+  // Fetch subtask details
+  const fetchSubtask = useCallback(async () => {
     if (!taskId || !subTaskId) {
       setError("Invalid task or subtask ID.");
       return;
@@ -51,28 +37,47 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
       );
       const subtaskData = response.data;
       if (subtaskData) {
-        // Ensure description is a string and sanitize it
         const rawDescription = typeof subtaskData.description === 'string' ? subtaskData.description : '';
         const cleanDescription = sanitizeHtml(rawDescription, {
           allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
           allowedAttributes: {},
           disallowedTagsMode: 'discard',
         });
-        setSubtask({
+        const formattedSubtask = {
           ...subtaskData,
-          description: cleanDescription,
+          description: cleanDescription || '<p></p>', // Ensure non-empty description
           dueDate: subtaskData.dueDate ? subtaskData.dueDate.split("T")[0] : "",
-        });
+          members: subtaskData.members || [],
+        };
+        setSubtask(formattedSubtask);
+        setInitialSubtask(formattedSubtask);
+        console.log("Fetched Subtask Description:", formattedSubtask.description); // Debug
       } else {
         setError("Subtask not found.");
       }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch subtask.");
-      console.error(err);
+      console.error("Fetch Error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [auth.token, taskId, subTaskId]);
+
+  useEffect(() => {
+    if (auth && auth.user && taskId && subTaskId) {
+      fetchSubtask();
+    }
+  }, [auth, taskId, subTaskId, fetchSubtask]);
+
+  // Prevent scrolling when modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -80,8 +85,8 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
   };
 
   const handleDescriptionChange = (value) => {
-    // Store raw HTML from ReactQuill without sanitization
-    setSubtask({ ...subtask, description: value || '' });
+    setSubtask({ ...subtask, description: value || '<p></p>' });
+    console.log("Quill Description:", value); // Debug
   };
 
   const handleSubmit = async (e) => {
@@ -94,44 +99,67 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
       }
 
       // Sanitize description before submitting
-      const cleanDescription = sanitizeHtml(subtask.description || '', {
+      const cleanDescription = sanitizeHtml(subtask.description || '<p></p>', {
         allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
         allowedAttributes: {},
         disallowedTagsMode: 'discard',
       });
-      const sanitizedSubtask = { ...subtask, description: cleanDescription };
+      const sanitizedSubtask = {
+        title: subtask.title,
+        description: cleanDescription,
+        dueDate: subtask.dueDate,
+        status: subtask.status,
+      };
+      console.log("Sanitized Subtask Payload:", sanitizedSubtask); // Debug
 
       const url = `${process.env.REACT_APP_API}/api/task/update-subtask/${taskId}/${subTaskId}`;
       const response = await axios.put(url, sanitizedSubtask, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
 
-      console.log("API Response:", response); // Debug log
+      console.log("API Response:", response.data); // Debug
 
-      // Handle various response structures
-      const updatedSubtask = response.data.subtask || response.data;
-      if (updatedSubtask) {
-        setTasks((prevTasks) =>
-          prevTasks.map((t) =>
-            t._id === subTaskId ? { ...t, ...updatedSubtask } : t
-          )
+      // Normalize the response
+      const responseDescription = response.data.subtask?.description || response.data.description || cleanDescription;
+      const normalizedDescription = sanitizeHtml(responseDescription, {
+        allowedTags: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'u', 'ul', 'ol', 'li'],
+        allowedAttributes: {},
+        disallowedTagsMode: 'discard',
+      }) || '<p></p>';
+
+      const updatedSubtask = {
+        ...subtask,
+        ...response.data.subtask || response.data,
+        description: normalizedDescription,
+        dueDate: response.data.subtask?.dueDate || response.data.dueDate
+          ? (response.data.subtask?.dueDate || response.data.dueDate).split("T")[0]
+          : subtask.dueDate,
+        members: response.data.subtask?.members || response.data.members || subtask.members,
+      };
+
+      // Update tasks state
+      setTasks((prevTasks) => {
+        const newTasks = prevTasks.map((t) =>
+          t._id === subTaskId ? updatedSubtask : t
         );
-        toast.success("Subtask updated successfully!");
-        onClose();
-      } else {
-        throw new Error("Invalid response from server.");
-      }
+        console.log("Updated Tasks Description:", updatedSubtask.description); // Debug
+        return newTasks;
+      });
+
+      toast.success("Subtask updated successfully!");
+      onClose();
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || "Error updating subtask.";
       setError(errorMessage);
       toast.error(errorMessage);
-      console.error("Error:", err);
+      setSubtask(initialSubtask); // Revert to initial state
+      console.error("Update Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Quill toolbar configuration (same as SubProjectModify.jsx)
+  // Quill toolbar configuration
   const quillModules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -195,21 +223,6 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
               className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
             />
           </div>
-
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              name="status"
-              value={subtask.status || "To Do"}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              required
-            >
-              <option value="To Do">To Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div> */}
 
           <button
             type="submit"

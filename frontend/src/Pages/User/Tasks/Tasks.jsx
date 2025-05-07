@@ -15,6 +15,7 @@ import parse from 'html-react-parser';
 const Tasks = () => {
   const [auth] = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
   const [hoveredTask, setHoveredTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,8 +23,10 @@ const Tasks = () => {
   const [openMenu, setOpenMenu] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, taskId: null, taskTitle: '' });
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for ViewProjectDetail popup
-  const [viewTaskId, setViewTaskId] = useState(null); // Track project to view
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [viewTaskId, setViewTaskId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   useEffect(() => {
     setTasks([]);
@@ -34,9 +37,18 @@ const Tasks = () => {
     }
   }, [auth]);
 
+  useEffect(() => {
+    // Filter tasks based on status
+    if (statusFilter === 'All') {
+      setFilteredTasks(tasks);
+    } else {
+      setFilteredTasks(tasks.filter(task => task.status === statusFilter));
+    }
+  }, [tasks, statusFilter]);
+
   // Prevent scrolling when modals are open
   useEffect(() => {
-    if (isCreateModalOpen || isCreateModalOpen) {
+    if (isCreateModalOpen || isDetailModalOpen) {
       document.body.style.overflow = "hidden";
       document.body.style.height = "100vh";
     } else {
@@ -47,7 +59,7 @@ const Tasks = () => {
       document.body.style.overflow = "auto";
       document.body.style.height = "auto";
     };
-  }, [isCreateModalOpen, isCreateModalOpen]);
+  }, [isCreateModalOpen, isDetailModalOpen]);
 
   const fetchTasks = async () => {
     try {
@@ -71,7 +83,7 @@ const Tasks = () => {
 
   const handleModify = (taskId) => {
     setSelectedTask(taskId);
-    setOpenMenu(null); // Close dropdown after selecting modify
+    setOpenMenu(null);
   };
 
   const handleCloseModal = () => {
@@ -94,7 +106,7 @@ const Tasks = () => {
 
   const openConfirmDialog = (taskId, taskTitle) => {
     setConfirmDialog({ isOpen: true, taskId, taskTitle });
-    setOpenMenu(null); // Close dropdown when opening confirm dialog
+    setOpenMenu(null);
   };
 
   const closeConfirmDialog = () => {
@@ -124,13 +136,22 @@ const Tasks = () => {
 
   const handleViewDetail = (taskId) => {
     setViewTaskId(taskId);
-    setIsDetailModalOpen(true); // Open ViewTaskDetail popup
+    setIsDetailModalOpen(true);
     setOpenMenu(null);
   };
 
   const handleCloseDetailModal = () => {
-    setIsDetailModalOpen(false); // Close ViewTaskDetail popup
+    setIsDetailModalOpen(false);
     setViewTaskId(null);
+  };
+
+  const handleStatusFilter = (status) => {
+    setStatusFilter(status);
+    setIsStatusDropdownOpen(false);
+  };
+
+  const toggleStatusDropdown = () => {
+    setIsStatusDropdownOpen(!isStatusDropdownOpen);
   };
 
   return (
@@ -147,6 +168,56 @@ const Tasks = () => {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-800">My Tasks</h1>
             <div className="flex gap-4 items-center">
+              <div className="relative">
+                <button
+                  onClick={toggleStatusDropdown}
+                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-md transition"
+                >
+                  Filter by Status: {statusFilter}
+                  <svg
+                    className="ml-2 w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {isStatusDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg border border-gray-200 rounded-md z-10">
+                    <button
+                      onClick={() => handleStatusFilter('All')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => handleStatusFilter('To Do')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      To Do
+                    </button>
+                    <button
+                      onClick={() => handleStatusFilter('In Progress')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      In Progress
+                    </button>
+                    <button
+                      onClick={() => handleStatusFilter('Completed')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Completed
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleCreateTaskClick}
                 className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md shadow-md transition"
@@ -166,14 +237,16 @@ const Tasks = () => {
             <p className="text-center text-gray-500 py-4">Loading...</p>
           ) : error ? (
             <p className="text-red-500 text-center py-4">{error}</p>
-          ) : tasks.length === 0 ? (
-            <p className="text-center text-gray-500 py-4 bg-white rounded-md shadow">No tasks available.</p>
+          ) : filteredTasks.length === 0 ? (
+            <p className="text-center text-gray-500 py-4 bg-white rounded-md shadow">
+              No tasks available for the selected status.
+            </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {tasks.map((task) => (
+              {filteredTasks.map((task) => (
                 <div
                   key={task._id}
-                  onClick={() => handleViewDetail(task._id)} // Card click opens ViewTaskDetail
+                  onClick={() => handleViewDetail(task._id)}
                   className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200 cursor-pointer"
                   onMouseLeave={() => {
                     setHoveredTask(null);
@@ -187,10 +260,13 @@ const Tasks = () => {
                   <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                     <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs ${task.status === 'Completed'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                        }`}
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        task.status === 'Completed'
+                          ? 'bg-green-100 text-green-700'
+                          : task.status === 'In Progress'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
                     >
                       {task.status}
                     </span>
@@ -198,15 +274,15 @@ const Tasks = () => {
 
                   <NavLink
                     to={`/dashboard/task/subtask/${task._id}`}
-                    onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the button
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-block bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-md transition"
                   >
                     View Task
                   </NavLink>
 
-                  {/* Three Dots Icon */}
-                  <div className="absolute top-3 right-3 cursor-pointer hidden group-hover:block"
-                    onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with menu
+                  <div
+                    className="absolute top-3 right-3 cursor-pointer hidden group-hover:block"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <FaEllipsisV
                       onClick={() => handleMenuToggle(task._id)}
@@ -214,10 +290,10 @@ const Tasks = () => {
                     />
                   </div>
 
-                  {/* Dropdown Menu */}
                   {openMenu === task._id && (
-                    <div className="absolute right-3 top-8 w-32 bg-white shadow-lg border border-gray-200 rounded-md z-10"
-                      onClick={(e) => e.stopPropagation()} // Prevent card click when interacting with dropdown
+                    <div
+                      className="absolute right-3 top-8 w-32 bg-white shadow-lg border border-gray-200 rounded-md z-10"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         onClick={() => handleModify(task._id)}
@@ -229,7 +305,7 @@ const Tasks = () => {
                         onClick={() => openConfirmDialog(task._id, task.title)}
                         className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
-                        <FaTrashAlt />Delete
+                        <FaTrashAlt /> Delete
                       </button>
                     </div>
                   )}
@@ -240,14 +316,12 @@ const Tasks = () => {
         </div>
       </div>
 
-      {/* Modal for Creating Task */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <CreateTask onClose={handleCloseCreateTaskModal} onTaskCreated={handleTaskCreated} />
         </div>
       )}
 
-      {/* Modal for Modifying Task */}
       {selectedTask && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ModifyTask
@@ -259,14 +333,12 @@ const Tasks = () => {
         </div>
       )}
 
-      {/* Modal for Viewing Project Details */}
       {isDetailModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
           <ViewTaskDetail taskId={viewTaskId} onClose={handleCloseDetailModal} />
         </div>
       )}
 
-      {/* Custom Confirmation Dialog */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all">
@@ -292,6 +364,7 @@ const Tasks = () => {
           </div>
         </div>
       )}
+
       <style jsx>{`
         .description-content ul,
         .description-content ol {
@@ -305,7 +378,7 @@ const Tasks = () => {
         .description-content li {
           margin-bottom: 0.25rem;
         }
-.description-content h1 {
+        .description-content h1 {
           font-size: 1.5rem;
           font-weight: bold;
           margin: 0.5rem 0;

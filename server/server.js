@@ -60,6 +60,7 @@ app.use('/api/chat', chatRoute);
 app.use('/api/group-chat', groupChatRoute);
 app.use('/api/notification', notificationRoutes);
 
+
 // Catch-all route for unmatched routes
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });

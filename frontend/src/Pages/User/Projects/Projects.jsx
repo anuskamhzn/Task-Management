@@ -14,6 +14,7 @@ import ViewProjectDetail from './ViewProjectDetail';
 const Projects = () => {
   const [auth] = useAuth();
   const [projects, setProjects] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
   const [hoveredProject, setHoveredProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,6 +24,8 @@ const Projects = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, projectId: null, projectTitle: '' });
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewProjectId, setViewProjectId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   useEffect(() => {
     setProjects([]);
@@ -32,6 +35,15 @@ const Projects = () => {
       fetchProjects();
     }
   }, [auth]);
+
+  useEffect(() => {
+    // Filter projects based on status
+    if (statusFilter === 'All') {
+      setFilteredProjects(projects);
+    } else {
+      setFilteredProjects(projects.filter(project => project.status === statusFilter));
+    }
+  }, [projects, statusFilter]);
 
   // Prevent scrolling when modals are open
   useEffect(() => {
@@ -136,6 +148,15 @@ const Projects = () => {
     setViewProjectId(null);
   };
 
+  const handleStatusFilter = (status) => {
+    setStatusFilter(status);
+    setIsStatusDropdownOpen(false);
+  };
+
+  const toggleStatusDropdown = () => {
+    setIsStatusDropdownOpen(!isStatusDropdownOpen);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <aside className="w-64 bg-gray-900 text-white shadow-lg fixed inset-y-0 left-0">
@@ -148,6 +169,56 @@ const Projects = () => {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Team Projects</h1>
             <div className="flex gap-4 items-center">
+              <div className="relative">
+                <button
+                  onClick={toggleStatusDropdown}
+                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-md transition"
+                >
+                  Filter by Status: {statusFilter}
+                  <svg
+                    className="ml-2 w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {isStatusDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg border border-gray-200 rounded-md z-10">
+                    <button
+                      onClick={() => handleStatusFilter('All')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => handleStatusFilter('To Do')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      To Do
+                    </button>
+                    <button
+                      onClick={() => handleStatusFilter('In Progress')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      In Progress
+                    </button>
+                    <button
+                      onClick={() => handleStatusFilter('Completed')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Completed
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleCreateProjectClick}
                 className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md shadow-md transition"
@@ -167,11 +238,13 @@ const Projects = () => {
             <p className="text-center text-gray-500 py-4">Loading...</p>
           ) : error ? (
             <p className="text-red-500 text-center py-4">{error}</p>
-          ) : projects.length === 0 ? (
-            <p className="text-center text-gray-500 py-4 bg-white rounded-md shadow">No projects available.</p>
+          ) : filteredProjects.length === 0 ? (
+            <p className="text-center text-gray-500 py-4 bg-white rounded-md shadow">
+              No projects available for the selected status.
+            </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <div
                   key={project._id}
                   onClick={() => handleViewDetail(project._id)}
@@ -188,10 +261,13 @@ const Projects = () => {
                   <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
                     <span>Due: {new Date(project.dueDate).toLocaleDateString()}</span>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs ${project.status === 'Completed'
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        project.status === 'Completed'
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                        }`}
+                          : project.status === 'In Progress'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
                     >
                       {project.status}
                     </span>
@@ -303,7 +379,7 @@ const Projects = () => {
         .description-content li {
           margin-bottom: 0.25rem;
         }
-          .description-content h1 {
+        .description-content h1 {
           font-size: 1.5rem;
           font-weight: bold;
           margin: 0.5rem 0;
