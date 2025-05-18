@@ -28,7 +28,7 @@ exports.createTask = async (req, res) => {
     // Create DUE_DATE_TASK notification for the owner
     await createNotification(
       owner,
-      'DUE_DATE_TASK',
+      'CREATE_TASK',
       `The task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
       newTask._id,
       'Task',
@@ -279,7 +279,7 @@ exports.createSubTask = async (req, res) => {
     // Create DUE_DATE_TASK notification for the owner
     await createNotification(
       owner,
-      'DUE_DATE_SUBTASK',
+      'CREATE_SUBTASK',
       `The sub task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
       newSubTask._id,
       'SubTask',

@@ -46,6 +46,7 @@ global.io = io;
 // Connect to MongoDB
 connectDB();
 
+
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true })); // Add URL-encoded parser

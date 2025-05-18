@@ -85,7 +85,7 @@ exports.createProject = async (req, res) => {
     if (dueDate) {
       await createNotification(
         [owner, ...registeredMembers],
-        'DUE_DATE_PROJECT',
+        'CREATE_PROJECT',
         `The project "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
         newProject._id,
         'Project',
@@ -124,62 +124,6 @@ exports.createProject = async (req, res) => {
   }
 };
 
-// Create a new project
-// exports.createProject = async (req, res) => {
-//   try {
-//     const { title, description, members = [], dueDate } = req.body;
-
-//     if (!title || !description || !dueDate) {
-//       return res.status(400).json({ message: 'Title, description, and due date are required.' });
-//     }
-
-//     if (isNaN(new Date(dueDate).getTime())) {
-//       return res.status(400).json({ message: 'Invalid due date.' });
-//     }
-
-//     if (!req.user || !req.user.id) {
-//       return res.status(401).json({ message: 'Unauthorized: User must be logged in.' });
-//     }
-
-//     const owner = req.user.id;
-
-//     const registeredMembers = [];
-//     const pendingInvites = [];
-
-//     for (const email of members) {
-//       const user = await User.findOne({ email });
-
-//       if (user) {
-//         registeredMembers.push(user.id);
-//       } else {
-//         pendingInvites.push(email);
-//       }
-//     }
-
-//     const newProject = new Project({
-//       title,
-//       description,
-//       owner,
-//       members: registeredMembers,
-//       dueDate,
-//       pendingInvites,
-//     });
-
-//     await newProject.save();
-
-//     for (const email of members) {
-//       try {
-//         await sendInvitationEmail(email, newProject.id);
-//       } catch (emailError) {
-//         console.error(`Failed to send email to ${email}:`, emailError.message);
-//       }
-//     }
-
-//     res.status(201).json({ message: 'Project created successfully and invitations sent!', project: newProject });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error creating project', error: error.message });
-//   }
-// };
 
 // Function to send invitation email
 const sendInvitationEmail = async (email, projectId) => {
@@ -543,94 +487,9 @@ exports.updateProject = async (req, res) => {
     res.status(500).json({ message: "Error updating project", error: error.message });
   }
 };
-// Update a project
-// exports.updateProject = async (req, res) => {
-//   try {
-//     const { projectId } = req.params;
-//     const { title, description, dueDate, members } = req.body;
-//     const userId = req.user.id;
 
-//     const project = await Project.findById(projectId);
-//     if (!project) {
-//       return res.status(404).json({ message: "Project not found" });
-//     }
 
-//     if (project.owner.toString() !== userId && !project.members.some(id => id.toString() === userId)) {
-//       return res.status(403).json({ message: "You do not have permission to update this project" });
-//     }
-
-//     let newMembers = [];
-//     let newPendingInvites = [];
-//     let removedMembers = [];
-
-//     if (title) project.title = title;
-//     if (description) project.description = description;
-//     if (dueDate) {
-//       if (isNaN(new Date(dueDate).getTime())) {
-//         return res.status(400).json({ message: "Invalid due date" });
-//       }
-//       project.dueDate = dueDate;
-//     }
-
-//     if (members !== undefined) {
-//       for (const email of members) {
-//         const user = await User.findOne({ email });
-//         if (user) {
-//           if (!project.members.some(id => id.toString() === user.id)) {
-//             newMembers.push(user.id);
-//           }
-//         } else {
-//           if (!project.pendingInvites.includes(email)) {
-//             newPendingInvites.push(email);
-//           }
-//         }
-//       }
-
-//       for (const memberId of project.members) {
-//         const member = await User.findById(memberId);
-//         if (member && !members.includes(member.email)) {
-//           removedMembers.push(memberId.toString());
-//         }
-//       }
-
-//       const updatedPendingInvites = project.pendingInvites.filter(email => members.includes(email));
-//       project.members = project.members.filter(id => !removedMembers.includes(id.toString()));
-//       project.members = [...new Set([...project.members, ...newMembers])];
-//       project.pendingInvites = [...new Set([...updatedPendingInvites, ...newPendingInvites])];
-//     }
-
-//     await project.save();
-
-//     if (removedMembers.length > 0) {
-//       const subProjects = await SubProject.find({ mainProject: projectId, deletedAt: null });
-//       for (const subProject of subProjects) {
-//         const initialMembersLength = subProject.members.length;
-//         subProject.members = subProject.members.filter(id => !removedMembers.includes(id.toString()));
-//         if (subProject.members.length !== initialMembersLength) {
-//           await subProject.save();
-//         }
-//       }
-//     }
-
-//     for (const email of newPendingInvites) {
-//       try {
-//         await sendInvitationEmail(email, projectId);
-//       } catch (emailError) {
-//         console.error(`Failed to send email to ${email}:`, emailError.message);
-//       }
-//     }
-
-//     res.status(200).json({
-//       message: "Project updated successfully",
-//       project,
-//       removedMembers,
-//     });
-//   } catch (error) {
-//     console.error("Error updating project:", error);
-//     res.status(500).json({ message: "Error updating project", error: error.message });
-//   }
-// };
-
+// Create sub-project
 // Create sub-project
 exports.createSubProject = async (req, res) => {
   try {
@@ -688,7 +547,7 @@ exports.createSubProject = async (req, res) => {
       try {
         await createNotification(
           recipients,
-          'DUE_DATE_SUBPROJECT',
+          'CREATE_SUBPROJECT',
           `Sub-project "${title}" created with due date ${new Date(dueDate).toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -703,6 +562,24 @@ exports.createSubProject = async (req, res) => {
         console.error('Error creating due date notification:', notificationError);
         // Continue with sub-project creation even if notification fails
       }
+    // Create a single SUBPROJECT_ASSIGNMENT notification for all assigned members
+    if (memberIds.length > 0) {
+      try {
+        await createNotification(
+          memberIds,
+          'SUBPROJECT_ASSIGNMENT',
+          `You have been assigned to the sub-project "${title}"`,
+          newSubProject._id,
+          'SubProject',
+          null,
+          req.app.get('io')
+        );
+      } catch (notificationError) {
+        console.error('Error creating assignment notification:', notificationError);
+        // Continue with sub-project creation even if notification fails
+      }
+    }
+
     }
 
     // Populate members with full user details
@@ -927,6 +804,7 @@ exports.restoreSubProject = async (req, res) => {
 };
 
 // Update a sub-project
+// Update a sub-project
 exports.updateSubProject = async (req, res) => {
   try {
     const { mainProjectId, subProjectId } = req.params;
@@ -958,32 +836,32 @@ exports.updateSubProject = async (req, res) => {
         return res.status(400).json({ message: "Invalid due date" });
       }
       // Store the original dueDate for comparison
-    const originalDueDate = subProject.dueDate;
+      const originalDueDate = subProject.dueDate;
 
       subProject.dueDate = dueDate;
       // Create a single DUE_DATE_SUBPROJECT notification for all recipients
       if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
-      const recipients = [subProject.owner, ...subProject.members].map(id => id.toString());
-      try {
-        await createNotification(
-          recipients,
-          'DUE_DATE_SUBPROJECT',
-          `Due date for sub-project "${subProject.title}" updated to ${new Date(dueDate).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}`,
-          subProject._id,
-          'SubProject',
-          dueDate,
-          req.app.get('io')
-        );
-      } catch (notificationError) {
-        console.error('Error creating due date notification:', notificationError);
-        // Continue with the update even if notification fails
+        const recipients = [subProject.owner, ...subProject.members].map(id => id.toString());
+        try {
+          await createNotification(
+            recipients,
+            'DUE_DATE_SUBPROJECT',
+            `Due date for sub-project "${subProject.title}" updated to ${new Date(dueDate).toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}`,
+            subProject._id,
+            'SubProject',
+            dueDate,
+            req.app.get('io')
+          );
+        } catch (notificationError) {
+          console.error('Error creating due date notification:', notificationError);
+          // Continue with the update even if notification fails
+        }
       }
     }
-  }
 
     if (status) {
       const validStatuses = ["To Do", "In Progress", "Completed"];
@@ -1013,6 +891,24 @@ exports.updateSubProject = async (req, res) => {
         }
       }
       subProject.members = [...new Set([...subProject.members.map(id => id.toString()), ...newMemberIds])];
+
+      // Create a single SUBPROJECT_ASSIGNMENT notification for newly added members
+      if (newMemberIds.length > 0) {
+        try {
+          await createNotification(
+            newMemberIds,
+            'SUBPROJECT_ASSIGNMENT',
+            `You have been assigned to the sub-project "${subProject.title}"`,
+            subProject._id,
+            'SubProject',
+            null,
+            req.app.get('io')
+          );
+        } catch (notificationError) {
+          console.error('Error creating assignment notification:', notificationError);
+          // Continue with the update even if notification fails
+        }
+      }
     }
 
     if (Array.isArray(removeMembers) && removeMembers.length > 0) {

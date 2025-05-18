@@ -6,10 +6,13 @@ import toast from 'react-hot-toast';
 const Notifications = () => {
   const [auth] = useAuth();
   const [preferences, setPreferences] = useState({
+    CREATE_TASK : true,
+    CREATE_SUBTASK: true,
     PROJECT_INVITE: true,
     DUE_DATE_PROJECT: true,
     GROUP_CHAT_CREATED: true,
     DUE_DATE_TASK: true,
+    SUBPROJECT_ASSIGNMENT: true,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -107,6 +110,20 @@ const Notifications = () => {
                     </thead>
                     <tbody>
                       <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-6 align-middle">Task Create</td>
+                        <td className="py-3 px-6 text-center align-middle">
+                          <input
+                            type="checkbox"
+                            name="CREATE_TASK"
+                            checked={preferences.CREATE_TASK}
+                            onChange={handleCheckboxChange}
+                            className="h-4 w-4 text-violet-600 rounded mx-auto"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tbody>
+                      <tr className="hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-6 align-middle">Due date of the task</td>
                         <td className="py-3 px-6 text-center align-middle">
                           <input
@@ -153,6 +170,30 @@ const Notifications = () => {
                             type="checkbox"
                             name="PROJECT_INVITE"
                             checked={preferences.PROJECT_INVITE}
+                            onChange={handleCheckboxChange}
+                            className="h-4 w-4 text-violet-600 rounded mx-auto"
+                          />
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-6 align-middle">Project Create</td>
+                        <td className="py-3 px-6 text-center align-middle">
+                          <input
+                            type="checkbox"
+                            name="CREATE_PROJECT"
+                            checked={preferences.CREATE_PROJECT}
+                            onChange={handleCheckboxChange}
+                            className="h-4 w-4 text-violet-600 rounded mx-auto"
+                          />
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-6 align-middle">Sub Project Assigned</td>
+                        <td className="py-3 px-6 text-center align-middle">
+                          <input
+                            type="checkbox"
+                            name="SUBPROJECT_ASSIGNMENT"
+                            checked={preferences.SUBPROJECT_ASSIGNMENT}
                             onChange={handleCheckboxChange}
                             className="h-4 w-4 text-violet-600 rounded mx-auto"
                           />

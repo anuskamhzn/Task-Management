@@ -25,10 +25,13 @@ exports.createNotification = async (req, res) => {
 
     for (const user of users) {
       const preferences = user.notificationPreferences || {
+        createProject: true,
+        createProject: true,
         projectInvite: true,
         dueDateProject: true,
         groupChatCreated: true,
         dueDateTask: true,
+        subProjectAssign: true,
       };
       if (preferences[referenceType] !== false) {
         filteredRecipients.push(user._id);
@@ -273,10 +276,13 @@ exports.getNotificationPreferences = async (req, res) => {
     res.status(200).json({
       success: true,
       preferences: user.notificationPreferences || {
+        createTask: true,
+        createProject: true,
         projectInvite: true,
         dueDateProject: true,
         groupChatCreated: true,
         dueDateTask: true,
+        subProjectAssign : true,
       },
     });
   } catch (error) {

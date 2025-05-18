@@ -5,22 +5,30 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: [
+      'CREATE_TASK',
+      'CREATE_SUBTASK',
       'DUE_DATE_TASK',
       'DUE_DATE_SUBTASK',
+      'CREATE_PROJECT',
+      'CREATE_SUBPROJECT',
       'DUE_DATE_PROJECT',
       'DUE_DATE_SUBPROJECT',
       'PROJECT_INVITE',
       'GROUP_CHAT_CREATED',
       'GROUP_CHAT_ADDED',
+      'SUBPROJECT_ASSIGNMENT', // Added new notification type
     ],
     required: true,
   },
 
   notificationPreferences: {
+    CREATE_TASK: { type: Boolean, default: true },
+    CREATE_PROJECT: { type: Boolean, default: true },
     PROJECT_INVITE: { type: Boolean, default: true },
     DUE_DATE_PROJECT: { type: Boolean, default: true },
     GROUP_CHAT_CREATED: { type: Boolean, default: true },
     DUE_DATE_TASK: { type: Boolean, default: true },
+    SUBPROJECT_ASSIGNMENT: { type: Boolean, default: true }, // Added preference for new type
     // Add other notification types as needed
   },
 
