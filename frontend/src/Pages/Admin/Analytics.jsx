@@ -32,7 +32,7 @@ ChartJS.register(
 );
 
 const Analytics = () => {
-  const [auth] = useAuth();
+  const [auth, setAuth] = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [analytics, setAnalytics] = useState(null);
   const [tasksPerMonth, setTasksPerMonth] = useState([]);
@@ -40,6 +40,17 @@ const Analytics = () => {
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("all"); // Date range filter
   const navigate = useNavigate();
+
+  const [userPopup, setUserPopup] = useState({
+    isOpen: false,
+    user: null,
+    loading: false,
+    error: null,
+  });
+
+  const closeUserPopup = () => {
+    setUserPopup({ isOpen: false, user: null, loading: false, error: null });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -291,6 +302,30 @@ const Analytics = () => {
     animation: { duration: 1200, easing: "easeOutQuart" },
   };
 
+  const openUserPopup = async (userId) => {
+    setUserPopup({ isOpen: true, user: null, loading: true, error: null });
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API}/api/admin/users-info/${userId}`, {
+        headers: { Authorization: `Bearer ${auth.token}` },
+      });
+      setUserPopup({ isOpen: true, user: response.data.user, loading: false, error: null });
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setAuth({ token: null, user: null });
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+      } else {
+        setUserPopup({
+          isOpen: true,
+          user: null,
+          loading: false,
+          error: err.response?.data?.message || "Error fetching user details",
+        });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex transition-colors duration-300">
       <Sidebar />
@@ -303,7 +338,7 @@ const Analytics = () => {
               <h2 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">
                 Analytics Dashboard
               </h2>
-              <div className="flex items-center space-x-4">
+              {/* <div className="flex items-center space-x-4">
                 <select
                   value={dateRange}
                   onChange={(e) => setDateRange(e.target.value)}
@@ -314,7 +349,7 @@ const Analytics = () => {
                   <option value="90days">Last 90 Days</option>
                   <option value="year">Last Year</option>
                 </select>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -387,7 +422,8 @@ const Analytics = () => {
                     <tr
                       key={user.email}
                       className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                      onClick={() => navigate(`/dashboard/users-info/${user._id}`)}
+                      // onClick={() => navigate(`/dashboard/users-info/${user._id}`)}
+                      onClick={() => openUserPopup(user._id)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {user.name || "Unknown"}
@@ -408,6 +444,57 @@ const Analytics = () => {
             </div>
           </div>
         </div>
+        {/* User Details Modal */}
+        {userPopup.isOpen && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all animate-fade-in">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">User Details</h2>
+              {userPopup.loading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              ) : userPopup.error ? (
+                <div className="text-red-600">{userPopup.error}</div>
+              ) : userPopup.user ? (
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium text-lg">
+                      {userPopup.user.initials || "U"}
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {userPopup.user.name || "Unknown"}
+                      </h3>
+                      <p className="text-sm text-gray-500">{userPopup.user.email}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Email:</span>{" "}
+                    {userPopup.user.email || "N/A"}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Joined Date:</span>{" "}
+                    {userPopup.user.createdAt && !isNaN(new Date(userPopup.user.createdAt).getTime())
+                      ? new Date(userPopup.user.createdAt).toLocaleDateString()
+                      : "N/A"}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-600">No user data available.</div>
+              )}
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={closeUserPopup}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

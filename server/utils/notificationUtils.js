@@ -1,7 +1,7 @@
 const Notification = require('../models/Notifications');
 const User = require('../models/User');
 
-const createNotification = async (recipientIds, type, message, entityId, entityModel, dueDate = null, io = null) => {
+const createNotification = async (recipientIds, type, message, entityId, entityModel, dueDate = null, io = null, metadata = {}) => {
   try {
     // Ensure recipientIds is an array
     const recipients = Array.isArray(recipientIds) ? recipientIds : [recipientIds];
@@ -30,6 +30,7 @@ const createNotification = async (recipientIds, type, message, entityId, entityM
       entityModel,
       dueDate,
       isRead,
+      additionalData: metadata, // Store isReminder and other metadata
     });
 
     await notification.save();

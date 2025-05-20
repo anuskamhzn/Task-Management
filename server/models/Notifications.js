@@ -21,17 +21,6 @@ const notificationSchema = new mongoose.Schema({
     required: true,
   },
 
-  notificationPreferences: {
-    CREATE_TASK: { type: Boolean, default: true },
-    CREATE_PROJECT: { type: Boolean, default: true },
-    PROJECT_INVITE: { type: Boolean, default: true },
-    DUE_DATE_PROJECT: { type: Boolean, default: true },
-    GROUP_CHAT_CREATED: { type: Boolean, default: true },
-    DUE_DATE_TASK: { type: Boolean, default: true },
-    SUBPROJECT_ASSIGNMENT: { type: Boolean, default: true }, // Added preference for new type
-    // Add other notification types as needed
-  },
-
   message: {
     type: String,
     required: true,
@@ -69,6 +58,7 @@ const notificationSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     isRead: { type: Boolean, default: false },
   }], // Array of read statuses per user
+  additionalData: { type: mongoose.Schema.Types.Mixed, default: {} }, // Supports isReminder
   deletedAt: { type: Date },
 }, {
   timestamps: true,

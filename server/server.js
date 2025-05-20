@@ -12,6 +12,7 @@ const chatRoute = require('./routes/chatRoute');
 const groupChatRoute = require('./routes/groupChatRoute');
 const notificationRoutes = require('./routes/notificationRoutes');
 const socketController = require('./controllers/socketController');
+const { startScheduler } = require('./utils/scheduler');
 const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -42,6 +43,8 @@ app.set('io', io); // This is the key fix!
 
 // Make io globally available
 global.io = io;
+
+startScheduler(io); // Pass the Socket.IO instance
 
 // Connect to MongoDB
 connectDB();

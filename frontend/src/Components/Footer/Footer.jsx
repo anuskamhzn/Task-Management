@@ -131,7 +131,7 @@ export default function TestimonialsAndFooter() {
               ))}
             </nav>
             <div className="text-center text-sm text-gray-600">
-              <p>&copy; 2024 TaskiFY. All rights reserved.</p>
+              <p>&copy; 2025 TaskiFY. All rights reserved.</p>
             </div>
           </div>
         </div>
