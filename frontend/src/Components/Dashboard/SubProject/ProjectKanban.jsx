@@ -7,6 +7,7 @@ import ModifySubproject from '../../../Pages/User/Modify/SubProjectModify';
 import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
 import ViewSubDetail from '../../../Pages/User/Projects/ViewSubDetail';
 import parse from 'html-react-parser';
+import OverdueBadge from '../OverdueBadge';
 
 const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, setProjects, auth }) => {
   const [openMenu, setOpenMenu] = useState(null);
@@ -18,20 +19,19 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   const [viewSubProjectId, setViewSubProjectId] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    // Prevent scrolling when modals are open
-    useEffect(() => {
-      if (isDetailModalOpen || isCreateModalOpen) {
-        document.body.style.overflow = "hidden";
-        document.body.style.height = "100vh";
-      } else {
-        document.body.style.overflow = "auto";
-        document.body.style.height = "auto";
-      }
-      return () => {
-        document.body.style.overflow = "auto";
-        document.body.style.height = "auto";
-      };
-    }, [isDetailModalOpen, isCreateModalOpen]);
+  useEffect(() => {
+    if (isDetailModalOpen || isCreateModalOpen) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+    } else {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+    };
+  }, [isDetailModalOpen, isCreateModalOpen]);
 
   const handleCreateSubprojectClick = () => setIsCreateModalOpen(true);
   const handleCloseCreateSubprojectModal = () => setIsCreateModalOpen(false);
@@ -51,7 +51,11 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
     const url = `${process.env.REACT_APP_API}/api/project/subproject/status`;
     try {
       await axios.patch(url, { subProjectId, status: newStatus }, { headers: { Authorization: `Bearer ${auth.token}` } });
-      setProjects((prev) => prev.map((project) => project._id === subProjectId ? { ...project, status: newStatus } : project));
+      setProjects((prev) => prev.map((project) => 
+        project._id === subProjectId 
+          ? { ...project, status: newStatus, isOverdue: newStatus !== "Completed" && new Date(project.dueDate) < new Date() } 
+          : project
+      ));
     } catch (err) {
       console.error("Error updating status:", err);
       toast.error(err.response?.data.message === "Only assigned members can update the status."
@@ -119,13 +123,11 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
 
   const handleDragStart = (e, projectId) => e.dataTransfer.setData("id", projectId);
 
-  // Array of Tailwind background colors for random assignment
   const cardColors = [
     'bg-indigo-100', 'bg-teal-100', 'bg-amber-100', 'bg-rose-100',
     'bg-emerald-100', 'bg-purple-100', 'bg-blue-100', 'bg-pink-100'
   ];
 
-  // Memoize the color map to assign a consistent color to each project ID
   const colorMap = useMemo(() => {
     const map = {};
     [...toDoProjects, ...inProgressProjects, ...completedProjects].forEach((project) => {
@@ -137,9 +139,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
   }, [toDoProjects, inProgressProjects, completedProjects]);
 
   const renderProjects = (projects) => {
-    // Utility function to strip HTML tags and truncate text
     const truncateDescription = (html, maxLength = 50) => {
-      // Create a temporary DOM element to parse HTML
       const div = document.createElement('div');
       div.innerHTML = html;
       const text = div.textContent || div.innerText || '';
@@ -149,7 +149,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
     return projects.map((project) => (
       <div
         key={project._id}
-        className={`${colorMap[project._id]} p-5 mb-5 rounded-xl shadow-lg cursor-grab relative border border-gray-200`}
+        className={`${colorMap[project._id]} p-5 mb-5 rounded-xl shadow-lg cursor-grab relative border ${project.isOverdue ? 'border-red-500 border-2' : 'border-gray-200'}`}
         draggable
         onDragStart={(e) => handleDragStart(e, project._id)}
         onMouseEnter={() => setHoveredProject(project._id)}
@@ -157,7 +157,10 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         onClick={() => handleViewDetail(project._id)}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">{project.title}</h3>
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            {project.title}
+            {project.isOverdue && <OverdueBadge />}
+          </h3>
           {hoveredProject === project._id && (
             <div className="relative">
               <FaEllipsisV
@@ -211,7 +214,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
 
   return (
     <div className="flex gap-8 p-8 bg-gradient-to-br from-gray-50 to-gray-200 min-h-screen">
-      {/* To Do Column */}
       <div
         className="flex-1 p-6 bg-white rounded-2xl shadow-lg border-t-4 border-teal-500"
         onDragOver={(e) => e.preventDefault()}
@@ -233,7 +235,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         )}
       </div>
 
-      {/* In Progress Column */}
       <div
         className="flex-1 p-6 bg-white rounded-2xl shadow-lg border-t-4 border-amber-500"
         onDragOver={(e) => e.preventDefault()}
@@ -247,7 +248,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         )}
       </div>
 
-      {/* Completed Column */}
       <div
         className="flex-1 p-6 bg-white rounded-2xl shadow-lg border-t-4 border-emerald-500"
         onDragOver={(e) => e.preventDefault()}
@@ -261,7 +261,6 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         )}
       </div>
 
-      {/* Modals */}
       {selectedSubproject && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-50">
           <ModifySubproject
@@ -315,19 +314,19 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
         </div>
       )}
       <style jsx>{`
-  .description-content ul,
-  .description-content ol {
-    list-style: disc inside;
-    padding-left: 1rem;
-    margin: 0.5rem 0;
-  }
-  .description-content ol {
-    list-style: decimal inside;
-  }
-  .description-content li {
-    margin-bottom: 0.25rem;
-  }
-    .description-content h1 {
+        .description-content ul,
+        .description-content ol {
+          list-style: disc inside;
+          padding-left: 1rem;
+          margin: 0.5rem 0;
+        }
+        .description-content ol {
+          list-style: decimal inside;
+        }
+        .description-content li {
+          margin-bottom: 0.25rem;
+        }
+        .description-content h1 {
           font-size: 1.5rem;
           font-weight: bold;
           margin: 0.5rem 0;
@@ -347,7 +346,7 @@ const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, se
           font-weight: bold;
           margin: 0.5rem 0;
         }
-`}</style>
+      `}</style>
     </div>
   );
 };

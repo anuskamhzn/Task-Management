@@ -29,7 +29,11 @@ exports.createTask = async (req, res) => {
     await createNotification(
       owner,
       'CREATE_TASK',
-      `The task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
+      `The task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })}`,
       newTask._id,
       'Task',
       dueDate,
@@ -54,7 +58,8 @@ exports.getTasksByOwner = async (req, res) => {
     // Ensure description is returned as-is (HTML content)
     const formattedTasks = tasks.map(task => ({
       ...task,
-      description: task.description // Preserve HTML content
+      description: task.description,
+      isOverdue: task.isOverdue || (new Date(task.dueDate) < new Date() && task.status !== 'Completed'),
     }));
 
     res.status(200).json(formattedTasks);
@@ -64,13 +69,27 @@ exports.getTasksByOwner = async (req, res) => {
 };
 
 // Update task status
+// Update task status
 exports.updateTaskStatus = async (req, res) => {
   try {
     const { taskId, status } = req.body;
 
+    // Prepare update object
+    const updateFields = { status };
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (status === 'Completed') {
+      updateFields.isOverdue = false; // Reset isOverdue when task is completed
+    } else if (new Date(task.dueDate) < new Date()) {
+      updateFields.isOverdue = true; // Set isOverdue to true if dueDate is in the past and status is not Completed
+    }
+
     const updateTask = await Task.findByIdAndUpdate(
       taskId,
-      { status },
+      { $set: updateFields },
       { new: true }
     );
 
@@ -202,18 +221,31 @@ exports.updateTask = async (req, res) => {
     // Store the original dueDate for comparison
     const originalDueDate = task.dueDate;
 
-    // Update task fields
+    // Update task fields only if provided
     task.title = title ?? task.title;
     task.description = description ?? task.description; // Store HTML description from rich text editor
     task.dueDate = dueDate ?? task.dueDate;
     task.status = status ?? task.status;
 
-    // if (task.dueDate) {
-      if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
+    // Update isOverdue based on new dueDate and status
+    if (dueDate || status) {
+      if (task.status === 'Completed') {
+        task.isOverdue = false; // Reset isOverdue if task is completed
+      } else if (task.dueDate) {
+        task.isOverdue = new Date(task.dueDate) < new Date(); // Set isOverdue based on dueDate
+      }
+    }
+
+    // Send notification if dueDate changed
+    if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
       await createNotification(
         ownerId,
         'DUE_DATE_TASK',
-        `The task "${task.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
+        `The task "${task.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}`,
         task._id,
         'Task',
         dueDate,
@@ -262,6 +294,13 @@ exports.createSubTask = async (req, res) => {
       return res.status(404).json({ message: "Main task not found" });
     }
 
+    // Validate sub-task due date does not exceed main task due date
+    if (dueDate && mainTask.dueDate && new Date(dueDate) > new Date(mainTask.dueDate)) {
+      return res.status(400).json({
+        message: `Sub-task due date (${new Date(dueDate).toLocaleDateString()}) cannot be after the main task due date (${new Date(mainTask.dueDate).toLocaleDateString()})`
+      });
+    }
+
     // Create the subtask
     const newSubTask = new SubTask({
       title,
@@ -280,7 +319,11 @@ exports.createSubTask = async (req, res) => {
     await createNotification(
       owner,
       'CREATE_SUBTASK',
-      `The sub task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
+      `The sub task "${title}" is created and due on ${new Date(dueDate).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })}`,
       newSubTask._id,
       'SubTask',
       dueDate,
@@ -308,7 +351,8 @@ exports.getSubTasksByMainTask = async (req, res) => {
     // Ensure description is returned as-is (HTML content)
     const formattedSubTasks = subTasks.map(subTask => ({
       ...subTask,
-      description: subTask.description // Preserve HTML content
+      description: subTask.description, // Preserve HTML content
+      isOverdue: subTask.isOverdue || (new Date(subTask.dueDate) < new Date() && subTask.status !== 'Completed'),
     }));
 
     if (formattedSubTasks.length === 0) {
@@ -322,6 +366,7 @@ exports.getSubTasksByMainTask = async (req, res) => {
 };
 
 // Update main task and subtask statuses
+// Update main task and subtask statuses
 exports.updateSubTaskStatus = async (req, res) => {
   try {
     const { taskId, status } = req.body;
@@ -331,10 +376,23 @@ exports.updateSubTaskStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid taskId' });
     }
 
+    // Prepare update object
+    const subTask = await SubTask.findById(taskId);
+    if (!subTask) {
+      return res.status(404).json({ message: 'Subtask not found' });
+    }
+
+    const updateFields = { status };
+    if (status === 'Completed') {
+      updateFields.isOverdue = false; // Reset isOverdue when subtask is completed
+    } else if (new Date(subTask.dueDate) < new Date()) {
+      updateFields.isOverdue = true; // Set isOverdue to true if dueDate is in the past and status is not Completed
+    }
+
     // Find the subtask by its ID and update the status
     const updatedSubTask = await SubTask.findByIdAndUpdate(
       taskId,  // Subtask ID
-      { status },  // Update the status field
+      { $set: updateFields },  // Update the status and isOverdue fields
       { new: true }  // Return the updated subtask
     );
 
@@ -456,6 +514,19 @@ exports.updateSubTask = async (req, res) => {
       return res.status(404).json({ message: 'Subtask not found or you do not have permission to update it' });
     }
 
+    // Check if the main task exists
+    const mainTask = await Task.findById(mainTaskId);
+    if (!mainTask) {
+      return res.status(404).json({ message: "Main task not found" });
+    }
+
+    // Validate sub-task due date does not exceed main task due date
+    if (dueDate && mainTask.dueDate && new Date(dueDate) > new Date(mainTask.dueDate)) {
+      return res.status(400).json({
+        message: `Sub-task due date (${new Date(dueDate).toLocaleDateString()}) cannot be after the main task due date (${new Date(mainTask.dueDate).toLocaleDateString()})`
+      });
+    }
+
     // Store the original dueDate for comparison
     const originalDueDate = subTask.dueDate;
 
@@ -465,12 +536,25 @@ exports.updateSubTask = async (req, res) => {
     subTask.dueDate = dueDate || subTask.dueDate;
     subTask.status = status || subTask.status;
 
-    // if (subTask.dueDate) {
-      if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
+    // Update isOverdue based on new dueDate and status
+    if (dueDate || status) {
+      if (subTask.status === 'Completed') {
+        subTask.isOverdue = false; // Reset isOverdue if subtask is completed
+      } else if (subTask.dueDate) {
+        subTask.isOverdue = new Date(subTask.dueDate) < new Date(); // Set isOverdue based on dueDate
+      }
+    }
+
+    // Send notification if dueDate changed
+    if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
       await createNotification(
         ownerId,
         'DUE_DATE_SUBTASK',
-        `The sub task "${subTask.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
+        `The sub task "${subTask.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}`,
         subTask._id,
         'SubTask',
         dueDate,
@@ -511,7 +595,8 @@ exports.getTaskById = async (req, res) => {
     // Ensure description is returned as-is (HTML content)
     const formattedTask = {
       ...task,
-      description: task.description // Preserve HTML content
+      description: task.description, // Preserve HTML content
+      isOverdue: task.isOverdue || (new Date(task.dueDate) < new Date() && task.status !== 'Completed'),
     };
 
     res.status(200).json(formattedTask);
@@ -545,7 +630,8 @@ exports.getSubtaskById = async (req, res) => {
     // Ensure description is returned as-is (HTML content)
     const formattedSubtask = {
       ...subtask,
-      description: subtask.description // Preserve HTML content
+      description: subtask.description, // Preserve HTML content
+      isOverdue: subtask.isOverdue || (new Date(subtask.dueDate) < new Date() && subtask.status !== 'Completed'),
     };
 
     res.json(formattedSubtask);

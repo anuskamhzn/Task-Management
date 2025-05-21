@@ -109,6 +109,7 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
         description: cleanDescription,
         dueDate: subtask.dueDate,
         status: subtask.status,
+        isOverdue: subtask.isOverdue,
       };
       console.log("Sanitized Subtask Payload:", sanitizedSubtask); // Debug
 
@@ -127,6 +128,8 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
         disallowedTagsMode: 'discard',
       }) || '<p></p>';
 
+      const updatedDueDate = response.data.subtask?.dueDate || response.data.dueDate || subtask.dueDate;
+
       const updatedSubtask = {
         ...subtask,
         ...response.data.subtask || response.data,
@@ -135,6 +138,9 @@ const ModifySubtask = ({ auth, setTasks, subTaskId, onClose }) => {
           ? (response.data.subtask?.dueDate || response.data.dueDate).split("T")[0]
           : subtask.dueDate,
         members: response.data.subtask?.members || response.data.members || subtask.members,
+        isOverdue:
+        subtask.status !== "Completed" &&
+        new Date(updatedDueDate).getTime() < new Date().getTime(),
       };
 
       // Update tasks state

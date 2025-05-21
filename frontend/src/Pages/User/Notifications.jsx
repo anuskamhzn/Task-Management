@@ -185,9 +185,9 @@ const Notifications = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-            <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
-                <Sidebar />
-            </aside>
+      <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
+        <Sidebar />
+      </aside>
       <div className="flex-1 flex flex-col">
         <Navbar />
         <main className="flex-1 p-6 lg:p-8">
@@ -245,6 +245,8 @@ const Notifications = () => {
                               ? 'text-gray-600'
                               : notification.additionalData?.isReminder
                               ? 'text-red-600 font-bold'
+                              : notification.additionalData?.isOverdue
+                              ? 'text-orange-600 font-bold'
                               : 'text-gray-900 font-medium'
                           }`}
                         >

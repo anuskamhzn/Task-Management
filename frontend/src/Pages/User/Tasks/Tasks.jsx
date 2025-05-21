@@ -11,6 +11,7 @@ import ModifyTask from "../Modify/ModifyTask";
 import CreateTask from "../Create/CreateTask";
 import ViewTaskDetail from './ViewTaskDetail';
 import parse from 'html-react-parser';
+import OverdueBadge from "../../../Components/Dashboard/OverdueBadge";
 
 const Tasks = () => {
   const [auth] = useAuth();
@@ -38,7 +39,6 @@ const Tasks = () => {
   }, [auth]);
 
   useEffect(() => {
-    // Filter tasks based on status
     if (statusFilter === 'All') {
       setFilteredTasks(tasks);
     } else {
@@ -46,7 +46,6 @@ const Tasks = () => {
     }
   }, [tasks, statusFilter]);
 
-  // Prevent scrolling when modals are open
   useEffect(() => {
     if (isCreateModalOpen || isDetailModalOpen) {
       document.body.style.overflow = "hidden";
@@ -156,12 +155,10 @@ const Tasks = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside className="w-64 bg-gray-900 text-white shadow-lg fixed inset-y-0 left-0">
         <Sidebar />
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col ml-64">
         <Navbar />
         <div className="p-6">
@@ -247,13 +244,18 @@ const Tasks = () => {
                 <div
                   key={task._id}
                   onClick={() => handleViewDetail(task._id)}
-                  className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200 cursor-pointer"
+                  className={`bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border ${
+                    task.isOverdue ? 'border-red-500 border-2' : 'border-gray-200'
+                  } cursor-pointer`}
                   onMouseLeave={() => {
                     setHoveredTask(null);
                     setOpenMenu(null);
                   }}
                 >
-                  <h3 className="text-lg font-bold text-gray-700 mb-2 truncate">{task.title}</h3>
+                  <h3 className="text-lg font-bold text-gray-700 mb-2 truncate flex items-center gap-2">
+                    {task.title}
+                    {task.isOverdue && <OverdueBadge aria-label="Task is overdue" />}
+                  </h3>
                   <div className="text-gray-600 text-sm mb-4 line-clamp-1 description-content">
                     {parse(task.description)}
                   </div>

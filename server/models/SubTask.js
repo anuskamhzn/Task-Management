@@ -5,9 +5,10 @@ const SubTaskSchema = new mongoose.Schema({
   description: { type: String },
   dueDate: { type: Date },
   status: { type: String, enum: ['To Do', 'In Progress', 'Completed'], default: 'To Do' },
+  isOverdue: { type: Boolean, default: false },
   mainTask: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', required: true }, // Reference to the main task
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Subtask owner
-  deletedAt: { type: Date, default: null }
+  deletedAt: { type: Date, default: null },
 },
 { timestamps: true }
 );

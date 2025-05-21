@@ -12,6 +12,7 @@ const taskSchema = new mongoose.Schema({
     enum: ['To Do', 'In Progress', 'Completed'], // Status of the task
     default: 'To Do',
   },
+  isOverdue: { type: Boolean, default: false },
   deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

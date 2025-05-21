@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 require('dotenv').config();
 const { createNotification } = require('../utils/notificationUtils');
+const {startOverdueJob} = require('../utils/overdueJob');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -86,7 +87,11 @@ exports.createProject = async (req, res) => {
       await createNotification(
         [owner, ...registeredMembers],
         'CREATE_PROJECT',
-        `The project "${title}" is created and due on ${new Date(dueDate).toLocaleDateString()}`,
+        `The project "${title}" is created and due on ${new Date(dueDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}`,
         newProject._id,
         'Project',
         dueDate,
@@ -124,7 +129,6 @@ exports.createProject = async (req, res) => {
   }
 };
 
-
 // Function to send invitation email
 const sendInvitationEmail = async (email, projectId) => {
   try {
@@ -151,6 +155,51 @@ const sendInvitationEmail = async (email, projectId) => {
     console.error('Error sending invitation email:', error);
   }
 };
+
+// Function to send overdue reminder email
+exports.sendOverdueReminder = async (email, itemType, title, dueDate, itemId) => {
+  try {
+    if (!email || !itemType || !title || !dueDate || !itemId) {
+      throw new Error('Missing required parameters for overdue reminder');
+    }
+
+    const formattedDate = new Date(dueDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: `Overdue Reminder: ${itemType} "${title}"`,
+      html: `
+       <h1 style="color: red; font-weight: bold;">Reminder: Your SubProject "Research" is Overdue</h1>
+        <p>Dear User,</p>
+
+        <p>This is a friendly reminder that the following ${itemType.toLowerCase()} is now overdue:</p>
+
+        <ul>
+          <li><strong>Title:</strong> ${title}</li>
+          <li><strong>Due Date:</strong> ${formattedDate}</li>
+        </ul>
+
+        <p>Please return or address this item as soon as possible to avoid any potential issues.</p>
+
+        <p>If you have already taken action, please disregard this message.</p>
+
+        <p>Thank you,<br />
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Overdue reminder sent to ${email} for ${itemType} "${title}"`);
+  } catch (error) {
+    console.error(`Error sending overdue reminder to ${email} for ${itemType} "${title}":`, error.message);
+    throw error;
+  }
+};
+
 
 // projectController.js
 exports.approveInvitation = async (req, res) => {
@@ -185,7 +234,6 @@ exports.approveInvitation = async (req, res) => {
     res.status(500).json({ message: 'Error approving invitation', error });
   }
 };
-
 
 // Get all projects
 exports.getAllProjects = async (req, res) => {
@@ -225,6 +273,7 @@ exports.getAllProjects = async (req, res) => {
     const formattedProjects = projects.map(project => ({
       ...project,
       description: project.description,
+      isOverdue: project.isOverdue || (new Date(project.dueDate) < new Date() && project.status !== 'Completed'),
       members: project.members
         .filter(member => member != null) // Filter out null members
         .map(member => ({
@@ -245,9 +294,22 @@ exports.updateProjectStatus = async (req, res) => {
   try {
     const { projectId, status } = req.body;
 
+    // Prepare update object
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const updateFields = { status };
+    if (status === 'Completed') {
+      updateFields.isOverdue = false; // Reset isOverdue when project is completed
+    } else if (new Date(project.dueDate) < new Date()) {
+      updateFields.isOverdue = true; // Set isOverdue to true if dueDate is in the past and status is not Completed
+    }
+
     const updatedProject = await Project.findByIdAndUpdate(
       projectId,
-      { status },
+      { $set: updateFields },
       { new: true }
     );
 
@@ -400,20 +462,26 @@ exports.updateProject = async (req, res) => {
         return res.status(400).json({ message: "Invalid due date" });
       }
       project.dueDate = dueDate;
+      // Update isOverdue based on new dueDate
+      project.isOverdue = project.status !== 'Completed' && new Date(dueDate) < new Date();
       // Create a single DUE_DATE_PROJECT notification for all recipients
       if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
-      const recipients = [project.owner, ...project.members];
-      await createNotification(
-        recipients,
-        'DUE_DATE_PROJECT',
-        `The project "${project.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString()}`,
-        project._id,
-        'Project',
-        dueDate,
-        req.app.get('io')
-      );
+        const recipients = [project.owner, ...project.members];
+        await createNotification(
+          recipients,
+          'DUE_DATE_PROJECT',
+          `The project "${project.title}" due date has been updated to ${new Date(dueDate).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}`,
+          project._id,
+          'Project',
+          dueDate,
+          req.app.get('io')
+        );
+      }
     }
-  }
 
     if (members !== undefined) {
       for (const email of members) {
@@ -490,7 +558,6 @@ exports.updateProject = async (req, res) => {
 
 
 // Create sub-project
-// Create sub-project
 exports.createSubProject = async (req, res) => {
   try {
     const { mainProjectId } = req.params;
@@ -507,6 +574,13 @@ exports.createSubProject = async (req, res) => {
 
     if (!req.user || req.user.id.toString() !== mainProject.owner.toString()) {
       return res.status(403).json({ message: "Only the owner can create a sub-project." });
+    }
+
+    // Validate sub-project due date does not exceed main project due date
+    if (dueDate && new Date(dueDate) > new Date(mainProject.dueDate)) {
+      return res.status(400).json({
+        message: `Sub-project due date (${new Date(dueDate).toLocaleDateString()}) cannot be after the main project due date (${new Date(mainProject.dueDate).toLocaleDateString()})`
+      });
     }
 
     const validStatuses = ["To Do", "In Progress", "Completed"];
@@ -562,24 +636,23 @@ exports.createSubProject = async (req, res) => {
         console.error('Error creating due date notification:', notificationError);
         // Continue with sub-project creation even if notification fails
       }
-    // Create a single SUBPROJECT_ASSIGNMENT notification for all assigned members
-    if (memberIds.length > 0) {
-      try {
-        await createNotification(
-          memberIds,
-          'SUBPROJECT_ASSIGNMENT',
-          `You have been assigned to the sub-project "${title}"`,
-          newSubProject._id,
-          'SubProject',
-          null,
-          req.app.get('io')
-        );
-      } catch (notificationError) {
-        console.error('Error creating assignment notification:', notificationError);
-        // Continue with sub-project creation even if notification fails
+      // Create a single SUBPROJECT_ASSIGNMENT notification for all assigned members
+      if (memberIds.length > 0) {
+        try {
+          await createNotification(
+            memberIds,
+            'SUBPROJECT_ASSIGNMENT',
+            `You have been assigned to the sub-project "${title}"`,
+            newSubProject._id,
+            'SubProject',
+            null,
+            req.app.get('io')
+          );
+        } catch (notificationError) {
+          console.error('Error creating assignment notification:', notificationError);
+          // Continue with sub-project creation even if notification fails
+        }
       }
-    }
-
     }
 
     // Populate members with full user details
@@ -659,6 +732,7 @@ exports.getSubProjectsByMainProject = async (req, res) => {
     const formattedSubProjects = subProjects.map(subProject => ({
       ...subProject,
       description: subProject.description, // Preserve HTML content
+      isOverdue: subProject.isOverdue || (new Date(subProject.dueDate) < new Date() && subProject.status !== 'Completed'),
       members: subProject.members.map(member => ({
         ...member,
         initials: member.initials || getInitials(member.name) || 'U'
@@ -694,9 +768,19 @@ exports.updateSubProjectStatus = async (req, res) => {
       return res.status(403).json({ message: "Only assigned members can update the status." });
     }
 
-    subProject.status = status;
+    // Prepare update object
+    const updateFields = { status };
+    if (status === 'Completed') {
+      updateFields.isOverdue = false; // Reset isOverdue when sub-project is completed
+    } else if (new Date(subProject.dueDate) < new Date()) {
+      updateFields.isOverdue = true; // Set isOverdue to true if dueDate is in the past and status is not Completed
+    }
 
-    const updatedSubProject = await subProject.save();
+    const updatedSubProject = await SubProject.findByIdAndUpdate(
+      subProjectId,
+      { $set: updateFields },
+      { new: true }
+    );
 
     res.status(200).json({
       message: "Sub-project status updated successfully!",
@@ -804,7 +888,6 @@ exports.restoreSubProject = async (req, res) => {
 };
 
 // Update a sub-project
-// Update a sub-project
 exports.updateSubProject = async (req, res) => {
   try {
     const { mainProjectId, subProjectId } = req.params;
@@ -829,6 +912,12 @@ exports.updateSubProject = async (req, res) => {
       return res.status(404).json({ message: "Main project not found" });
     }
 
+    if (dueDate && new Date(dueDate) > new Date(mainProject.dueDate)) {
+      return res.status(400).json({
+        message: `Sub-project due date (${new Date(dueDate).toLocaleDateString()}) cannot be after the main project due date (${new Date(mainProject.dueDate).toLocaleDateString()})`
+      });
+    }
+
     if (title) subProject.title = title;
     if (description) subProject.description = description; // Store HTML description from editor
     if (dueDate) {
@@ -839,6 +928,8 @@ exports.updateSubProject = async (req, res) => {
       const originalDueDate = subProject.dueDate;
 
       subProject.dueDate = dueDate;
+      // Update isOverdue based on new dueDate
+      subProject.isOverdue = subProject.status !== 'Completed' && new Date(dueDate) < new Date();
       // Create a single DUE_DATE_SUBPROJECT notification for all recipients
       if (dueDate && new Date(dueDate).getTime() !== new Date(originalDueDate).getTime()) {
         const recipients = [subProject.owner, ...subProject.members].map(id => id.toString());
@@ -869,6 +960,8 @@ exports.updateSubProject = async (req, res) => {
         return res.status(400).json({ message: "Invalid status value" });
       }
       subProject.status = status;
+      // Update isOverdue based on status
+      subProject.isOverdue = status !== 'Completed' && new Date(subProject.dueDate) < new Date();
     }
 
     const mainProjectMemberIds = mainProject.members.map(id => id.toString());
@@ -993,6 +1086,7 @@ exports.getSubProjectById = async (req, res) => {
     const formattedSubproject = {
       ...subproject,
       description: subproject.description, // Preserve HTML content
+      isOverdue: subproject.isOverdue || (new Date(subproject.dueDate) < new Date() && subproject.status !== 'Completed'),
       members: subproject.members.map(member => ({
         ...member,
         initials: member.initials || getInitials(member.name) || 'U'
@@ -1071,6 +1165,7 @@ exports.getProjectById = async (req, res) => {
     const formattedProject = {
       ...project,
       description: project.description,
+      isOverdue: project.isOverdue || (new Date(project.dueDate) < new Date() && project.status !== 'Completed'),
       members: project.members
         .filter(member => member != null) // Filter out null members
         .map(member => ({

@@ -11,6 +11,7 @@ const projectSchema = new mongoose.Schema({
   pendingInvites: [{ type: String }],
   subProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubProject' }],
   deletedAt: { type: Date, default: null },
+  isOverdue: { type: Boolean, default: false },
   status: {
     type: String,
     enum: ['To Do', 'In Progress', 'Completed'],

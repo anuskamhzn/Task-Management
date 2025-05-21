@@ -13,6 +13,7 @@ const groupChatRoute = require('./routes/groupChatRoute');
 const notificationRoutes = require('./routes/notificationRoutes');
 const socketController = require('./controllers/socketController');
 const { startScheduler } = require('./utils/scheduler');
+const { startOverdueJob } = require('./utils/overdueJob');
 const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -45,6 +46,8 @@ app.set('io', io); // This is the key fix!
 global.io = io;
 
 startScheduler(io); // Pass the Socket.IO instance
+// Start the overdue job
+startOverdueJob(io);
 
 // Connect to MongoDB
 connectDB();

@@ -14,7 +14,7 @@ export default function Users() {
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     userId: null,
-    userName: "",
+    Name: "",
   });
   const [userPopup, setUserPopup] = useState({
     isOpen: false,
@@ -55,11 +55,11 @@ export default function Users() {
     fetchUsers();
   }, [auth, setAuth, navigate]);
 
-  const openConfirmDialog = (userId, userName) => {
+  const openConfirmDialog = (userId, Name) => {
     setConfirmDialog({
       isOpen: true,
       userId,
-      userName,
+      Name,
     });
   };
 
@@ -67,7 +67,7 @@ export default function Users() {
     setConfirmDialog({
       isOpen: false,
       userId: null,
-      userName: "",
+      Name: "",
     });
   };
 
@@ -122,7 +122,7 @@ export default function Users() {
 
   const filteredUsers = (users || []).filter(
     (user) =>
-      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -167,7 +167,7 @@ export default function Users() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by username or email..."
+                placeholder="Search by name or email..."
                 className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {searchQuery && (
@@ -231,7 +231,7 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => openConfirmDialog(user._id, user.username || "Unknown")}
+                        onClick={() => openConfirmDialog(user._id, user.name || "Unknown")}
                         className="text-red-600 hover:text-red-800 transition-colors duration-150"
                       >
                         <FaTrash />
@@ -271,7 +271,7 @@ export default function Users() {
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all animate-fade-in">
               <h2 className="text-xl font-bold text-gray-800 mb-4">Delete User</h2>
               <p className="text-gray-600 mb-6">
-                Are you sure you want to delete "<span className="font-medium">{confirmDialog.userName}</span>"?
+                Are you sure you want to delete "<span className="font-medium">{confirmDialog.Name}</span>"?
                 <span className="block text-sm text-red-500 mt-1">This action cannot be undone.</span>
               </p>
               <div className="flex justify-end space-x-3">

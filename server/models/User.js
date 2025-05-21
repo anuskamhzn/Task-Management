@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema({
     DUE_DATE_TASK: { type: Boolean, default: true },
     GROUP_CHAT_CREATED: { type: Boolean, default: true },
     SUBPROJECT_ASSIGNMENT: { type: Boolean, default: true }, // Added preference for new type
+    OVERDUE_TASK: { type: Boolean, default: true },
+    OVERDUE_SUBTASK: { type: Boolean, default: true },
+    OVERDUE_PROJECT: { type: Boolean, default: true },
+    OVERDUE_SUBPROJECT: { type: Boolean, default: true },
   },
   isVerified: {
     type: Boolean,

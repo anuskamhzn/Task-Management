@@ -32,6 +32,10 @@ exports.createNotification = async (req, res) => {
         groupChatCreated: true,
         dueDateTask: true,
         subProjectAssign: true,
+        overdueTask: true,
+        overdueSubTask: true,
+        overdueProject: true,
+        overdueSubProject: true,
       };
       if (preferences[referenceType] !== false) {
         filteredRecipients.push(user._id);
@@ -282,7 +286,11 @@ exports.getNotificationPreferences = async (req, res) => {
         dueDateProject: true,
         groupChatCreated: true,
         dueDateTask: true,
-        subProjectAssign : true,
+        subProjectAssign: true,
+        overdueTask: true,
+        overdueSubTask: true,
+        overdueProject: true,
+        overdueSubProject: true,
       },
     });
   } catch (error) {

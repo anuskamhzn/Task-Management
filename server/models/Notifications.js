@@ -17,6 +17,11 @@ const notificationSchema = new mongoose.Schema({
       'GROUP_CHAT_CREATED',
       'GROUP_CHAT_ADDED',
       'SUBPROJECT_ASSIGNMENT', // Added new notification type
+      'OVERDUE_TASK',
+      'OVERDUE_SUBTASK',
+      'OVERDUE_PROJECT',
+      'OVERDUE_SUBPROJECT',
+      'STATUS_COMPLETED',
     ],
     required: true,
   },

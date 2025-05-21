@@ -35,6 +35,7 @@ const SubProjectSchema = new mongoose.Schema(
       enum: ["To Do", "In Progress", "Completed"],
       default: "To Do",
     },
+    isOverdue: { type: Boolean, default: false },
     initials:{ type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     deletedAt: { type: Date, default: null },
   },

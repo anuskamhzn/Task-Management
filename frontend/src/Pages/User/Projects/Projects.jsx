@@ -10,6 +10,7 @@ import ModifyProject from "../Modify/ModifyProject";
 import CreateProjectForm from "../Create/CreateProject";
 import parse from 'html-react-parser';
 import ViewProjectDetail from './ViewProjectDetail';
+import OverdueBadge from "../../../Components/Dashboard/OverdueBadge";
 
 const Projects = () => {
   const [auth] = useAuth();
@@ -37,7 +38,6 @@ const Projects = () => {
   }, [auth]);
 
   useEffect(() => {
-    // Filter projects based on status
     if (statusFilter === 'All') {
       setFilteredProjects(projects);
     } else {
@@ -45,7 +45,6 @@ const Projects = () => {
     }
   }, [projects, statusFilter]);
 
-  // Prevent scrolling when modals are open
   useEffect(() => {
     if (isDetailModalOpen || isCreateModalOpen) {
       document.body.style.overflow = "hidden";
@@ -248,13 +247,18 @@ const Projects = () => {
                 <div
                   key={project._id}
                   onClick={() => handleViewDetail(project._id)}
-                  className="bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border border-gray-200 cursor-pointer"
+                  className={`bg-white p-5 rounded-md shadow-md hover:shadow-lg transition relative group border ${
+                    project.isOverdue ? 'border-red-500 border-2' : 'border-gray-200'
+                  } cursor-pointer`}
                   onMouseLeave={() => {
                     setHoveredProject(null);
                     setOpenMenu(null);
                   }}
                 >
-                  <h3 className="text-lg font-bold text-gray-700 mb-2 truncate">{project.title}</h3>
+                  <h3 className="text-lg font-bold text-gray-700 mb-2 truncate flex items-center gap-2">
+                    {project.title}
+                    {project.isOverdue && <OverdueBadge aria-label="Project is overdue" />}
+                  </h3>
                   <div className="text-gray-600 text-sm mb-4 line-clamp-2 description-content">
                     {parse(project.description)}
                   </div>
