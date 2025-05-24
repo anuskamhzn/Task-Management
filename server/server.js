@@ -21,15 +21,29 @@ const formidable = require('express-formidable');
 
 const app = express();
 
-// Define CORS options
+const allowedOrigins = [
+   process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'https://123taskify.netlify.app',
+];
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000' || `https://123taskify.netlify.app`,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true,
 };
 
+
 // Apply CORS to Express
-app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
 
 // Create HTTP server and integrate with Socket.IO
 const server = http.createServer(app);
