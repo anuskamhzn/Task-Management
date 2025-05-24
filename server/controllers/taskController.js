@@ -800,3 +800,83 @@ exports.getTaskAnalytics = async (req, res) => {
     });
   }
 };
+
+// In taskController.js
+exports.getSubTaskStatusCounts = async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    const { mainTaskId } = req.params; // Get mainTaskId from URL parameters
+
+    // Validate mainTaskId
+    if (!mongoose.Types.ObjectId.isValid(mainTaskId)) {
+      return res.status(400).json({ message: 'Invalid mainTaskId' });
+    }
+
+    // Check if the main task exists and belongs to the user
+    const mainTask = await Task.findOne({ _id: mainTaskId, owner: ownerId });
+    if (!mainTask) {
+      return res.status(404).json({ message: 'Main task not found or you do not have permission to access it' });
+    }
+
+    const subTaskStats = await SubTask.aggregate([
+      {
+        $match: {
+          owner: new mongoose.Types.ObjectId(ownerId),
+          mainTask: new mongoose.Types.ObjectId(mainTaskId),
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $exists: false } }
+          ]
+        },
+      },
+      {
+        $facet: {
+          statusCounts: [
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+          overdueSubTasks: [
+            { $match: { isOverdue: true } },
+            { $count: "overdueCount" },
+          ],
+        },
+      },
+    ]);
+
+    let totalSubTasks = 0;
+    let counts = { toDo: 0, inProgress: 0, completed: 0 };
+
+    subTaskStats[0].statusCounts.forEach((group) => {
+      totalSubTasks += group.count;
+      switch (group._id) {
+        case "To Do":
+          counts.toDo = group.count;
+          break;
+        case "In Progress":
+          counts.inProgress = group.count;
+          break;
+        case "Completed":
+          counts.completed = group.count;
+          break;
+      }
+    });
+
+    const overdueSubTasks = subTaskStats[0].overdueSubTasks[0]?.overdueCount || 0;
+
+    res.status(200).json({
+      message: "Subtask status counts retrieved successfully",
+      statusCounts: {
+        totalSubTasks,
+        toDo: counts.toDo,
+        inProgress: counts.inProgress,
+        completed: counts.completed,
+        overdueSubTasks,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching subtask status counts:", error);
+    res.status(500).json({
+      message: "Error fetching subtask status counts",
+      error: error.message,
+    });
+  }
+};

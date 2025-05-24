@@ -23,7 +23,7 @@ const app = express();
 
 // Define CORS options
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000' || `https://123taskify.netlify.app`,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true,
 };
@@ -56,6 +56,11 @@ connectDB();
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true })); // Add URL-encoded parser
+
+app.get('/', (req, res) => {
+  res.send('API is running');
+});
+
 
 // Routes
 app.use('/api/admin', adminRoutes);

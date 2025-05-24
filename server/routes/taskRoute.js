@@ -17,6 +17,7 @@ router.get('/tasks/:taskId', authenticate, taskController.getTaskById);
 
 router.get('/ts/status-counts', authenticate, taskController.getTaskStatusCountsWithAggregation);
 router.get('/ts/analytics', authenticate, taskController.getTaskAnalytics);
+router.get('/ts/sub-analytics/:mainTaskId', authenticate, taskController.getSubTaskStatusCounts);
 
 //sub task
 router.post('/create-task/:mainTaskId', authenticate, taskController.createSubTask);

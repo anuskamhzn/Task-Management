@@ -1369,3 +1369,85 @@ exports.getProjectAnalytics = async (req, res) => {
     });
   }
 };
+
+// In projectController.js
+exports.getSubProjectStatusCounts = async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    const { mainProjectId } = req.params; // Get mainProjectId from URL parameters
+
+    // Validate mainProjectId
+    if (!mongoose.Types.ObjectId.isValid(mainProjectId)) {
+      return res.status(400).json({ message: 'Invalid mainProjectId' });
+    }
+
+    // Check if the main project exists and the user has access (owner or member)
+    const mainProject = await Project.findOne({
+      _id: mainProjectId,
+      $or: [{ owner: ownerId }, { members: ownerId }],
+    });
+    if (!mainProject) {
+      return res.status(404).json({ message: 'Main project not found or you do not have permission to access it' });
+    }
+
+    const subProjectStats = await SubProject.aggregate([
+      {
+        $match: {
+          mainProject: new mongoose.Types.ObjectId(mainProjectId),
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $exists: false } }
+          ]
+        },
+      },
+      {
+        $facet: {
+          statusCounts: [
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+          overdueSubProjects: [
+            { $match: { isOverdue: true } },
+            { $count: "overdueCount" },
+          ],
+        },
+      },
+    ]);
+
+    let totalSubProjects = 0;
+    let counts = { toDo: 0, inProgress: 0, completed: 0 };
+
+    subProjectStats[0].statusCounts.forEach((group) => {
+      totalSubProjects += group.count;
+      switch (group._id) {
+        case "To Do":
+          counts.toDo = group.count;
+          break;
+        case "In Progress":
+          counts.inProgress = group.count;
+          break;
+        case "Completed":
+          counts.completed = group.count;
+          break;
+      }
+    });
+
+    const overdueSubProjects = subProjectStats[0].overdueSubProjects[0]?.overdueCount || 0;
+
+    res.status(200).json({
+      message: "Subproject status counts retrieved successfully",
+      statusCounts: {
+        totalSubProjects,
+        toDo: counts.toDo,
+        inProgress: counts.inProgress,
+        completed: counts.completed,
+        overdueSubProjects,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching subproject status counts:", error);
+    res.status(500).json({
+      message: "Error fetching subproject status counts",
+      error: error.message,
+    });
+  }
+};

@@ -18,6 +18,7 @@ router.get('/:projectId', authenticate, projectController.getProjectById);
 
 router.get('/pro/total-counts', authenticate, projectController.getProjectStatusCountsWithAggregation);
 router.get('/pro/analytics', authenticate, projectController.getProjectAnalytics);
+router.get('/pro/sub-analytics/:mainProjectId', authenticate, projectController.getSubProjectStatusCounts);
 
 //sub project
 router.post('/create-project/:mainProjectId', authenticate, projectController.createSubProject);

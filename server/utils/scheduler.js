@@ -168,7 +168,7 @@ const sendDueDateNotifications = async (io) => {
 // Start the scheduler
 const startScheduler = (io) => {
   // Schedule to run every 1 hr
-  cron.schedule('0 * * * *', () => {
+  cron.schedule('* * * * *', () => {
     // console.log('Running due date notification scheduler...');
     sendDueDateNotifications(io);
   }, {

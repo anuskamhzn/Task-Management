@@ -171,28 +171,6 @@ exports.sendPrivateMessageReply = async (req, res) => {
   }
 };
 
-// Get private message history
-// exports.getPrivateMessages = async (req, res) => {
-//   try {
-//     const userId = req.user.id; // From auth middleware
-//     const recipientId = req.params.recipientId;
-
-//     const messages = await Message.find({
-//       $or: [
-//         { sender: userId, recipient: recipientId },
-//         { sender: recipientId, recipient: userId },
-//       ],
-//     })
-//       .populate('sender', 'name')
-//       .populate('recipient', 'name') // Ensure recipient is populated properly
-//       .sort({ timestamp: 1 });
-
-//     res.status(200).json({ success: true, messages });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ success: false, message: 'Error fetching messages', error });
-//   }
-// };
 
 // Delete private message (updated to handle replies)
 exports.deletePrivateMessage = async (req, res) => {
