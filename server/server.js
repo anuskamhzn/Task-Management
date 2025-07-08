@@ -23,7 +23,7 @@ const app = express();
 
 // Define CORS options
 const corsOptions = {
-  origin: "https://123taskify.netlify.app"/,
+  origin: "https://123taskify.netlify.app",
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true,
 };
