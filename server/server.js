@@ -23,7 +23,7 @@ const app = express();
 
 // Define CORS options
 const corsOptions = {
-  origin: `https://tazkify.netlify.app/`,
+  origin: `https://tazkify.netlify.app`,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true,
 };
