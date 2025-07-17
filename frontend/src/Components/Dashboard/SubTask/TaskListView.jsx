@@ -8,6 +8,7 @@ import CreateSubtask from "../../../Pages/User/Create/CreateSubtask";
 import ViewSubtaskDetail from "../../../Pages/User/Tasks/ViewSubtaskDetail";
 import parse from 'html-react-parser';
 import OverdueBadge from "../OverdueBadge";
+import SubTaskAnalytics from "./SubTaskAnalytics";
 
 const TaskTableView = ({ tasks, setTasks, auth }) => {
   const [openMenu, setOpenMenu] = useState(null);
@@ -26,22 +27,22 @@ const TaskTableView = ({ tasks, setTasks, auth }) => {
   const handleSubtaskCreated = (subTask) => setTasks((prev) => [subTask.subTask, ...prev]);
 
   // Callback for ModifySubtask to update tasks after dueDate change
-const handleSubtaskUpdated = (updatedSubtask) => {
-  setTasks((prev) =>
-    prev.map((task) =>
-      task._id === updatedSubtask._id
-        ? {
+  const handleSubtaskUpdated = (updatedSubtask) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task._id === updatedSubtask._id
+          ? {
             ...task,
             ...updatedSubtask,
             isOverdue:
               updatedSubtask.status !== "Completed" &&
               new Date(updatedSubtask.dueDate).getTime() < new Date().getTime(),
           }
-        : task
-    )
-  );
-  setSelectedSubtask(null);
-};
+          : task
+      )
+    );
+    setSelectedSubtask(null);
+  };
 
 
   // Handle click outside to close the menu
@@ -84,9 +85,9 @@ const handleSubtaskUpdated = (updatedSubtask) => {
         { headers: { Authorization: `Bearer ${auth.token}` } }
       );
       setTasks((prev) =>
-        prev.map((task) => task._id === subTaskId 
-          ? { ...task, status: newStatus, isOverdue: newStatus !== "Completed" && new Date(task.dueDate) < new Date() } 
-      : task)
+        prev.map((task) => task._id === subTaskId
+          ? { ...task, status: newStatus, isOverdue: newStatus !== "Completed" && new Date(task.dueDate) < new Date() }
+          : task)
       );
       toast.success(`Status updated to "${newStatus}"!`);
       setOpenMenu(null);
@@ -141,37 +142,37 @@ const handleSubtaskUpdated = (updatedSubtask) => {
 
   const handleActionClick = (taskId, e) => {
     e.stopPropagation();
-    
+
     if (openMenu === taskId) {
       setOpenMenu(null);
       return;
     }
-    
+
     const buttonRect = actionButtonRefs.current[taskId].getBoundingClientRect();
     const menuWidth = 192;
     const menuHeight = 280;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
+
     let top = buttonRect.bottom + window.scrollY + 5;
     let left = buttonRect.left + window.scrollX;
-    
+
     if (left + menuWidth > viewportWidth) {
       left = viewportWidth - menuWidth - 10;
     }
-    
+
     if (buttonRect.bottom + menuHeight > viewportHeight) {
       top = buttonRect.top + window.scrollY - menuHeight - 5;
     }
-    
+
     if (top < window.scrollY) {
       top = window.scrollY + 10;
     }
-    
+
     if (left < 0) {
       left = 10;
     }
-    
+
     setMenuPosition({ top, left });
     setOpenMenu(taskId);
   };
@@ -180,7 +181,7 @@ const handleSubtaskUpdated = (updatedSubtask) => {
     if (openMenu && menuRef.current) {
       const menuRect = menuRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
-      
+
       if (menuRect.bottom > viewportHeight) {
         const scrollAmount = menuRect.bottom - viewportHeight + 20;
         window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
@@ -190,6 +191,7 @@ const handleSubtaskUpdated = (updatedSubtask) => {
 
   return (
     <div className="p-6 bg-gray-50 rounded-lg shadow-sm">
+      {/* <SubTaskAnalytics auth={auth} mainTaskId={taskId} /> */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">Task Table</h2>
         <button
@@ -215,11 +217,10 @@ const handleSubtaskUpdated = (updatedSubtask) => {
               {tasks.map((task) => (
                 <tr
                   key={task._id}
-                  className={`border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 ${
-                    task.isOverdue ? 'border-l-4 border-red-500' : 'border-gray-200'
-                  }`}
+                  className={`p-5 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 ${task.isOverdue ? 'border-l-4 border-red-500' : 'border-gray-200'
+                    }`}
                 >
-                  <td className="py-4 px-6 text-gray-800 cursor-pointer" onClick={() => handleViewDetail(task._id)}>
+                  <td className="py-4 px-6 text-gray-800 cursor-pointer gap-2" onClick={() => handleViewDetail(task._id)}>
                     {task.title}
                     {task.isOverdue && <OverdueBadge />}
                   </td>
@@ -233,13 +234,12 @@ const handleSubtaskUpdated = (updatedSubtask) => {
                   </td>
                   <td className="py-4 px-6">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${
-                        task.status === "To Do"
-                          ? "bg-gray-100 text-gray-800"
-                          : task.status === "In Progress"
+                      className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${task.status === "To Do"
+                        ? "bg-gray-100 text-gray-800"
+                        : task.status === "In Progress"
                           ? "bg-yellow-100 text-yellow-800"
                           : "bg-green-100 text-green-800"
-                      }`}
+                        }`}
                     >
                       {task.status}
                     </span>
@@ -291,33 +291,30 @@ const handleSubtaskUpdated = (updatedSubtask) => {
             <hr className="my-2 border-gray-200" />
             <button
               onClick={() => handleStatusChange(openMenu, "To Do")}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-gray-200 ${
-                tasks.find((task) => task._id === openMenu).status === "To Do"
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-gray-800 hover:bg-gray-50"
-              }`}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-gray-200 ${tasks.find((task) => task._id === openMenu).status === "To Do"
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-white text-gray-800 hover:bg-gray-50"
+                }`}
               disabled={tasks.find((task) => task._id === openMenu).status === "To Do"}
             >
               <FaList className="text-gray-600" /> To Do
             </button>
             <button
               onClick={() => handleStatusChange(openMenu, "In Progress")}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-yellow-200 ${
-                tasks.find((task) => task._id === openMenu).status === "In Progress"
-                  ? "bg-yellow-200 text-yellow-400 cursor-not-allowed"
-                  : "bg-white text-yellow-800 hover:bg-yellow-50"
-              }`}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-yellow-200 ${tasks.find((task) => task._id === openMenu).status === "In Progress"
+                ? "bg-yellow-200 text-yellow-400 cursor-not-allowed"
+                : "bg-white text-yellow-800 hover:bg-yellow-50"
+                }`}
               disabled={tasks.find((task) => task._id === openMenu).status === "In Progress"}
             >
               <FaSpinner className="text-yellow-600" /> In Progress
             </button>
             <button
               onClick={() => handleStatusChange(openMenu, "Completed")}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-blue-200 ${
-                tasks.find((task) => task._id === openMenu).status === "Completed"
-                  ? "bg-blue-200 text-blue-400 cursor-not-allowed"
-                  : "bg-white text-blue-800 hover:bg-blue-50"
-              }`}
+              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border border-blue-200 ${tasks.find((task) => task._id === openMenu).status === "Completed"
+                ? "bg-blue-200 text-blue-400 cursor-not-allowed"
+                : "bg-white text-blue-800 hover:bg-blue-50"
+                }`}
               disabled={tasks.find((task) => task._id === openMenu).status === "Completed"}
             >
               <FaCheck className="text-blue-600" /> Completed

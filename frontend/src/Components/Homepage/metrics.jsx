@@ -6,13 +6,13 @@ export function Metrics({ refreshTrigger }) {
   const [auth, setAuth] = useAuth();
   const [activeTab, setActiveTab] = useState("task");
   const [taskMetrics, setTaskMetrics] = useState([
-    { title: "Total Task", value: "0", color: "bg-gray-100 border-gray-200", icon: "total" },
+    { title: "Total Task", value: "0", color: "bg-violet-100 border-violet-200", icon: "total" },
     { title: "To Do", value: "0", color: "bg-blue-50 border-blue-200", icon: "todo" },
     { title: "In Progress", value: "0", color: "bg-amber-50 border-amber-200", icon: "progress" },
     { title: "Completed", value: "0", color: "bg-emerald-50 border-emerald-200", icon: "completed" },
   ]);
   const [projectMetrics, setProjectMetrics] = useState([
-    { title: "Total Project", value: "0", color: "bg-gray-100 border-gray-200", icon: "total" },
+    { title: "Total Project", value: "0", color: "bg-violet-100 border-violet-200", icon: "total" },
     { title: "To Do", value: "0", color: "bg-blue-50 border-blue-200", icon: "todo" },
     { title: "In Progress", value: "0", color: "bg-amber-50 border-amber-200", icon: "progress" },
     { title: "Completed", value: "0", color: "bg-emerald-50 border-emerald-200", icon: "completed" },
@@ -37,7 +37,7 @@ export function Metrics({ refreshTrigger }) {
         {
           title: "Total Task",
           value: taskData.totalTasks.toString(),
-          color: "bg-gray-100 border-gray-200",
+          color: "bg-violet-100 border-violet-200",
           icon: "total",
         },
         { title: "To Do", value: taskData.toDo.toString(), color: "bg-blue-50 border-blue-200", icon: "todo" },
@@ -66,7 +66,7 @@ export function Metrics({ refreshTrigger }) {
         {
           title: "Total Project",
           value: projectData.totalProjects.toString(),
-          color: "bg-gray-100 border-gray-200",
+          color: "bg-violet-100 border-violet-200",
           icon: "total",
         },
         { title: "To Do", value: projectData.toDo.toString(), color: "bg-blue-50 border-blue-200", icon: "todo" },
@@ -188,7 +188,7 @@ export function Metrics({ refreshTrigger }) {
             onClick={() => setActiveTab("task")}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all ${
               activeTab === "task"
-                ? "bg-purple-700 text-white shadow-md"
+                ? "bg-violet-700 text-white shadow-md"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >

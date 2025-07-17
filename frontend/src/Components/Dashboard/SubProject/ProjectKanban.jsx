@@ -8,6 +8,7 @@ import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
 import ViewSubDetail from '../../../Pages/User/Projects/ViewSubDetail';
 import parse from 'html-react-parser';
 import OverdueBadge from '../OverdueBadge';
+import SubProjectAnalytics from './SubProjectAnalytics';
 
 const ProjectKanban = ({ toDoProjects, inProgressProjects, completedProjects, setProjects, auth }) => {
   const [openMenu, setOpenMenu] = useState(null);

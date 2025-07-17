@@ -10,6 +10,7 @@ import CreateSubproject from "../../../Pages/User/Create/CreateSubproject";
 import Members from "../../../Pages/User/Projects/Members";
 import ViewSubDetail from "../../../Pages/User/Projects/ViewSubDetail";
 import { FaChartGantt } from "react-icons/fa6";
+import SubProjectAnalytics from "./SubProjectAnalytics";
 
 const Project = () => {
   const [auth] = useAuth();
@@ -148,7 +149,7 @@ const Project = () => {
               </NavLink>
             </div>
           </div>
-
+          {/* <SubProjectAnalytics auth={auth} mainProjectId={projectId} /> */}
           {loading ? (
             <p className="text-center text-gray-500">Loading...</p>
           ) : (

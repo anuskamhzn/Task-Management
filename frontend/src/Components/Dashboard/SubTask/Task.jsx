@@ -9,6 +9,7 @@ import TaskTableView from './TaskListView';
 import { FaTrash } from "react-icons/fa";
 import CreateSubtask from "../../../Pages/User/Create/CreateSubtask";
 import { FaChartGantt } from "react-icons/fa6";
+import SubTaskAnalytics from "./SubTaskAnalytics";
 
 const Task = () => {
   const [auth] = useAuth();
@@ -131,6 +132,7 @@ const Task = () => {
               </NavLink>
             </div>
           </div>
+          {/* <SubTaskAnalytics auth={auth} mainTaskId={taskId} /> */}
 
           {loading ? (
             <p className="text-center text-gray-500">Loading...</p>

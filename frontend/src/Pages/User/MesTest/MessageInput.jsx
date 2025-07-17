@@ -121,7 +121,7 @@ const MessageInput = ({
               handleSendMessage();
             }
           }}
-          className="flex-1 p-3 rounded-lg border border-gray-300 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 p-3 rounded-lg border border-gray-300 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
           placeholder={replyToMessageId ? "Type your reply..." : "Type a message..."}
           aria-label="Message input"
         />

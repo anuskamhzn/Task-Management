@@ -8,18 +8,16 @@ import ViewTaskDetail from "../../Pages/User/Tasks/ViewTaskDetail"; // Adjust pa
 import ViewProjectDetail from "../../Pages/User/Projects/ViewProjectDetail"; // Adjust path as needed
 
 const calendarStyles = {
-  "--fc-border-color": "rgb(229, 231, 235)",
-  "--fc-today-bg-color": "rgba(126, 34, 206, 0.1)",
-  "--fc-event-bg-color": "#7e22ce",
-  "--fc-event-border-color": "#7e22ce",
+  "--fc-border-color": "rgb(229, 231, 235)", // Tailwind gray-200
+  "--fc-today-bg-color": "rgba(221, 214, 254, 0.1)", // Tailwind violet-200 with opacity
   "--fc-event-text-color": "#fff",
   "--fc-button-text-color": "#fff",
-  "--fc-button-bg-color": "#7e22ce",
-  "--fc-button-border-color": "#7e22ce",
-  "--fc-button-hover-bg-color": "#6b21a8",
-  "--fc-button-hover-border-color": "#6b21a8",
-  "--fc-button-active-bg-color": "#581c87",
-  "--fc-button-active-border-color": "#581c87",
+  "--fc-button-bg-color": "rgb(167, 139, 250)", // Tailwind violet-400
+  "--fc-button-border-color": "rgb(167, 139, 250)", // Tailwind violet-400
+  "--fc-button-hover-bg-color": "rgb(139, 92, 246)", // Tailwind violet-500
+  "--fc-button-hover-border-color": "rgb(139, 92, 246)", // Tailwind violet-500
+  "--fc-button-active-bg-color": "rgb(109, 40, 217)", // Tailwind violet-600
+  "--fc-button-active-border-color": "rgb(109, 40, 217)", // Tailwind violet-600
 };
 
 export default function Calendar({ refreshTrigger }) {
@@ -56,7 +54,6 @@ export default function Calendar({ refreshTrigger }) {
       const response = await axios.get(`${process.env.REACT_APP_API}/api/task`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
-      console.log("Tasks API Response:", response.data);
       if (response.data.message === "No tasks found") {
         setTasks([]);
         setError("No tasks found");
@@ -81,7 +78,6 @@ export default function Calendar({ refreshTrigger }) {
       const response = await axios.get(`${process.env.REACT_APP_API}/api/project`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       });
-      console.log("Projects API Response:", response.data);
       if (response.data.message === "No projects found") {
         setProjects([]);
         setError("No projects found");
@@ -123,8 +119,7 @@ export default function Calendar({ refreshTrigger }) {
         id: task._id,
         title: `Task: ${task.title}`,
         date: eventDate,
-        backgroundColor: "#7e22ce", // Purple for tasks
-        borderColor: "#7e22ce",
+        className: "bg-purple-500 border-violet-500 text-white", // Tailwind classes for tasks
         type: "task", // Add type for modal rendering
       };
     }).filter(event => event !== null),
@@ -138,19 +133,11 @@ export default function Calendar({ refreshTrigger }) {
         id: project._id,
         title: `Project: ${project.title}`,
         date: eventDate,
-        backgroundColor: "#2563eb", // Blue for projects
-        borderColor: "#2563eb",
+        className: "bg-blue-500 border-blue-500 text-white", // Tailwind classes for projects
         type: "project", // Add type for modal rendering
       };
     }).filter(event => event !== null),
   ];
-
-  // Debugging logs
-  useEffect(() => {
-    console.log("Tasks:", tasks);
-    console.log("Projects:", projects);
-    console.log("Calendar Events:", calendarEvents);
-  }, [tasks, projects]);
 
   const handlePrevMonth = () => {
     if (calendarRef.current) {
@@ -204,7 +191,7 @@ export default function Calendar({ refreshTrigger }) {
       <div className="border-b p-4 bg-gray-50 flex items-center justify-between">
         <div className="flex items-center">
           <svg
-            className="w-5 h-5 text-purple-700 mr-2"
+            className="w-5 h-5 text-violet-700 mr-2"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -222,7 +209,7 @@ export default function Calendar({ refreshTrigger }) {
         <div className="flex space-x-2">
           <button
             onClick={handleToday}
-            className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+            className="px-3 py-1 text-sm bg-violet-100 text-violet-700 rounded-md hover:bg-violet-200 transition-colors"
           >
             Today
           </button>
