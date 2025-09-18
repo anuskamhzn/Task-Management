@@ -23,7 +23,8 @@ const app = express();
 
 // Define CORS options
 const corsOptions = {
-  origin: `https://tazkify.netlify.app`,
+  // origin: `https://tazkify.netlify.app`,
+  origin: `http://localhost:3000`,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true,
 };

@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { useAuth } from '../../context/auth';
-import { FaBell } from 'react-icons/fa';
+import { useAuth } from "../../context/auth";
+import { FaBell, FaBars } from "react-icons/fa";
 import { FiUser, FiLogOut } from "react-icons/fi";
-import io from 'socket.io-client';
+import io from "socket.io-client";
 
-export default function Navbar() {
+export default function Navbar({ toggleSidebar }) {
   const [auth, setAuth] = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(null); // null, 'profile', or 'notifications'
   const dropdownRef = useRef(null);
@@ -16,29 +16,24 @@ export default function Navbar() {
 
   useEffect(() => {
     if (auth.token && auth.user) {
-      // Initialize Socket.IO connection
       socketRef.current = io(process.env.REACT_APP_API, {
         auth: { token: auth.token },
       });
 
-      // Join notification room
-      socketRef.current.emit('joinNotificationRoom');
+      socketRef.current.emit("joinNotificationRoom");
 
-      // Listen for initial notifications
-      socketRef.current.on('initialNotifications', ({ notifications, unreadCount }) => {
+      socketRef.current.on("initialNotifications", ({ notifications, unreadCount }) => {
         setNotifications(notifications);
         setUnreadCount(unreadCount);
         setLoading(false);
       });
 
-      // Listen for new notifications
-      socketRef.current.on('newNotification', (notification) => {
+      socketRef.current.on("newNotification", (notification) => {
         setNotifications((prev) => [notification, ...prev].slice(0, 5));
         setUnreadCount((prev) => prev + (notification.isRead ? 0 : 1));
       });
 
-      // Listen for notification read
-      socketRef.current.on('notificationRead', (updatedNotification) => {
+      socketRef.current.on("notificationRead", (updatedNotification) => {
         setNotifications((prev) =>
           prev.map((n) =>
             n._id === updatedNotification._id ? updatedNotification : n
@@ -47,25 +42,21 @@ export default function Navbar() {
         setUnreadCount((prev) => (updatedNotification.isRead ? prev - 1 : prev));
       });
 
-      // Listen for all notifications read
-      socketRef.current.on('allNotificationsRead', () => {
+      socketRef.current.on("allNotificationsRead", () => {
         setNotifications((prev) =>
           prev.map((n) => ({ ...n, isRead: true }))
         );
         setUnreadCount(0);
       });
 
-      // Listen for notification count updates
-      socketRef.current.on('notificationCountUpdate', ({ unreadCount }) => {
+      socketRef.current.on("notificationCountUpdate", ({ unreadCount }) => {
         setUnreadCount(unreadCount);
       });
 
-      // Handle errors
-      socketRef.current.on('error', ({ message }) => {
-        console.error('Socket error:', message);
+      socketRef.current.on("error", ({ message }) => {
+        console.error("Socket error:", message);
       });
 
-      // Cleanup on unmount
       return () => {
         socketRef.current.disconnect();
       };
@@ -73,8 +64,8 @@ export default function Navbar() {
   }, [auth.token, auth.user]);
 
   const handleSignOut = () => {
-    localStorage.removeItem('auth');
-    setAuth({ user: null, token: '' });
+    localStorage.removeItem("auth");
+    setAuth({ user: null, token: "" });
   };
 
   const toggleDropdown = (type) => {
@@ -96,9 +87,9 @@ export default function Navbar() {
 
   const markAllAsRead = () => {
     if (socketRef.current) {
-      socketRef.current.emit('markAllNotificationsAsRead', (response) => {
+      socketRef.current.emit("markAllNotificationsAsRead", (response) => {
         if (!response.success) {
-          console.error('Error marking all notifications as read:', response.message);
+          console.error("Error marking all notifications as read:", response.message);
         }
       });
     }
@@ -106,19 +97,27 @@ export default function Navbar() {
 
   return (
     <div className="flex justify-between items-center bg-white border-b border-gray-300 p-4 shadow-sm relative z-50">
-      <div className="flex items-center space-x-6">
-        {/* <input
+      <div className="flex items-center space-x-4">
+        <button
+          onClick={toggleSidebar}
+          className="md:hidden text-gray-600 hover:text-indigo-500 transition-colors duration-200"
+        >
+          <FaBars className="w-6 h-6" />
+        </button>
+        {/* Uncomment if search is needed
+        <input
           type="text"
           placeholder="Search..."
-          className="border p-2 rounded-2xl w-full max-w-md bg-gray-50 focus:ring-2 focus:ring-indigo-400 transition duration-300 ease-in-out"
-        /> */}
+          className="border p-2 rounded-2xl w-full max-w-xs bg-gray-50 focus:ring-2 focus:ring-indigo-400 transition duration-300 ease-in-out"
+        />
+        */}
       </div>
 
-      <div className="flex space-x-6 items-center relative z-10" ref={dropdownRef}>
+      <div className="flex space-x-4 sm:space-x-6 items-center relative z-10" ref={dropdownRef}>
         <div className="relative">
           <button
-            onClick={() => toggleDropdown('notifications')}
-            className="text-xl text-gray-600 hover:text-indigo-500 transition-colors duration-200 ease-in-out relative"
+            onClick={() => toggleDropdown("notifications")}
+            className="text-lg sm:text-xl text-gray-600 hover:text-indigo-500 transition-colors duration-200 ease-in-out relative"
           >
             <FaBell />
             {unreadCount > 0 && (
@@ -128,13 +127,13 @@ export default function Navbar() {
             )}
           </button>
 
-          {dropdownOpen === 'notifications' && (
+          {dropdownOpen === "notifications" && (
             <div
-              className="absolute right-0 mt-3 w-80 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 ease-in-out opacity-0 scale-95 z-20"
-              style={{ top: '100%', animation: 'dropdownOpen 0.3s ease-out forwards' }}
+              className="absolute right-0 mt-3 w-72 sm:w-80 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 ease-in-out"
+              style={{ top: "100%", animation: "dropdownOpen 0.3s ease-out forwards" }}
             >
               <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800">Notifications</h3>
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
@@ -150,21 +149,21 @@ export default function Navbar() {
                 <div className="p-4 text-gray-500">No notifications</div>
               ) : (
                 <>
-                  {notifications.slice(0, 4).map(notification => (
+                  {notifications.slice(0, 4).map((notification) => (
                     <NavLink
                       key={notification._id}
-                      to={`/dashboard/notifications`}
+                      to="/dashboard/notifications"
                       onClick={() => setDropdownOpen(null)}
                       className={`p-4 border-b border-gray-100 hover:bg-gray-50 flex justify-between items-center transition-colors duration-150 ${
-                        notification.isRead ? 'bg-gray-50' : 'bg-white font-bold'
+                        notification.isRead ? "bg-gray-50" : "bg-white font-bold"
                       }`}
                     >
                       <div>
                         <p
                           className={`text-sm ${
                             notification.isRead
-                              ? 'text-gray-500 font-normal'
-                              : 'text-gray-800 font-bold'
+                              ? "text-gray-500 font-normal"
+                              : "text-gray-800 font-bold"
                           }`}
                         >
                           {notification.message}
@@ -191,26 +190,26 @@ export default function Navbar() {
         </div>
 
         <div
-          className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-100 transition duration-200 ease-in-out"
-          onClick={() => toggleDropdown('profile')}
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-100 transition duration-200 ease-in-out"
+          onClick={() => toggleDropdown("profile")}
         >
           {auth?.user?.photo ? (
             <img
               src={`data:${auth.user.photo.contentType};base64,${auth.user.photo.data}`}
               alt="User Profile"
-              className="w-10 h-10 rounded-full object-cover"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
             />
           ) : (
-            <div className="w-10 h-10 bg-gray-100 text-violet-600 rounded-full flex items-center justify-center text-lg font-medium">
-              {auth?.user?.initials || 'U'}
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 text-violet-600 rounded-full flex items-center justify-center text-base sm:text-lg font-medium">
+              {auth?.user?.initials || "U"}
             </div>
           )}
         </div>
 
-        {dropdownOpen === 'profile' && (
+        {dropdownOpen === "profile" && (
           <div
-            className="absolute right-0 mt-3 w-56 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 ease-in-out opacity-0 scale-95 z-20"
-            style={{ top: '100%', animation: 'dropdownOpen 0.3s ease-out forwards' }}
+            className="absolute right-0 mt-3 w-48 sm:w-56 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 ease-in-out"
+            style={{ top: "100%", animation: "dropdownOpen 0.3s ease-out forwards" }}
           >
             <NavLink
               to="/dashboard/userInfo"

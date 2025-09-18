@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [isCreateModalTaskOpen, setIsCreateModalTaskOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [refreshMetrics, setRefreshMetrics] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (isCreateModalTaskOpen || isCreateModalOpen) {
@@ -54,18 +55,29 @@ export default function Dashboard() {
     setRefreshMetrics((prev) => prev + 1);
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
-    <div className="flex bg-gray-50 min-h-screen">
-      <aside className="h-screen sticky top-0 w-64 bg-gray-800 text-white">
+    <div className="flex  min-h-screen">
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:transform-none ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
         <Sidebar />
       </aside>
+
+      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <Navbar />
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="flex justify-between items-center mb-6">
+        <Navbar toggleSidebar={toggleSidebar} />
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div className="flex items-center">
               <svg
-                className="w-8 h-8 text-purple-700 mr-2"
+                className="w-6 h-6 sm:w-8 sm:h-8 text-purple-700 mr-2"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -78,12 +90,12 @@ export default function Dashboard() {
                 <rect x="14" y="14" width="7" height="7"></rect>
                 <rect x="3" y="14" width="7" height="7"></rect>
               </svg>
-              <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Dashboard</h1>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
                 onClick={handleCreateTaskClick}
-                className="bg-purple-700 text-white py-2.5 px-5 rounded-lg shadow hover:bg-purple-800 transition duration-300 font-medium flex items-center"
+                className="bg-purple-700 text-white py-2 px-4 rounded-lg shadow hover:bg-purple-800 transition duration-300 font-medium flex items-center justify-center"
               >
                 <svg
                   className="w-5 h-5 mr-2"
@@ -101,7 +113,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={handleCreateProjectClick}
-                className="bg-violet-700 text-white py-2.5 px-5 rounded-lg shadow hover:bg-violet-800 transition duration-300 font-medium flex items-center"
+                className="bg-violet-700 text-white py-2 px-4 rounded-lg shadow hover:bg-violet-800 transition duration-300 font-medium flex items-center justify-center"
               >
                 <svg
                   className="w-5 h-5 mr-2"
