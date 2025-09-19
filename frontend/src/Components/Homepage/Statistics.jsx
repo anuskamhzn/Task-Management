@@ -25,11 +25,6 @@ export default function Statistics({ refreshTrigger }) {
   const [error, setError] = useState(null);
 
   const fetchAnalytics = async () => {
-    // if (!auth.token) {
-    //   setError("No authentication token available");
-    //   setLoading(false);
-    //   return;
-    // }
     try {
       const taskResponse = await axios.get(`${process.env.REACT_APP_API}/api/task/ts/analytics`, {
         headers: { Authorization: `Bearer ${auth.token}` },
@@ -50,7 +45,7 @@ export default function Statistics({ refreshTrigger }) {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [auth.token, refreshTrigger]); // Refetch when auth.token or refreshTrigger changes
+  }, [auth.token, refreshTrigger]);
 
   const getChartData = () => {
     const analytics = activeTab === "task" ? taskAnalytics : projectAnalytics;
@@ -60,7 +55,7 @@ export default function Statistics({ refreshTrigger }) {
     const data = [analytics.statusCounts.toDo, analytics.statusCounts.inProgress, analytics.statusCounts.completed];
 
     const createGradient = (ctx, color1, color2) => {
-      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
       gradient.addColorStop(0, color1);
       gradient.addColorStop(1, color2);
       return gradient;
@@ -87,12 +82,12 @@ export default function Statistics({ refreshTrigger }) {
             gradientFill || (activeTab === "task" ? "rgba(126, 34, 206, 0.2)" : "rgba(109, 40, 217, 0.2)"),
           fill: true,
           tension: 0.4,
-          borderWidth: 3,
+          borderWidth: 2,
           pointBackgroundColor: activeTab === "task" ? "#7e22ce" : "#6d28d9",
           pointBorderColor: "#fff",
           pointBorderWidth: 2,
-          pointRadius: 6,
-          pointHoverRadius: 8,
+          pointRadius: 4,
+          pointHoverRadius: 6,
         },
       ],
     };
@@ -108,22 +103,20 @@ export default function Statistics({ refreshTrigger }) {
           usePointStyle: true,
           boxWidth: 6,
           font: {
-            size: 13,
-            weight: "bold",
+            size: 12,
           },
         },
       },
       tooltip: {
         backgroundColor: "rgba(0, 0, 0, 0.8)",
         titleFont: {
-          size: 14,
-          weight: "bold",
+          size: 12,
         },
         bodyFont: {
-          size: 13,
+          size: 11,
         },
-        padding: 12,
-        cornerRadius: 8,
+        padding: 10,
+        cornerRadius: 6,
         displayColors: false,
       },
     },
@@ -136,9 +129,9 @@ export default function Statistics({ refreshTrigger }) {
         },
         ticks: {
           font: {
-            size: 12,
+            size: 11,
           },
-          padding: 8,
+          padding: 6,
         },
         border: {
           display: false,
@@ -150,9 +143,9 @@ export default function Statistics({ refreshTrigger }) {
         },
         ticks: {
           font: {
-            size: 12,
+            size: 11,
           },
-          padding: 8,
+          padding: 6,
         },
         border: {
           display: false,
@@ -166,10 +159,10 @@ export default function Statistics({ refreshTrigger }) {
     },
     layout: {
       padding: {
-        top: 20,
-        right: 20,
-        bottom: 20,
-        left: 20,
+        top: 15,
+        right: 15,
+        bottom: 15,
+        left: 15,
       },
     },
   };
@@ -186,7 +179,7 @@ export default function Statistics({ refreshTrigger }) {
         value: total,
         icon: (
           <svg
-            className="w-5 h-5 text-gray-700"
+            className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -205,7 +198,7 @@ export default function Statistics({ refreshTrigger }) {
         value: total > 0 ? `${Math.round((analytics.statusCounts.completed / total) * 100)}%` : "0%",
         icon: (
           <svg
-            className="w-5 h-5 text-emerald-600"
+            className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -222,10 +215,10 @@ export default function Statistics({ refreshTrigger }) {
 
   return (
     <div className="shadow-lg rounded-lg border bg-white overflow-hidden">
-      <div className="border-b p-4 bg-gray-50 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+      <div className="border-b p-3 sm:p-4 bg-gray-50 flex flex-col sm:flex-row justify-between items-center">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center mb-3 sm:mb-0">
           <svg
-            className="w-5 h-5 mr-2 text-purple-700"
+            className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-purple-700"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -237,10 +230,10 @@ export default function Statistics({ refreshTrigger }) {
           </svg>
           Statistics
         </h2>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <button
             onClick={() => setActiveTab("task")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm sm:text-base ${
               activeTab === "task"
                 ? "bg-purple-700 text-white shadow-md"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -262,7 +255,7 @@ export default function Statistics({ refreshTrigger }) {
           </button>
           <button
             onClick={() => setActiveTab("project")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm sm:text-base ${
               activeTab === "project"
                 ? "bg-violet-700 text-white shadow-md"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -287,9 +280,9 @@ export default function Statistics({ refreshTrigger }) {
         </div>
       </div>
       {loading ? (
-        <div className="flex flex-col justify-center items-center h-[300px] bg-gray-50/30">
+        <div className="flex flex-col justify-center items-center h-[200px] sm:h-[300px] bg-gray-50/30">
           <svg
-            className="animate-spin h-10 w-10 text-purple-700 mb-4"
+            className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-purple-700 mb-4"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -301,12 +294,12 @@ export default function Statistics({ refreshTrigger }) {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          <p className="text-gray-500 font-medium">Loading statistics...</p>
+          <p className="text-gray-500 font-medium text-sm sm:text-base">Loading statistics...</p>
         </div>
       ) : error ? (
-        <div className="flex flex-col justify-center items-center h-[300px] bg-red-50/30">
+        <div className="flex flex-col justify-center items-center h-[200px] sm:h-[300px] bg-red-50/30">
           <svg
-            className="w-10 h-10 text-red-500 mb-4"
+            className="w-8 h-8 sm:w-10 sm:h-10 text-red-500 mb-4"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -318,30 +311,30 @@ export default function Statistics({ refreshTrigger }) {
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
-          <p className="text-red-600 font-medium">{error}</p>
+          <p className="text-red-600 font-medium text-sm sm:text-base">{error}</p>
         </div>
       ) : (
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {getSummaryData() && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
               {getSummaryData().map((item, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                <div key={index} className="bg-gray-50 rounded-lg p-3 sm:p-4 flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">{item.label}</p>
-                    <p className="text-2xl font-bold">{item.value}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">{item.label}</p>
+                    <p className="text-lg sm:text-2xl font-bold">{item.value}</p>
                   </div>
-                  <div className="bg-white p-3 rounded-full shadow-sm">{item.icon}</div>
+                  <div className="bg-white p-2 sm:p-3 rounded-full shadow-sm">{item.icon}</div>
                 </div>
               ))}
             </div>
           )}
-          <div className="h-[250px]">
+          <div className="h-[200px] sm:h-[250px]">
             {getChartData() ? (
               <Line id="statistics-chart" data={getChartData()} options={chartOptions} />
             ) : (
               <div className="flex flex-col justify-center items-center h-full bg-gray-50/30 rounded-lg">
                 <svg
-                  className="w-12 h-12 text-gray-400 mb-3"
+                  className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mb-3"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -353,8 +346,8 @@ export default function Statistics({ refreshTrigger }) {
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <p className="text-gray-500 font-medium">No data available</p>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="text-gray-500 font-medium text-sm sm:text-base">No data available</p>
+                <p className="text-gray-400 text-xs sm:text-sm mt-1">
                   Try creating some {activeTab === "task" ? "tasks" : "projects"} first
                 </p>
               </div>
